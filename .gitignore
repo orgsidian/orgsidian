@@ -1,0 +1,27 @@
+# Folder view configuration files
+.DS_Store
+Desktop.ini
+
+# Thumbnail cache files
+._*
+Thumbs.db
+
+# Files that might appear on external disks
+.Spotlight-V100
+.Trashes
+
+# BMad
+_bmad/
+.claude/skills/bmad*
+
+# Claude Code local-only
+.claude/settings.local.json
+.claude/worktrees/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
