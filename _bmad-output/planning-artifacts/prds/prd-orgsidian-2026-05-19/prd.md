@@ -8,6 +8,8 @@ revisions:
     summary: PRD reconciliation post-architecture (LD-46). §7.3, §10 OQ-1/OQ-2/OQ-8, addendum §A.2 and §A.3 updated to reflect MIT (LD-1) + tree-sitter-org + custom semantic layer (LD-3) + Tauri 2.x (LD-1..LD-10).
   - date: 2026-05-19
     summary: PRD reconciliation wave 2. §7.3 + §10 OQ-1 + addendum §A.2 thread in `tree-sitter-org` vendoring & maintenance contingency (architecture LD-48). §8 names i18n library and translator-facing catalog format per architecture LD-52 (Lingui v6.x; `.po` Gettext). §10 OQ-6 customization-template language updated to reflect LD-53 (Typst `.typ` for PDF path, HTML/CSS for HTML path; `sys.inputs` schema generated from `ReportData`).
+  - date: 2026-05-19
+    summary: Sprint Change Proposal (correct-course) absorbed. PRD body unchanged. Development-infrastructure constraints (private GitHub repo `orgsidian/orgsidian` flipped to public at v0.1 Alpha tag; Conventional Commits enforcement; system-level test strategy at `_bmad-output/test-artifacts/test-design.md` as authoritative) absorbed by architecture LD-5/LD-33/LD-54/LD-55 and epics Stories 1.13-1.16. PRD §6.1 "Public repository" bullet anchored at v0.1 Alpha release tag (Story 6.10) by construction. §7.1/§7.2 commitments untouched (runtime privacy ≠ source-host privacy). See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md`.
 ---
 
 # PRD: Orgsidian

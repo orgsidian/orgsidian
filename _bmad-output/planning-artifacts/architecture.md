@@ -12,6 +12,9 @@ date: '2026-05-19'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-05-19'
+revisions:
+  - date: 2026-05-19
+    summary: Sprint Change Proposal (correct-course) absorbed. LD-5 amended with repo-visibility timing (private during pre-Alpha, flipped to public at v0.1 Alpha tag). LD-33 updated with full CC-enforcement + git-cliff chain. NEW LD-54 (Conventional Commits + CHANGELOG mapping). NEW LD-55 (GitHub Issues sync + Project board). Cross-Cutting Concerns header pointer to `_bmad-output/test-artifacts/test-design.md` as authoritative system-level test strategy. Project Tree amended with commitlint/cliff/husky/sync-issues config. No body content of LD-1..LD-53 modified. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md`.
 ---
 
 # Architecture Decision Document — Orgsidian
@@ -61,7 +64,7 @@ Decisions that emerge from PRD + addendum, validated and refined by the Party Mo
 - **LD-2. Stack: Tauri 2.x + Rust** for `@orgsidian/shell`. Rationale: memory footprint advantage 5-10× over Electron (validated: 30-50 MB idle vs 200-450 MB), coherence with Rust-native parser and SQLite binding, mature in production for editor-grade CM6 apps (verified: `kelvink96/markora`, `zhitongblog/solomd`). Operational costs (WebKitGTK version churn, contenteditable focus quirk on Linux) are absorbed via CI matrix and a documented known-issues page.
 - **LD-3. Parser: `nvim-orgmode/tree-sitter-org` (MIT, active fork, last push 2026-05-05) + custom Rust semantic layer** in `@orgsidian/core/src/parser/semantic/`. Rationale: license-compatible with LD-1, prior art for the semantic-layer pattern exists in `nvim-orgmode/orgmode` (Lua), tree-sitter provides incremental parsing for large files at zero cost. **uniorg rejected** (GPL-3.0 incompatible with LD-1); **`milisims/tree-sitter-org` rejected** (archived 2024-02-11); **fully custom parser deferred** as fallback if tree-sitter-org coverage proves inadequate in Spike 1.
 - **LD-4. Index: SQLite via `rusqlite`** (FTS5 built-in, better ergonomics than `better-sqlite3`). PRAGMAs locked: `journal_mode=WAL`, `synchronous=NORMAL`, `mmap_size=268435456`, `cache_size=-64000`, `temp_store=MEMORY`, `wal_autocheckpoint=4000`. FTS5 tokenizer: `unicode61 remove_diacritics 2` + `porter` (default English; per-Vault overridable). Application-level FTS5 sync (no triggers on external-content tables).
-- **LD-5. Monorepo: `@orgsidian/core` (pure logic) + `@orgsidian/shell` (Tauri app) + `@orgsidian/cli` (headless CLI, reopened per Party Mode).** In-process boundary between core and shell. CLI consumes `core` only — no shell dependency. GitHub organization `orgsidian` hosting the monorepo; org reserved as namespace for v2+ ancillary repos. Boundary enforcement via `eslint-plugin-boundaries` equivalent for Rust (workspace member visibility rules) + CI checks for cyclic dependencies.
+- **LD-5. Monorepo: `@orgsidian/core` (pure logic) + `@orgsidian/shell` (Tauri app) + `@orgsidian/cli` (headless CLI, reopened per Party Mode).** In-process boundary between core and shell. CLI consumes `core` only — no shell dependency. GitHub organization `orgsidian` (newly created — Story 1.13) hosting the monorepo at `orgsidian/orgsidian`; **repo is private during pre-Alpha development and flipped to public at the v0.1 Alpha release tag** (Story 6.10, before SM-1 announcement). Org reserved as namespace for v2+ ancillary repos. Boundary enforcement via `eslint-plugin-boundaries` equivalent for Rust (workspace member visibility rules) + CI checks for cyclic dependencies.
 - **LD-6. Editor surface: CodeMirror 6** with Pseudo-WYSIWYG via decorators/widgets. Round-trip fidelity is the source-of-truth contract; widget toggling between `Decoration.replace` ↔ `Decoration.widget` is a known sharp edge (CM discuss #6504) that must be exercised by tests at the v0.1 Alpha gate. Mandatory recipes locked: `WidgetType.eq()` shallow-equal on widget props, `Transaction.userEvent` for widget-triggered changes, no `view.dispatch` inside `update()` while `view.composing` is true, `widget.ignoreEvent() === false` for interactive widgets. Multi-cursor + widget interactions documented as a known limitation in v0.1 (codemirror/dev #111).
 - **LD-7. Single Writer Rule + Dirty Buffer + Merge Dialog** as the concurrent-edit integrity contract. External writes on a clean buffer auto-reload; on a dirty buffer trigger the Merge Dialog (three-pane: Yours / External / Merged with hunk-level resolution). Race-condition surface tested deterministically via injected clock and synthetic external-write events; chaos tests offline.
 - **LD-8. Atomic writes: `atomic-write-file` crate** (Rust) + 3-retry exponential backoff wrapper for AV/Search-indexer transient locks (the dominant real-world failure mode on Windows). `MoveFileExW` *not* officially guaranteed atomic — wrapper handles platform differences.
@@ -76,6 +79,8 @@ Decisions that emerge from PRD + addendum, validated and refined by the Party Mo
 - **OD-4.** v0.5 Beta re-evaluation of true WYSIWYG (ProseMirror) based on Pseudo-WYSIWYG user feedback — not a Spike 1-2 item but a deferred decision point.
 
 ### Cross-Cutting Concerns
+
+The system-level testing strategy consolidating Concerns #1-7 below, plus the risk-prioritized coverage plan for v0.1 → v1.0, is authored as a standalone artifact at **`_bmad-output/test-artifacts/test-design.md`** (TEA workflow, 2026-05-19). That document is the binding strategy for every story's red-phase scaffold (Process Discipline rule A); the LD entries below are referenced by it (not superseded). Implementing AI agents follow `test-design.md` § per-story-type scaffolds + this section's LD constraints jointly.
 
 1. **Round-trip fidelity** — three-level test oracle (Murat): L0 byte-identical save-no-op (CI gate hard), L1 semantic-preserving surgical edit (property-based with `proptest` or `fast-check`), L2 Emacs ground-truth via `emacs --batch` AST comparison on a subset corpus.
 2. **Single Writer Rule integrity** — deterministic race exercising via injected clock, three property tests (clean+ext-write → reload; dirty+ext-write → merge; save-during-pending → merge), plus chaos tests with jitter.
@@ -519,7 +524,7 @@ Output: human-readable default; `--json` flag for scripting. CLI is the primary 
 
 Rationale (Party Mode round 3): per-PR full-corpus gate is the pattern that atrophies under merge-pressure (rust-analyzer, biomejs, ruff all converged on subset-per-PR + nightly-full + merge-gate-on-nightly). 2000-assertion corpus runs at minimum 3-5 minutes per matrix cell on free GitHub Actions runners — gate would be disabled "just this once" within 6 months.
 
-**LD-33. Release automation.** **`cargo-release`** for the Rust workspace (workspace-aware versioning). All Rust crates (including `orgsidian-plugin-api`) share the app version with tag scheme `v*` during v0.1 → v1.4; `orgsidian-plugin-api` is internal to the monorepo and not published to crates.io until v1.5+. At v1.5+, `orgsidian-plugin-api` separates with its own SemVer cadence and tag scheme `plugin-api-v*` when external publication begins. JS `shell-ui` version-synced with `shell-app`. CHANGELOG.md per crate + project root. Conventional commits enable semi-automated changelog generation.
+**LD-33. Release automation.** **`cargo-release`** for the Rust workspace (workspace-aware versioning). All Rust crates (including `orgsidian-plugin-api`) share the app version with tag scheme `v*` during v0.1 → v1.4; `orgsidian-plugin-api` is internal to the monorepo and not published to crates.io until v1.5+. At v1.5+, `orgsidian-plugin-api` separates with its own SemVer cadence and tag scheme `plugin-api-v*` when external publication begins. JS `shell-ui` version-synced with `shell-app`. CHANGELOG.md per crate + project root. CHANGELOG generation is fully automated via **`git-cliff`** (`cliff.toml` at repo root) consuming Conventional Commits (see LD-54) on every `cargo release`. CHANGELOG manual entries (`Deprecated` / `Security`) inserted before tag in `cargo release` hook. See LD-54 (commit enforcement chain) and LD-55 (GitHub Issues sync + Project board) for the surrounding workflow.
 
 **LD-34. Distribution channels.**
 - macOS: DMG via Tauri bundler + Homebrew cask in `orgsidian/tap`.
@@ -577,6 +582,61 @@ Data flow: `core` returns a `ReportData` struct → `serde_json::to_value` → `
 **Downgrade path (recorded contingency, not pre-implemented).** If the v0.5 Beta sprint surfaces a typst blocker (build-time regression beyond the LEAF-crate envelope, `cargo deny` license rejection on a transitive dep, or a typst-side regression in `rustybuzz` shaping that ships in 0.14.x), the contingency is `printpdf` 0.9.x with the `html` feature: same `orgsidian-report` crate layout, swap `pdf_renderer.rs` for a `printpdf_renderer.rs` consuming HTML templates rendered via a small templater. Expected swap cost: ~3 dev-days. Confidence this contingency is not invoked: HIGH (typst is production-validated as an embedded library in 2025/2026 per Tinymist, Typst.app web playground, and `typst-as-lib` downstream telemetry).
 
 **Decision date:** 2026-05-19. **Closes:** the "PDF rendering crate selection" Important Gap and the "PDF rendering crate selection during v0.5 Beta Project Report sprint" Areas-for-Future-Enhancement entry, both below in this document.
+
+**LD-54. Conventional Commits enforcement + CHANGELOG mapping.**
+
+**Specification.** All commits, PR titles, and CHANGELOG entries follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Type vocabulary: `feat`, `fix`, `perf`, `refactor`, `revert`, `docs`, `style`, `test`, `build`, `ci`, `chore`. Breaking changes signalled by `!` (e.g., `feat!:`) or `BREAKING CHANGE:` footer. Scope is optional but recommended; canonical scopes are crate names (`parser`, `index`, `watcher`, `vault`, `plugin-api`, `report`, `core`, `cli`, `shell-app`) or `shell-ui` / `docs` / `ci`. No scope-value enum enforced in commitlint to avoid false-positive friction.
+
+**Enforcement chain (Story 1.14):**
+
+- `commitlint.config.cjs` extends `@commitlint/config-conventional`.
+- `husky` `commit-msg` hook runs `commitlint --edit "$1"` (in addition to the existing pre-commit hook per Linting & Formatting section).
+- `.github/workflows/pr.yml` (or dedicated `commitlint.yml`) runs `commitlint --from origin/main --to HEAD` on every PR.
+- PR title check via `amannn/action-semantic-pull-request` (or equivalent) on `pull_request_target` events.
+
+**CHANGELOG mapping** (encoded in `cliff.toml` `[git.commit_parsers]`):
+
+| CC type / footer | Keep-a-Changelog bucket | Notes |
+|---|---|---|
+| `feat` | **Added** | |
+| `fix` | **Fixed** | |
+| `perf` | **Changed** | User-visible improvement |
+| `refactor` | **Changed** | Only if user-visible (`refactor!` or scope `public-api` / crate-public-surface) |
+| `revert` | **Changed** | Entry text includes "Reverts #N" |
+| `feat!` / `fix!` / `BREAKING CHANGE:` | **Changed** | Entry prefixed with `⚠ BREAKING:` |
+| `docs` / `style` / `test` / `build` / `ci` / `chore` | *(excluded)* | Internal commits |
+| `Deprecated` / `Security` (no CC type) | *(manual entries)* | Inserted before `cargo release` tag |
+
+**Generation tool:** `git-cliff` invoked by `cargo release` pre-tag hook (Story 1.15); output overwrites the `Unreleased` section of `CHANGELOG.md` (root) and bumps to versioned heading at release time. `crates/orgsidian-plugin-api/CHANGELOG.md` follows the same flow but scoped to commits touching `crates/orgsidian-plugin-api/**` (per LD-33 separation policy at v1.5+).
+
+**CONTRIBUTING.md section** (Story 1.10 AC) documents the CC vocabulary, scope discipline, examples per type, and the mapping table above.
+
+**LD-55. GitHub Issues sync + label scheme + Project board.**
+
+**Specification.** Every Story N.M in `epics.md` is mirrored as a GitHub Issue in `orgsidian/orgsidian` (one issue per story). Issues, labels, and a single org-level GitHub Project v2 board form the work-tracking surface.
+
+**Label scheme** (`.github/labels.yml`, applied by `actions/github-script` or `crazy-max/ghaction-github-labeler` at Story 1.13):
+
+- **Epic labels:** `epic:1` … `epic:13` (one per epic).
+- **Milestone labels:** `milestone:v0.1`, `milestone:v0.5`, `milestone:v1.0` (in addition to native GitHub milestones for date tracking).
+- **Status labels:** `status:backlog`, `status:in-progress`, `status:review`, `status:blocked`, `status:done`.
+- **Type labels:** `type:story`, `type:bug`, `type:spike`, `type:chore`, `type:docs`, `type:security`.
+- **Priority labels** (used sparingly): `priority:p0`, `priority:p1`.
+
+**Issue body template** (`.github/ISSUE_TEMPLATE/story.md`) renders: persona, user-story, AC list, `Traces:` line, `Microcopy` flag, link back to `epics.md#story-N-M`.
+
+**Project board** (Story 1.13): org-level Project v2 at `orgsidian/projects/1`, name "Orgsidian Roadmap". Columns: **Backlog** / **In Progress** / **Review** / **Done**. Two saved views: filtered by `milestone:v0.X`, grouped by `epic:N`. No swim lanes, no custom fields, no automation rules beyond the issue-sync workflow placing new issues in Backlog. Solo-dev discipline guard: do not add complexity unless a pain-point in v0.1 demonstrates a need.
+
+**Sync automation** (Story 1.16): `.github/workflows/sync-issues.yml` runs on push to `main` when `_bmad-output/planning-artifacts/epics.md` changes. A small Rust binary at `tools/issues-sync/` (outside `[workspace.members]`, same convention as `tools/corpus-extractor/`) parses epics.md, extracts Story headers + bodies + `Traces:`, and uses the GitHub REST/GraphQL API (`octocrab` or `gh api` via `std::process::Command`) to:
+
+1. Ensure an Issue exists per Story with title `[Story N.M] <story title>` and body per template.
+2. Apply labels (`epic:N`, `milestone:v0.X` derived from epic-to-milestone mapping in `epics.md` §Epic List, `status:backlog` default if new, `type:story`).
+3. Add the issue to the GitHub Project v2 board (Backlog column) if not already present.
+4. Idempotent: re-running converges; closed issues stay closed; status-label drift not corrected (manual is authoritative once an issue is open).
+
+**Direction:** one-way push (epics.md → Issues) in v0.1. Reverse direction (Issue closure → epics.md `status: done` annotation) deferred — likely never needed for a solo workflow.
+
+**Repo visibility:** the org and repo are created **private** at Story 1.13 and remain private through pre-Alpha; flip to public is part of the v0.1 Alpha release artifact (Story 6.10), anchored before SM-1 announcement. See LD-5.
 
 ### Decision Impact Analysis
 
@@ -1257,10 +1317,24 @@ orgsidian/
 │       └── advisory-exceptions.md            # LD-37 quarterly review
 ├── crates/
 │   └── test-plugin-panic/                    # LD-38 chaos test plugin (workspace member, dev-only)
-└── shell-ui/src/themes/
-    ├── tokens.test.ts                        # LD-51 snapshot test
-    └── __snapshots__/
-        └── tokens.snap                       # LD-51 committed snapshot
+├── shell-ui/src/themes/
+│   ├── tokens.test.ts                        # LD-51 snapshot test
+│   └── __snapshots__/
+│       └── tokens.snap                       # LD-51 committed snapshot
+├── commitlint.config.cjs                     # LD-54 enforcement
+├── cliff.toml                                # LD-54 CHANGELOG generation (git-cliff)
+├── .husky/
+│   └── commit-msg                            # LD-54 client-side gate
+├── .github/
+│   ├── labels.yml                            # LD-55 label scheme
+│   ├── ISSUE_TEMPLATE/
+│   │   └── story.md                          # LD-55 issue template
+│   └── workflows/
+│       ├── commitlint.yml                    # LD-54 CI gate (or folded into pr.yml)
+│       ├── sync-issues.yml                   # LD-55 epics.md → Issues
+│       └── labels-sync.yml                   # LD-55 apply labels.yml
+└── tools/
+    └── issues-sync/                          # LD-55 sync binary (outside [workspace.members])
 ```
 
 `SECURITY.md` contents (template):

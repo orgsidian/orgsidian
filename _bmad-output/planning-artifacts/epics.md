@@ -2,6 +2,9 @@
 stepsCompleted: [1, 2, 3, 4]
 status: complete
 completedAt: '2026-05-19'
+revisions:
+  - date: 2026-05-19
+    summary: Sprint Change Proposal (correct-course) absorbed. NEW Stories 1.13-1.16 added to Epic 1 (GitHub org/repo/Project board + commitlint/husky + git-cliff + Issues sync). Story 1.10 AC extended with Conventional Commits section + test-strategy pointer in CONTRIBUTING.md. Duplicate Story 1.10 block at former lines 592-603 removed (verbatim duplication cleanup). Process Discipline rule H added pointing to `_bmad-output/test-artifacts/test-design.md` as authoritative system-level test strategy. Story 6.10 AC extended with repo visibility flip (private→public) before SM-1 announcement. No other story content modified. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md`.
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-orgsidian-2026-05-19/prd.md
   - _bmad-output/planning-artifacts/prds/prd-orgsidian-2026-05-19/addendum.md
@@ -338,6 +341,10 @@ Every story containing user-facing text in AC marks that text with `[microcopy: 
 
 Stories with currently-draft microcopy (worst offender: Story 7.7) are flagged inline.
 
+### H. System-Level Testing Strategy (LD-54..LD-55 context)
+
+The binding system-level test strategy lives at **`_bmad-output/test-artifacts/test-design.md`** (TEA workflow, 2026-05-19). Per-story red-phase scaffolds (rule A) instantiate the per-story-type scaffolds defined in §7.3 of that document. Coverage targets (§8) and quality gates (§10) of `test-design.md` are CI-enforced via the LD-32 matrix + Story 1.11 failure-mode harness + Story 1.12 perf snapshot infrastructure. Stories below do not duplicate test-design.md content; they reference it by section number where relevant.
+
 ## Epic List
 
 ### Epic 1: Foundation & CI Baseline
@@ -553,7 +560,9 @@ So that contributors and security researchers have a navigable map from day-1 of
 **Then** root `SECURITY.md` declares a 14-day patch SLA + GitHub Security Advisories reporting channel + 90-day coordinated disclosure default per LD-37
 **And** root `ARCHITECTURE.md` contains a high-level summary + Mermaid crate dependency graph + link to `docs/architecture.md`
 **And** root `CHANGELOG.md` is initialized in Keep-a-Changelog format with an `Unreleased` heading
-**And** root `CONTRIBUTING.md` documents the development setup, fixture placement rule (co-located by default; promoted to root `fixtures/` only when ≥2 crates consume), and the FR traceability discipline (`Implements FR-NN` doc-comment header).
+**And** root `CONTRIBUTING.md` documents the development setup, fixture placement rule (co-located by default; promoted to root `fixtures/` only when ≥2 crates consume), the FR traceability discipline (`Implements FR-NN` doc-comment header), the Conventional Commits vocabulary + scope discipline + CHANGELOG mapping table per LD-54, and a "Testing strategy" section pointing to `_bmad-output/test-artifacts/test-design.md` as the authoritative system-level test strategy.
+
+**Traces:** LD-37 (SECURITY.md), LD-54 (CONTRIBUTING.md CC section), Process Discipline rule H (testing strategy pointer).
 
 ### Story 1.11: Establish LD-41 failure-mode test harness (Party Mode round 2 P0 — Murat)
 
@@ -589,18 +598,86 @@ I want a single shared `assert_no_perf_regression!` macro consumed by every perf
 
 **Traces:** LD-32 (perf snapshot regression gate), NFR-1..NFR-7, NFR-20.
 
+### Story 1.13: Bootstrap GitHub organization + private repo + label scheme + Project board
+
 As the **author / contributor**,
-I want root-level project hygiene docs in place,
-So that contributors and security researchers have a navigable map from day-1 of the public repository.
+I want the `orgsidian` GitHub organization created with a private `orgsidian/orgsidian` repo, a normalized label scheme, and a single Project v2 kanban board,
+So that work tracking is in place before Epic 2 begins.
 
 **Acceptance Criteria:**
 
-**Given** Story 1.1 scaffold,
-**When** the docs are committed,
-**Then** root `SECURITY.md` declares a 14-day patch SLA + GitHub Security Advisories reporting channel + 90-day coordinated disclosure default per LD-37
-**And** root `ARCHITECTURE.md` contains a high-level summary + Mermaid crate dependency graph + link to `docs/architecture.md`
-**And** root `CHANGELOG.md` is initialized in Keep-a-Changelog format with an `Unreleased` heading
-**And** root `CONTRIBUTING.md` documents the development setup, fixture placement rule (co-located by default; promoted to root `fixtures/` only when ≥2 crates consume), and the FR traceability discipline (`Implements FR-NN` doc-comment header).
+**Given** an authenticated `gh` CLI with org-creation privileges,
+**When** Story 1.13 is executed,
+**Then** the `orgsidian` GitHub organization exists (created via `gh api orgs` or web UI; idempotent if pre-existing)
+**And** `orgsidian/orgsidian` private repo exists with default branch `main` and the local Story 1.1 scaffold pushed
+**And** `.github/labels.yml` declares the LD-55 label scheme (`epic:1..13`, `milestone:v0.1|v0.5|v1.0`, `status:backlog|in-progress|review|blocked|done`, `type:story|bug|spike|chore|docs|security`, `priority:p0|p1`)
+**And** a labels-sync workflow (`actions/github-script` or `crazy-max/ghaction-github-labeler`) applies `.github/labels.yml` on push to `main`
+**And** GitHub Project v2 `orgsidian/projects/1` exists with name "Orgsidian Roadmap" and 4 columns (Backlog / In Progress / Review / Done)
+**And** the Project has two saved views: "By Milestone v0.1" (filter `milestone:v0.1`) and "By Epic" (group by `epic:N` label)
+**And** `.github/ISSUE_TEMPLATE/story.md` exists with the LD-55 template fields (persona, user story, AC list, `Traces:` line, `Microcopy` flag, link to epics.md anchor).
+
+**Traces:** LD-5 (repo location + visibility), LD-55 (label scheme + Project board).
+
+### Story 1.14: Configure commitlint + husky commit-msg hook + CI gate
+
+As the **author / contributor**,
+I want commitlint enforcing Conventional Commits v1.0.0 locally (husky `commit-msg`) and on CI (per-PR job + PR-title check),
+So that every commit and PR title qualifies for `git-cliff` CHANGELOG ingestion per LD-54.
+
+**Acceptance Criteria:**
+
+**Given** Story 1.3 frontend setup (husky already on disk per pre-commit hook),
+**When** Story 1.14 is executed,
+**Then** `package.json` lists `@commitlint/cli` and `@commitlint/config-conventional` at latest stable
+**And** `commitlint.config.cjs` at repo root declares `module.exports = { extends: ['@commitlint/config-conventional'] }` with no scope-value enum (encouraged not required)
+**And** `.husky/commit-msg` runs `pnpm commitlint --edit "$1"` and fails the commit on a non-conforming message
+**And** `.github/workflows/pr.yml` (or a dedicated `commitlint.yml`) adds a step that runs `pnpm commitlint --from origin/main --to HEAD` and fails the PR on any non-conforming commit
+**And** an additional CI step using `amannn/action-semantic-pull-request@v5` validates the PR title itself against Conventional Commits
+**And** a smoke test confirms that a deliberately-malformed local commit (`git commit -m "broken message"`) is rejected by the `commit-msg` hook
+**And** a smoke test confirms that a deliberately-malformed PR title triggers the CI title check failure.
+
+**Traces:** LD-54 (enforcement chain).
+
+### Story 1.15: Configure `git-cliff` for CC → CHANGELOG generation
+
+As the **author / contributor**,
+I want `git-cliff` invoked by `cargo release` to regenerate `CHANGELOG.md` from Conventional Commits per the LD-54 mapping table,
+So that every release ships an accurate, automation-generated user-facing changelog without manual curation of `feat`/`fix`/`perf` entries.
+
+**Acceptance Criteria:**
+
+**Given** Story 1.14 (commitlint live) and LD-33 release automation context,
+**When** Story 1.15 is executed,
+**Then** `git-cliff` is installed as a `cargo install` step in the release pipeline (or pinned in `Cargo.toml` `[workspace.metadata]` for reproducibility)
+**And** `cliff.toml` at repo root encodes the LD-54 mapping table as `[git.commit_parsers]` (per-CC-type group assignment) + `[changelog.body]` template producing Keep-a-Changelog format with `Added`/`Changed`/`Deprecated`/`Removed`/`Fixed`/`Security` headings
+**And** `cargo release` `[hooks.pre-release]` invokes `git-cliff --unreleased --tag <version> --prepend CHANGELOG.md`
+**And** a second `git-cliff` invocation scoped to `crates/orgsidian-plugin-api/**` paths regenerates `crates/orgsidian-plugin-api/CHANGELOG.md` (LD-33 separate-changelog discipline)
+**And** a smoke test runs `git-cliff --unreleased` against a fixture branch with one `feat:`, one `fix:`, one `perf:`, one `feat!:`, one `chore:` commit and asserts: the `chore:` is excluded, the `feat:` lands under Added, the `fix:` under Fixed, the `perf:` under Changed, and the `feat!:` lands under Changed with a `⚠ BREAKING:` prefix in its entry text
+**And** the `Deprecated` and `Security` headings remain present-but-empty when no manual entries exist (template allows empty sections).
+
+**Traces:** LD-33 (release automation), LD-54 (CHANGELOG mapping).
+
+### Story 1.16: GitHub Issues sync — one issue per story
+
+As the **author / contributor**,
+I want a one-way sync from `_bmad-output/planning-artifacts/epics.md` to GitHub Issues in `orgsidian/orgsidian` (one issue per Story N.M, idempotent re-runs),
+So that the Project board (Story 1.13) and Issue search become navigable surfaces over the 104-story roadmap without manual re-typing.
+
+**Acceptance Criteria:**
+
+**Given** Stories 1.13 (org/repo/labels/Project exist) and 1.10 (CONTRIBUTING.md docs the sync),
+**When** Story 1.16 is executed,
+**Then** `tools/issues-sync/` exists as a Rust binary (Cargo.toml with `publish = false`, outside `[workspace.members]` per LD-5 convention for `tools/corpus-extractor/`)
+**And** the binary parses `epics.md` and extracts each `### Story N.M: <title>` block including persona, user-story, AC list, `Traces:` line, and any flags (`[Microcopy: draft|final]`)
+**And** the binary uses `octocrab` (or `gh api` via `std::process::Command` wrapper) to ensure-exists each Issue with title `[Story N.M] <title>`, body rendered per `.github/ISSUE_TEMPLATE/story.md`, labels (`epic:N`, `milestone:v0.X` derived from §Epic List milestone-to-epic mapping, `status:backlog` if new, `type:story`)
+**And** the binary places each newly-created Issue into the GitHub Project v2 Backlog column (using Projects v2 GraphQL `addProjectV2ItemById`)
+**And** re-running the binary on the same `epics.md` is idempotent — no duplicate issues created, no label thrash, no Project board re-shuffle
+**And** `.github/workflows/sync-issues.yml` runs the binary on push-to-main when `_bmad-output/planning-artifacts/epics.md` changes (path filter), with `GITHUB_TOKEN` scoped to issues+projects write
+**And** a smoke test against a 2-story fixture `epics-fixture.md` creates 2 issues with correct labels and project placement; a second smoke run with the same fixture creates 0 new issues
+**And** a deliberate `status:` label drift (e.g., manually changing an issue to `status:in-progress`) is NOT reset by the sync — manual is authoritative once an issue is open
+**And** the workflow is documented in CONTRIBUTING.md alongside the LD-55 reference.
+
+**Traces:** LD-55 (Issues sync + Project board).
 
 ---
 
@@ -1333,6 +1410,7 @@ So that SM-1 (50 technical comments + 10 early adopters) becomes measurable.
 **When** v0.1 Alpha ships,
 **Then** root `README.md` is rewritten with vision, install paths (DMG/Homebrew/AppImage), feature summary, and a "How to contribute" section
 **And** a minimal landing page exists at `docs/landing/index.html` (or external static-site host) pointing to the GitHub Release
+**And** the `orgsidian/orgsidian` repository visibility is flipped from private to public before the announcement post is published (`gh api -X PATCH /repos/orgsidian/orgsidian -f visibility=public` or web UI), and a smoke check confirms the public README + LICENSE render at the public URL per LD-5
 **And** an announcement draft for HN + Reddit r/orgmode is committed at `docs/announcements/v0.1-alpha.md` (timing/posting at author's discretion).
 
 ---
