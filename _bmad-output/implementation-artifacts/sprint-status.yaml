@@ -1,0 +1,203 @@
+# generated: 2026-05-19
+# last_updated: 2026-05-19 (story 1.1 → done after code review)
+# project: orgsidian
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-05-19
+last_updated: 2026-05-19
+project: orgsidian
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1: Foundation & CI Baseline
+  epic-1: in-progress
+  1-1-bootstrap-tauri-2-x-react-19-ts-scaffold: done
+  1-2-refactor-scaffold-to-9-crate-cargo-workspace-shell-ui-at-root: backlog
+  1-3-install-tauri-plugin-set-tailwind-4-shadcn-ui-forked-tanstack-router: backlog
+  1-4-wire-tauri-specta-typed-ipc-bridge-with-project-wide-camelcase-rename: backlog
+  1-5-scaffold-orgsidian-plugin-api-leaf-crate-with-day-1-trait-surface: backlog
+  1-6-install-lingui-v6-x-i18n-scaffold: backlog
+  1-7-configure-cargo-deny-cargo-audit-supply-chain-hygiene: backlog
+  1-8-configure-ci-matrix-profile-release-panic-unwind-invoke-plugin-hook-macro-stub: backlog
+  1-9-add-anchor-smoke-tests-anti-placebo-green-per-party-mode-p2: backlog
+  1-10-add-security-md-architecture-md-changelog-md-contributing-md: backlog
+  1-11-establish-ld-41-failure-mode-test-harness-party-mode-round-2-p0-murat: backlog
+  1-12-establish-perf-snapshot-regression-infrastructure-party-mode-round-2-p0-murat: backlog
+  1-13-bootstrap-github-organization-private-repo-label-scheme-project-board: backlog
+  1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: backlog
+  1-15-configure-git-cliff-for-cc-changelog-generation: backlog
+  1-16-github-issues-sync-one-issue-per-story: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Parser & Round-trip Fidelity
+  epic-2: backlog
+  2-1-vendor-tree-sitter-org-as-sha-pinned-git-submodule: backlog
+  2-2-implement-orgsidian-parser-grammar-wrapper: backlog
+  2-3-implement-semantic-layer-todo-cycling-drawer-types-timestamps-link-types: backlog
+  2-4-implement-round-trip-faithful-serializer: backlog
+  2-5-build-tools-corpus-extractor-fixture-governance: backlog
+  2-6-light-up-l0-round-trip-ci-gate-per-pr-100-files-60s: backlog
+  2-7-light-up-nightly-full-corpus-l2-emacs-oracle-gates: backlog
+  2-8-ship-orgsidian-parse-file-cli-command-as-early-public-artifact: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Vault & SQLite Index Foundation
+  epic-3: backlog
+  3-1-implement-atomic-write-subsystem-with-av-retry-wrapper: backlog
+  3-2-scaffold-dirty-buffer-manager: backlog
+  3-3-define-sqlite-schema-locked-pragmas: backlog
+  3-4-wire-rusqlite-migration-forward-only-migrations: backlog
+  3-5-add-deadpool-sqlite-reader-pool-dedicated-writer-task: backlog
+  3-6-vault-designation-ui-initial-scan-progress: backlog
+  3-7-ship-orgsidian-index-init-rebuild-stats-integrity-cli-commands: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Editor Surface & Org-mode Awareness
+  epic-4: backlog
+  4-1-wire-codemirror-6-host-with-strictmode-safe-lifecycle: backlog
+  4-2-implement-raw-editor-mode: backlog
+  4-3a-heading-hierarchy-decorations: backlog
+  4-3b-todo-state-pill-badges-click-to-cycle: backlog
+  4-3c-tag-pill-labels: backlog
+  4-3d-timestamps-as-human-readable-dates-with-hover-for-source: backlog
+  4-3e-checkbox-toggle-widget-source-mutating-click: backlog
+  4-3f-link-rendering-as-clickable-underlined-text: backlog
+  4-3g-source-position-fidelity-cursor-copy-paste-find-replace: backlog
+  4-4-implement-split-editor-mode: backlog
+  4-5-implement-editor-mode-switcher-ui: backlog
+  4-6-implement-cross-platform-default-keybindings: backlog
+  4-7-implement-optional-emacs-keybindings-mode: backlog
+  4-8-implement-schedule-deadline-date-picker: backlog
+  4-9-activate-nightly-memory-soak-gate-ld-43-anticipated-per-party-mode-p1: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: External-Edits Co-existence (Safe Fallback)
+  epic-5: backlog
+  5-1-implement-notify-rs-filesystem-watcher-with-debounce: backlog
+  5-2-record-golden-trace-fixtures-from-vim-vs-code-emacs-save-sequences: backlog
+  5-3-implement-conflictstate-rich-struct-conflictstrategy-pattern-party-mode-p0: backlog
+  5-4-implement-clean-buffer-auto-reload-re-index-on-external-write: backlog
+  5-5-implement-dirty-buffer-block-save-fallback-with-conflict-warning-ui: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
+  epic-6: backlog
+  6-1-implement-personal-gtd-student-starter-vault-content-generator: backlog
+  6-2-implement-starter-vault-picker-ui-on-first-launch: backlog
+  6-3-implement-basic-today-agenda-view: backlog
+  6-4-implement-week-agenda-view: backlog
+  6-5-freeze-indexquery-trait-public-api-automated-via-cargo-semver-checks: backlog
+  6-6-hardcoded-coaching-balloons-for-uj-4-v0-1-first-run-party-mode-round-2-p0-sally: backlog
+  6-7-ship-dark-light-default-themes-wcag-aa: backlog
+  6-8-implement-macos-dmg-packaging-signing-notarization: backlog
+  6-9-implement-linux-appimage-packaging: backlog
+  6-10-publish-v0-1-alpha-readme-landing-page-announcement: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Today Dashboard & Time Tracking
+  epic-7: backlog
+  7-1-implement-today-dashboard-surface: backlog
+  7-2-persist-today-dashboard-section-preferences: backlog
+  7-3-add-empty-state-messages-per-section: backlog
+  7-4-implement-custom-agenda-view-with-date-range-picker: backlog
+  7-5-implement-saved-agenda-filter-presets: backlog
+  7-6-implement-clock-manager-logbook-persistence: backlog
+  7-7-implement-prior-session-running-clock-prompt-on-launch: backlog
+  7-8-implement-clockeditor-component-for-time-entry-editing: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: Capture, Search, Backlinks
+  epic-8: backlog
+  8-1-implement-quick-capture-as-separate-tauri-window: backlog
+  8-2-implement-inbox-append-with-timestamp-drawer: backlog
+  8-3-implement-system-tray-quick-capture-fallback: backlog
+  8-4-implement-fts5-search-query-api: backlog
+  8-5-implement-command-palette-ui-with-search: backlog
+  8-6-implement-backlinks-query-api: backlog
+  8-7-implement-backlinks-sidebar-panel: backlog
+  8-8-uj-6-spine-riccardo-searches-across-two-years-party-mode-round-2-p0-sally: backlog
+  8-9-plugin-api-consistency-checkpoint-preview-ld-50: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: Conflict-Safe Concurrent Editing (Full Merge Dialog)
+  epic-9: backlog
+  9-1-implement-three-pane-merge-dialog-ui: backlog
+  9-2-implement-hunk-level-diff-selection: backlog
+  9-3-implement-free-edit-of-merged-pane-atomic-save-cancel-preservation: backlog
+  9-4-swap-active-conflictstrategy-to-threepanemergedialog-retire-blockwithwarning: backlog
+  9-5-plugin-api-consistency-checkpoint-preview-ld-50: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Project Report Export (Wow Demo)
+  epic-10: backlog
+  10-1-scaffold-orgsidian-report-crate-with-typst-as-lib-integration: backlog
+  10-2-define-reportdata-struct-serde-wiring: backlog
+  10-3-implement-default-typ-template-sys-inputs-schema-docs: backlog
+  10-4-bundle-fonts-inter-jetbrains-mono-noto-sans-subset: backlog
+  10-5-implement-html-renderer-parallel-path: backlog
+  10-6-implement-report-export-ui-in-settings: backlog
+  10-7-uj-3-spine-sofia-ships-a-client-report-party-mode-round-2-p0-sally: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: Onboarding Completion & Coaching
+  epic-11: backlog
+  11-1-add-freelancer-starter-vault-content-generator: backlog
+  11-2-add-empty-starter-vault-flow: backlog
+  11-3-implement-plain-power-mode-toggle-with-data-mode-tailwind-selectors: backlog
+  11-4-refactor-hardcoded-coaching-balloons-into-registry-driven-coachingslot-api: backlog
+  11-5-persist-coaching-dismissals-reset-action: backlog
+  11-6-wire-up-command-palette-descriptions-for-discoverability: backlog
+  epic-11-retrospective: optional
+
+  # Epic 12: v0.5 Beta Release — Customization & Plugin Surface Lock
+  epic-12: backlog
+  12-1-implement-user-css-file-loader: backlog
+  12-2-implement-tokens-css-snapshot-test-ld-51: backlog
+  12-3-implement-keybinding-remapping-ui-in-settings: backlog
+  12-4-manual-gate-conduct-ld-50-plugin-event-surface-review-commit-sign-off-doc: backlog
+  12-5-publish-v0-5-beta-release-announcement: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: v1.0 — Cross-Platform Launch & Tutorial
+  epic-13: backlog
+  13-1-implement-windows-msi-packaging-code-signing: backlog
+  13-2-wire-tauri-plugin-updater-stable-channel-across-all-3-platforms: backlog
+  13-3-implement-interactive-tutorial-10-minute-workflow-cycle: backlog
+  13-4-implement-clock-ux-polish-persistent-status-bar-timer-notifications: backlog
+  13-5-conduct-full-a11y-keyboard-navigation-review: backlog
+  13-6-build-comprehensive-docs-user-guide-site: backlog
+  13-7-publish-v1-0-coordinated-launch-announcement: backlog
+  epic-13-retrospective: optional

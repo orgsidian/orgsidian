@@ -29,3 +29,10 @@ _bmad/
 # Node / pnpm (root scaffold for commitlint+husky; full frontend wiring lands in Story 1.3)
 node_modules/
 pnpm-debug.log*
+
+# Vite / Tauri scaffold
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.local

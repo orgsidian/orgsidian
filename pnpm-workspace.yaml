@@ -1,0 +1,8 @@
+# pnpm 11.x build-script approval shim (NOT a workspace declaration).
+# The actual pnpm monorepo workspace structure (with `packages:`) lands in
+# Story 1.2 — see Story 1.1 AC12. This file exists only because pnpm 11
+# requires `allowBuilds` here to silence the "Ignored build scripts"
+# warning on every install (`pnpm.onlyBuiltDependencies` in package.json
+# is not honored by pnpm 11.1.1).
+allowBuilds:
+  esbuild: true
