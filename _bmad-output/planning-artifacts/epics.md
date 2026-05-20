@@ -239,7 +239,7 @@ The following architectural requirements (LD-1 through LD-53) influence implemen
 
 ### UX Design Requirements
 
-(No separate UX Design specification document exists. UX requirements are integrated within the PRD functional requirements and elaborated in the Architecture document under the Orgsidian UI Kit, Themable CSS Token Vocabulary, UI Mode Pattern, Inline Coaching Pattern sections — already captured in FR-3, FR-4, FR-6, FR-7, FR-18, FR-19, FR-20, FR-21, FR-22 and Additional Requirements above.)
+(**Updated 2026-05-20.** A UX Design specification now exists at `_bmad-output/planning-artifacts/ux-design-specification.md` (2026-05-20). It elaborates the *one object, three views* wedge (outline + agenda + graph), the Capture/Act/Review interaction trio, and the per-surface interaction patterns. PRD + architecture were reconciled against it on 2026-05-20 — see the PRD frontmatter revision entry and architecture LD-46 closed-loop addendum. This epics file is reconciled in turn (story additions for FR-25 Refile + FR-26 Graph View, Story 1.17 a11y CI gate, Story 1.18 TOML settings, Freelancer v0.1 promotion, Empty v0.5 demotion).)
 
 ### FR Coverage Map
 
@@ -251,24 +251,26 @@ The following architectural requirements (LD-1 through LD-53) influence implemen
 | FR-4 (Pseudo-WYSIWYG inline render) | Epic 4 | CM6 decorations + widgets |
 | FR-5 (cross-platform keys + Emacs mode) | Epic 4 | `tauri-plugin-os` for Cmd vs Ctrl |
 | FR-6 (Today Dashboard on launch) | Epic 7 | Full dashboard surface in v0.5 |
-| FR-7 (Agenda Today/Week/Custom) | Epic 6 (Today/Week subset) + Epic 7 (Custom + saved presets) | Split per PRD §6.1 vs §6.2 |
+| FR-7 (Agenda Today/Week/Custom) | Epic 6 (Today/Week subset) + Epic 7 (Custom + saved presets, incl. Done-This-Week/Month default presets v0.5 per 2026-05-20) | Split per PRD §6.1 vs §6.2 |
 | FR-8 (Clock in/out/resume) | Epic 7 (functional) + Epic 13 (UX polish) | Per PRD §6.2 phasing note |
 | FR-9 (Schedule + Deadline editor) | Epic 4 | `OrgDatePicker` + parser semantic/timestamp |
 | FR-10 (Global Quick Capture) | Epic 8 | Separate Tauri window `quick-capture` |
 | FR-11 (System tray Capture) | Epic 8 | macOS menubar / Windows tray / Linux indicator |
-| FR-12 (Full-text FTS5 search) | Epic 8 | `orgsidian-index::query::search` |
-| FR-13 (Backlinks panel) | Epic 8 | `BacklinksPanel.tsx` + `query::backlinks` |
+| FR-12 (Full-text FTS5 search) | Epic 8 | `orgsidian-index::query::search` — two-tier streaming per 2026-05-20 (<100ms first 10 / <200ms full 50) |
+| FR-13 (Backlinks panel) | Epic 8 (Linked v0.1) + Epic 12 (Unlinked References sub-panel v0.5+ per 2026-05-20) | `BacklinksPanel.tsx` + `query::backlinks` + `query::unlinked_references` |
 | FR-14 (Project Report PDF/HTML) | Epic 10 | `orgsidian-report` new crate + LD-53 typst |
 | FR-15 (Vault designation) | Epic 3 | First-launch picker + Settings |
 | FR-16 (Watcher + Single Writer + Merge) | Epic 5 (fallback block-save) + Epic 9 (full three-pane Merge Dialog) | Split per PRD §6.2; `ConflictState`/`ConflictStrategy` rich-form day-1 (Party Mode P0) |
 | FR-17 (SQLite derived index) | Epic 3 | Schema + migrations + rebuild policy |
-| FR-18 (Starter Vault selection) | Epic 6 (Personal GTD + Student) + Epic 11 (Freelancer + Empty) | Per PRD §6.1 vs §6.2 |
+| FR-18 (Starter Vault selection) | Epic 6 (Personal GTD + Student + Freelancer per 2026-05-20) + Epic 11 (Empty only per 2026-05-20 reshuffle) | Per PRD §6.1 vs §6.2 — Freelancer promoted to v0.1 Alpha for lighthouse-persona first-launch demonstration |
 | FR-19 (Interactive Tutorial) | Epic 13 | v1.0 only |
 | FR-20 (Plain/Power Mode) | Epic 11 | `data-[mode]` Tailwind selectors |
 | FR-21 (Inline Coaching) | Epic 11 | `coachingRegistry.ts` centralized |
 | FR-22 (Themes dark/light + CSS) | Epic 6 (dark+light defaults) + Epic 12 (CSS override + LD-51 tokens snapshot) | Split per PRD §6.1 vs §6.2 |
 | FR-23 (Keybinding remapping) | Epic 12 | Conflict detection in Settings |
 | FR-24 (Internal Plugin Pattern) | Epic 1 (plugin-api scaffold + trait stub) + woven across Epic 2-12 + Epic 8/9 consistency checkpoints + Epic 12 LD-50 surface review sign-off | Cross-cutting; every v1.0 feature consumes same trait surface |
+| **FR-25** (Refile a Headline — added 2026-05-20) | Epic 11 (Stories 11.7/11.8/11.9 — primitives + LD-57 cross-file orchestrator + Target Picker UI) | v0.5 Beta; pairs with Quick Capture as inbox-triage primitive; org-canonical Cmd+Shift+R chord (Project Report rebinds to Cmd+Shift+E per Story 10.7 update) |
+| **FR-26** (Backlink Graph View — added 2026-05-20) | Epic 8 (Stories 8.10/8.11/8.12 — `query::graph` API + `GraphCanvas`/`GraphNodeList` + cross-webview nightly perf gate) | v0.1 Alpha; third view in *one object, three views*; `react-force-graph-2d@1.29.1` per LD-56; perf ≤2s/5k nodes; a11y textual fallback per LD-58 |
 
 **NFRs** are addressed continuously across all epics via CI gates and review checkpoints. Notable epic-specific NFR placements:
 
@@ -369,16 +371,16 @@ Connect the watcher to the Dirty Buffer to enforce the Single Writer Rule v0.1 c
 **FRs covered:** FR-16 (v0.1 fallback only — block-save with warning).
 
 ### Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
-Implement Starter Vault picker on first launch with Personal GTD + Student starters (FR-18 partial — Freelancer + Empty in Epic 11), basic Today + Week Agenda views in `shell-ui/src/components/agenda/` (FR-7 partial — Custom view + saved presets in Epic 7), dark + light default themes with WCAG AA contrast in `shell-ui/src/themes/` (FR-22 partial — CSS customization in Epic 12), macOS DMG + Homebrew cask + Linux AppImage packaging (LD-19 signing, LD-34 distribution), README + landing page + basic docs. **Critical pre-Epic-7 AC per Party Mode P0 (Amelia):** the `IndexQuery` trait in `crates/orgsidian-index/src/query/mod.rs` is **frozen** as a stable API surface before Epic 6 closes — without this freeze, Epic 7 (agenda extensions) and Epic 8 (search/backlinks queries) will collide. **Closes SM-1.**
-**FRs covered:** FR-18 (partial), FR-7 (Today/Week subset), FR-22 (dark + light defaults).
+Implement Starter Vault picker on first launch with **Personal GTD + Student + Freelancer** starters (FR-18 partial — Empty deferred to Epic 11 per 2026-05-20 reconciliation), basic Today + Week Agenda views in `shell-ui/src/components/agenda/` (FR-7 partial — Custom view + saved presets in Epic 7), dark + light default themes with WCAG AA contrast in `shell-ui/src/themes/` (FR-22 partial — CSS customization in Epic 12), macOS DMG + Homebrew cask + Linux AppImage packaging (LD-19 signing, LD-34 distribution), README + landing page + basic docs. **Critical pre-Epic-7 AC per Party Mode P0 (Amelia):** the `IndexQuery` trait in `crates/orgsidian-index/src/query/mod.rs` is **frozen** as a stable API surface before Epic 6 closes — without this freeze, Epic 7 (agenda extensions) and Epic 8 (search/backlinks queries) will collide. Per the 2026-05-20 reconciliation, the v0.1 baseline freeze includes the streaming search contract (`search_stream`), `graph(scope)`, and `unlinked_mentions(headline_id)` — see Story 6.5. **Note on execution order:** Epic 6 closes v0.1 Alpha and therefore runs *after* Epics 7+8 in execution time despite its lower number; Story 6.1's Freelancer content depends on Story 8.7 Backlinks panel for its "≥1 backlink visible" AC. **Closes SM-1.**
+**FRs covered:** FR-18 (Personal GTD + Student + Freelancer), FR-7 (Today/Week subset), FR-22 (dark + light defaults), FR-26 (Graph View — via Epic 8 stories 8.10/8.11/8.12 closed-by-release).
 
 ### Epic 7: Today Dashboard & Time Tracking
 Implement full Today Dashboard surface in `shell-ui/src/components/today/` (FR-6 — Scheduled + Deadline + today-tag + Inbox preview + Active Clock; <500ms render on 1k-file Vault; collapsible sections with persistent preferences; empty-state messages). Add Custom Agenda view (date range picker) + saved filter presets to complete FR-7. Implement Clock in/out/resume in `orgsidian-core/src/clock.rs` + `stores/clockStore.ts` + `shell-ui/src/components/org/ClockEditor.tsx`: LOGBOOK `CLOCK:` persistence, single Active Clock invariant, prior-session running-clock prompt on launch (discard/adjust/keep). UX polish (persistent toggleable status bar, refined timer notifications, clock-time editing affordance) deferred to Epic 13 per PRD §6.2 phasing note.
 **FRs covered:** FR-6, FR-7 (Custom + presets — full), FR-8 (functional).
 
-### Epic 8: Capture, Search, Backlinks
-Implement Quick Capture as a separate Tauri window (`quick-capture.html` + separate Vite bundle for FR-10 <1s latency, LD-28) wired to `tauri-plugin-global-shortcut` (default `Cmd/Ctrl+Shift+Space`); system tray fallback (LD-28 + `orgsidian-shell-app/src/tray.rs`). FTS5 full-text search via `Cmd/Ctrl+P` Command Palette with query syntax `#tag:`, `file:`, `todo:` (`orgsidian-index::query::search`, <200ms p50 for 50 results on 1k-file Vault). Backlinks sidebar panel updating <100ms on Headline cursor move (`orgsidian-index::query::backlinks` + `BacklinksPanel.tsx`). **Author daily-driving SM-2 sub-criterion (task + clock + backlink in same session) becomes possible at the end of this epic per Party Mode (John).** **Plugin API consistency checkpoint:** verify Capture and Search consume the `OrgsidianPlugin` trait surface unchanged (no parallel "private" hooks); preview for LD-50 final review in Epic 12.
-**FRs covered:** FR-10, FR-11, FR-12, FR-13.
+### Epic 8: Capture, Search, Backlinks, Graph View
+Implement Quick Capture as a separate Tauri window (`quick-capture.html` + separate Vite bundle for FR-10 <1s latency, LD-28) wired to `tauri-plugin-global-shortcut` (default `Cmd/Ctrl+Shift+Space`); system tray fallback (LD-28 + `orgsidian-shell-app/src/tray.rs`). FTS5 full-text search via `Cmd/Ctrl+P` Command Palette with query syntax `#tag:`, `file:`, `todo:` (`orgsidian-index::query::search`, **two-tier streaming per 2026-05-20: <100ms first 10 results, <200ms full 50 on 1k-file Vault**). Backlinks sidebar panel updating <100ms on Headline cursor move (`orgsidian-index::query::backlinks` + `BacklinksPanel.tsx`). **Backlink Graph View (FR-26 added 2026-05-20)** ships in this epic for v0.1 Alpha: `orgsidian-index::query::graph` adjacency API + `shell-ui/src/components/graph/{GraphCanvas, GraphNodeList}` via `react-force-graph-2d@1.29.1` (LD-56) + `/graph` TanStack route (LD-29) + ≤2s/5k-node cross-webview nightly perf gate + a11y textual fallback per LD-58 (Stories 8.10/8.11/8.12). **Author daily-driving SM-2 sub-criterion (task + clock + backlink in same session) becomes possible at the end of this epic per Party Mode (John).** **Plugin API consistency checkpoint:** verify Capture, Search, and Graph View consume the `OrgsidianPlugin` trait surface unchanged (no parallel "private" hooks); preview for LD-50 final review in Epic 12.
+**FRs covered:** FR-10, FR-11, FR-12, FR-13 (Linked v0.1; Unlinked References sub-panel v0.5+ in Epic 12), FR-26.
 
 ### Epic 9: Conflict-Safe Concurrent Editing (Full Merge Dialog)
 Build the three-pane Merge Dialog (`shell-ui/src/components/merge/` with custom focus management for 3-pane hunk navigation): Yours / External / Merged panes with diff hunks individually selectable (use-yours / use-external) + free-edit of Merged + atomic save on accept + Dirty Buffer preservation on cancel. Consumes the `ConflictState` rich struct + `ConflictStrategy` pattern frozen in Epic 5 — Epic 9 ships the `ThreePaneMergeDialog` strategy variant and **retires** `BlockWithWarning`. Watcher golden-trace fixtures from Epic 5 carry over ~85% unchanged; only the outcome assertion flips per Party Mode (Amelia + Murat consensus). **Sequenced AFTER Epic 8** per Party Mode P1 (Murat: watcher event bus cross-contamination between Capture and Merge requires write path stabilized first). **Plugin API consistency checkpoint** as in Epic 8.
@@ -388,16 +390,16 @@ Build the three-pane Merge Dialog (`shell-ui/src/components/merge/` with custom 
 Implement `crates/orgsidian-report/` new crate (isolated dep cost — `typst@0.14` + `typst-pdf@0.14` + `typst-as-lib@0.15` per LD-53, plus `orgsidian-report-default.typ` template and the `sys.inputs` schema generated from the `ReportData` struct). Bundled fonts (Inter Variable + JetBrains Mono + Noto Sans Latin/Cyrillic subset ≤8 MB for v0.5; CJK + Arabic added in v1.0). HTML path uses parallel `html_renderer.rs` (templater choice deferred to in-sprint micro-decision). User selects scope (file/subtree/tag) + date range → PDF or HTML report in <5s including TODO completions, Clock totals per Headline, linked-notes excerpts grouped by file, milestone status. Active Clock without end-time explicitly flagged. `docs/customization/report-templates.md` documents the `sys.inputs` schema (OQ-6 resolution). **SM-2 wow demo.**
 **FRs covered:** FR-14.
 
-### Epic 11: Onboarding Completion & Coaching
-Add Freelancer + Empty Starter Vaults to the picker (FR-18 completion). Implement Plain Mode / Power Mode toggle in Settings via `data-[mode=plain]:hidden` Tailwind selectors (LD-29 — visibility flip, not conditional render; preserves keyboard-shortcut muscle memory). Centralized `coachingRegistry.ts` mapping coaching IDs to content + dismissal conditions; `<CoachingSlot id="..." />` as the only API used in surfaces; "Don't show again" persists per-context; "show all coaching tips" reset action in Settings.
-**FRs covered:** FR-18 (Freelancer + Empty), FR-20, FR-21.
+### Epic 11: Onboarding Completion, Coaching & Refile
+Add **Empty Starter Vault** to the picker (FR-18 completion — Freelancer moved to Epic 6 per 2026-05-20 reconciliation). Implement Plain Mode / Power Mode toggle in Settings via `data-[mode=plain]:hidden` Tailwind selectors (LD-29 — visibility flip, not conditional render; preserves keyboard-shortcut muscle memory). Centralized `coachingRegistry.ts` mapping coaching IDs to content + dismissal conditions; `<CoachingSlot id="..." />` as the only API used in surfaces; "Don't show again" persists per-context; "show all coaching tips" reset action in Settings. **FR-25 Refile (added 2026-05-20)** — the org-canonical inbox-triage primitive — lands here as Stories 11.7/11.8/11.9: subtree extract/insert primitives (`orgsidian-vault::refile`) + LD-57 sequence-with-`.bak` cross-file orchestrator + `RefileTargetPicker.tsx` UI bound to `Cmd/Ctrl+Shift+R` (Project Report rebinds to `Cmd/Ctrl+Shift+E` per Story 10.7 update).
+**FRs covered:** FR-18 (Empty only), FR-20, FR-21, FR-25.
 
-### Epic 12: v0.5 Beta Release — Customization & Plugin Surface Lock
-User CSS file override loaded from `~/.orgsidian/themes/*.css` after the bundle (FR-22 full — invalid CSS falls back to default with warning, never crashes). LD-51 `tokens.test.ts` Vitest snapshot test extracts the set of `--org-*` variables from `tokens.css` and locks the public theme API contract. Keybinding remapping in Settings with conflict detection (FR-23, per-Vault persistence via LD-40 `<Vault>/.orgsidian/`). **LD-50 plugin event surface review sign-off** — audit every `Event` variant + hook method signature + `HookOutcome` semantics added during Epics 1-11; output `docs/plugin-api/v1.0-surface-review.md` committed before v0.5 → v1.0 transition. Final v0.5 Beta release artifacts + announcement. **Closes SM-2.**
-**FRs covered:** FR-22 (CSS customization), FR-23. Closes FR-24 v1.0 contract lock-in path.
+### Epic 12: v0.5 Beta Release — Customization, Unlinked References & Plugin Surface Lock
+Implement the **Unlinked References** sub-panel on the existing Backlinks UI (FR-13 extension per 2026-05-20): `orgsidian-index::query::unlinked_references` (FTS5 title-match outer-joined against `links` table) + `BacklinksPanel.tsx` Linked/Unlinked sub-tabs. User CSS file override loaded from `~/.orgsidian/themes/*.css` after the bundle (FR-22 full — invalid CSS falls back to default with warning, never crashes). LD-51 `tokens.test.ts` Vitest snapshot test extracts the set of `--org-*` variables from `tokens.css` and locks the public theme API contract. Keybinding remapping in Settings with conflict detection (FR-23, per-Vault persistence via LD-40 `<Vault>/.orgsidian/settings.toml`). **LD-50 plugin event surface review sign-off** — audit every `Event` variant + hook method signature + `HookOutcome` semantics added during Epics 1-11; output `docs/plugin-api/v1.0-surface-review.md` committed before v0.5 → v1.0 transition. Final v0.5 Beta release artifacts + announcement. **Closes SM-2.**
+**FRs covered:** FR-13 (Unlinked References extension), FR-22 (CSS customization), FR-23. Closes FR-24 v1.0 contract lock-in path.
 
 ### Epic 13: v1.0 — Cross-Platform Launch & Tutorial
-Windows MSI packaging via Tauri bundler + code-signing cert (LD-19, EV upgrade evaluated) + WebView2 + ReadDirectoryChangesW reliability hardening (per OQ-3 / OQ-4 known edge cases). Auto-update via `tauri-plugin-updater` stable channel across macOS + Linux + Windows (LD-20). Interactive Tutorial — 10-minute guided cycle (capture → triage → schedule → agenda → clock in/out → one-line report) launchable from "Get started" menu + first-launch prompt; completion tracked locally (no telemetry); re-launchable from Settings (FR-19). Clock UX polish — persistent toggleable status bar, refined timer notifications, clock-time editing affordance (FR-8 polish per PRD §6.2 phasing). Performance budgets verified across full matrix (NFR-1..NFR-7). Full a11y keyboard review of menus and primary surfaces (NFR-9). Comprehensive `docs/user-guide/` site. Coordinated announcement HN + ProductHunt + org-mode community channels. **Closes SM-3.**
+Windows MSI packaging via Tauri bundler + code-signing cert (LD-19, EV upgrade evaluated) + WebView2 + ReadDirectoryChangesW reliability hardening (per OQ-3 / OQ-4 known edge cases). Auto-update via `tauri-plugin-updater` stable channel across macOS + Linux + Windows (LD-20). Interactive Tutorial — 10-minute guided cycle (capture → triage → schedule → agenda → clock in/out → one-line report) launchable from "Get started" menu + first-launch prompt; completion tracked locally (no telemetry); re-launchable from Settings (FR-19). Clock UX polish — persistent toggleable status bar, refined timer notifications, clock-time editing affordance (FR-8 polish per PRD §6.2 phasing). Performance budgets verified across full matrix (NFR-1..NFR-7). **A11y graduation:** expand the LD-58 happy-path keyboard scenarios (which ship as hard CI gate from v0.1 per Story 1.17) to representative-coverage per surface; add focus-ring visual snapshot tests; document known limitations + qualitative sign-off in `docs/user-guide/accessibility.md`. Full screen-reader certification (assistive-tech audit) remains deferred to v1.5+ per LD-58 follow-up. Comprehensive `docs/user-guide/` site. Coordinated announcement HN + ProductHunt + org-mode community channels. **Closes SM-3.**
 **FRs covered:** FR-19, FR-8 (UX polish), NFR-8 (Windows feature parity added).
 
 ---
@@ -514,7 +516,8 @@ So that LD-37 supply-chain hygiene is enforced before the first feature lands.
 **And** `deny.toml` bans duplicate major versions of `tokio`, `serde`, `chrono`, `rusqlite`
 **And** `deny.toml` graph rule rejects consumer crates (`shell-app`, `cli`) importing leaf crates (`parser | index | watcher | vault | plugin-api | report`) directly
 **And** `cargo audit` runs on per-PR CI and fails on advisory severity ≥ medium
-**And** `Cargo.lock` is committed.
+**And** `Cargo.lock` is committed
+**And** (added 2026-05-20) the allowlist is verified clean against the post-reconciliation dep additions: `toml` crate (MIT/Apache-2.0; LD-40 TOML settings), `react-force-graph-2d@1.29.1` + transitive `force-graph`/`react-kapsule`/`prop-types` (all MIT; LD-56 Graph View), `@axe-core/playwright` (MIT; LD-58 a11y CI gate). New JS-side dep additions are also subject to `pnpm audit` and the same severity gate; `pnpm` license discipline is enforced via `pnpm licenses` audit in CI.
 
 ### Story 1.8: Configure CI matrix + `[profile.release] panic = "unwind"` + `invoke_plugin_hook!` macro stub
 
@@ -526,8 +529,8 @@ So that LD-32 CI discipline is live and LD-38 plugin panic isolation is configur
 
 **Given** Story 1.7 workspace,
 **When** CI workflows and panic policy are configured,
-**Then** `.github/workflows/pr.yml` runs `cargo build/test/clippy -- -D warnings/fmt --check` + `pnpm typecheck/test` on macOS-arm64 + Ubuntu-LTS
-**And** `.github/workflows/nightly.yml` runs the full matrix on macOS + Ubuntu + Arch + Windows
+**Then** `.github/workflows/pr.yml` runs `cargo build/test/clippy -- -D warnings/fmt --check` + `pnpm typecheck/test` + `pnpm a11y` (the LD-58 a11y hard gate step established by Story 1.17) on macOS-arm64 + Ubuntu-LTS
+**And** `.github/workflows/nightly.yml` runs the full matrix on macOS + Ubuntu + Arch + Windows, including the Story 8.12 cross-webview Graph View perf gate (≤2s/5k-node + ≤500ms steady-state-frame per LD-56)
 **And** root `Cargo.toml` declares `[profile.release] panic = "unwind"` per LD-38
 **And** `crates/orgsidian-core/src/registry.rs` declares the `invoke_plugin_hook!` macro stub wrapping calls in `std::panic::catch_unwind`
 **And** the merge gate (per-PR green AND nightly green within 24h) is configured as a branch protection rule.
@@ -594,7 +597,7 @@ I want a single shared `assert_no_perf_regression!` macro consumed by every perf
 **And** the macro runs `op` 5 times, computes the median, compares against the baseline stored at `tests/perf-baselines/{story_id}.json`, and fails if the median exceeds the baseline by >20%
 **And** missing-baseline mode (first run) writes the baseline file and emits a non-fatal warning
 **And** absolute perf targets from PRD §8 NFRs are documented in `docs/perf/targets.md` separately from the regression gate
-**And** the macro is consumed by all perf-AC stories (Stories 4.3a-g, 6.3, 7.1, 8.1, 8.4, 9.1, 10.6 — referenced inline below).
+**And** the macro is consumed by all perf-AC stories (Stories 4.3a-g, 6.3, 7.1, 8.1, 8.4 (split into `story-8.4-search-10results` <100ms + `story-8.4-search-50results` <200ms per 2026-05-20 two-tier), **8.11 Graph View `story-8.11-graph-5k-render` ≤2s + `story-8.11-graph-steady-frame` ≤500ms per LD-56**, 9.1, 10.6, **11.8 Refile orchestrator round-trip** — referenced inline below).
 
 **Traces:** LD-32 (perf snapshot regression gate), NFR-1..NFR-7, NFR-20.
 
@@ -678,6 +681,49 @@ So that the Project board (Story 1.13) and Issue search become navigable surface
 **And** the workflow is documented in CONTRIBUTING.md alongside the LD-55 reference.
 
 **Traces:** LD-55 (Issues sync + Project board).
+
+### Story 1.17: Establish WCAG 2.1 AA hard CI gate (added 2026-05-20 per LD-58)
+
+As the **author / contributor**,
+I want three hard CI gates enforcing WCAG 2.1 AA — contrast-matrix, axe-core, and 6 happy-path keyboard scenarios — wired into the per-PR pipeline from day 1,
+So that every UI-shipping story downstream inherits the a11y floor by construction rather than retroactively (NFR-9 hard gate from v0.1 Alpha).
+
+**Traces:** NFR-9, LD-58, LD-32, LD-51.
+
+**Acceptance Criteria:**
+
+**Given** Story 1.8 (per-PR CI pipeline) and Story 1.3 (Tailwind 4 + theme tokens scaffold),
+**When** the LD-58 a11y gates are wired,
+**Then** `packages/shell-ui/package.json` pins `@axe-core/playwright` (latest stable; MIT) added by Story 1.7 license-allowlist verification
+**And** `packages/shell-ui/src/themes/contrast.test.ts` Vitest contrast-matrix test extracts `--org-*-fg` / `--org-*-bg` pairs from `tokens.css` (the LD-51 canonical source), computes WCAG relative-luminance contrast ratio `(L1 + 0.05) / (L2 + 0.05)` per pair, and asserts ≥4.5:1 for body-text pairs and ≥3:1 for large-text / UI-chrome pairs; tokens without declared pair role in `tokens.css` metadata fail the gate
+**And** `packages/shell-ui/e2e/a11y/` contains 6 happy-path keyboard-only Playwright scenarios — Today Dashboard, Agenda, Editor, Quick Capture, Settings, Graph View — each tagged `@a11y` and starting `page.keyboard`-only (no `mouse.click`), navigating to the surface and asserting a persisted side-effect of a representative action
+**And** each `@a11y` scenario invokes `await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()` and fails on violations at `serious` or `critical` impact (best-practice tier excluded to avoid noise that erodes the gate)
+**And** `pnpm a11y` orchestrates `pnpm test:contrast` (Vitest) + `pnpm test:e2e -- --grep @a11y` (Playwright) and the script is wired into `.github/workflows/pr.yml` per Story 1.8 AC
+**And** the per-PR runtime budget for the 6 `@a11y` scenarios is ≤2-3 min combined on macOS-arm64 + Ubuntu-LTS
+**And** exhaustive per-surface coverage is **explicitly deferred to v1.0 graduation** (Story 13.5 narrowed) — Story 1.17 ships the v0.1 hard floor, not the v1.0 ceiling
+**And** the implementing modules carry `//! Implements NFR-9 a11y CI gate (LD-58)` as the first doc-comment line, verified by `tests/traceability.rs`.
+
+### Story 1.18: TOML settings authoritative store with hybrid boundary (added 2026-05-20 per LD-40 amendment / OQ-7 resolution)
+
+As the **author / contributor**,
+I want a TOML-based authoritative settings store at `<Vault>/.orgsidian/settings.toml` + `<config-dir>/global.toml`, with `tauri-plugin-store` retained only for ephemeral UI state,
+So that every downstream Settings-touching story consumes a stable, human-editable, file-authoritative source-of-truth from day 1 — and the dual-surface OQ-7 commitment (PRD §10) is enforced by construction.
+
+**Traces:** LD-40, PRD §10 OQ-7, FR-23.
+
+**Acceptance Criteria:**
+
+**Given** Story 1.2 workspace + Story 1.7 license allowlist verified clean against the `toml` crate (MIT/Apache-2.0),
+**When** the settings store is implemented,
+**Then** `crates/orgsidian-core/src/settings/` exposes `read_vault_settings(vault_path) -> Result<VaultSettings>` + `write_vault_settings(vault_path, &VaultSettings) -> Result<()>` + analogous `read/write_global_settings`, using the `toml` crate for serialization
+**And** `VaultSettings` owns: keybindings remap, theme path, capture hotkey, named agenda filter presets, dismissed coaching IDs, Plain/Power mode preference, Today Dashboard section preferences
+**And** `GlobalSettings` owns: list of recent Vault paths, default UI language, default theme for new Vaults
+**And** `tauri-plugin-store` is **retained only** for ephemeral UI state: last-open file, window geometry, tutorial progress, last-Vault path — never authoritative settings (explicit boundary list in `docs/architecture/settings-boundary.md`)
+**And** writes are atomic via the `orgsidian-vault::atomic-write` infrastructure (Story 3.1 dependency — Story 1.18 may ship the lib API in Epic 1 with the atomic-write wired-up gated until Epic 3 closes)
+**And** round-trip fidelity: read TOML → serialize back → byte-identical when no field changed
+**And** schema versioning: `[meta] schema_version = 1` mandatory in every TOML file; forward-only migration discipline mirrors LD-12 (no destructive rewrites)
+**And** the settings file is just another file under the watcher — external edits while the app is open trigger a reload-or-merge per the LD-7 Single Writer Rule pattern (Story 5.4 wires this; Story 1.18 leaves the hook in place but the watcher integration lands with Epic 5)
+**And** the implementing modules carry `//! Implements LD-40 + FR-23 settings store (OQ-7 dual-surface)` as the first doc-comment line.
 
 ---
 
@@ -1257,35 +1303,39 @@ So that v0.1 Alpha ships the FR-16 safety contract (NFR-16 Single Writer Rule) w
 
 ## Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
 
-### Story 6.1: Implement Personal GTD + Student Starter Vault content + generator
+### Story 6.1: Implement Personal GTD + Student + Freelancer Starter Vault content + generator
 
 As the **first-time user**,
-I want choosing "Personal GTD" or "Student" Starter Vault to create a folder populated with realistic `.org` files (one project, an inbox, a journal, a someday list, agenda content populated for "today" relative to first launch),
-So that I see the workflow, not the syntax, in my first 5 minutes (FR-18 partial).
+I want choosing "Personal GTD", "Student", or "Freelancer" Starter Vault to create a folder populated with realistic `.org` files (one project, an inbox, a journal, a someday list, agenda content populated for "today" relative to first launch),
+So that I see the workflow, not the syntax, in my first 5 minutes (FR-18 v0.1 Alpha — Freelancer promoted from v0.5 per 2026-05-20 reconciliation to give the lighthouse persona the full integration demo on first launch).
+
+**Traces:** FR-18, UJ-3, UJ-4.
 
 **Acceptance Criteria:**
 
-**Given** Epic 3 closed,
+**Given** Epic 3 closed AND Story 8.7 Backlinks sidebar panel shipped (required by the Freelancer ≥1-backlink AC),
 **When** the generator runs for a chosen starter,
-**Then** `crates/orgsidian-core/src/starter_vault/{personal_gtd, student}.rs` writes the starter's `.org` files to the user-chosen folder
+**Then** `crates/orgsidian-core/src/starter_vault/{personal_gtd, student, freelancer}.rs` writes the starter's `.org` files to the user-chosen folder
 **And** the agenda content includes Scheduled timestamps for "today" relative to first-launch date
 **And** the Inbox file `inbox.org` exists at Vault root
 **And** opening the Vault immediately shows non-empty Today/Week Agenda content
-**And** each starter ships from real-world GTD or Student vault patterns documented in `docs/user-guide/starter-vaults.md`.
+**And** the Freelancer starter additionally includes ≥1 project with ≥3 milestones, ≥1 clocked task in the LOGBOOK, and ≥1 `id:` or `[[wiki-link]]` reference between Headlines — so the BacklinksPanel (Story 8.7) shows ≥1 backlink for the project's main Headline on first launch (demonstrating the integration UJ-3 narrates)
+**And** each starter ships from real-world GTD / Student / Freelancer vault patterns documented in `docs/user-guide/starter-vaults.md`
+**And** the implementing modules carry `//! Implements FR-18 (Personal GTD + Student + Freelancer starters; Empty in Story 11.1)` as the first doc-comment line.
 
 ### Story 6.2: Implement Starter Vault picker UI on first launch
 
 As the **first-time user**,
-I want the first-launch screen offering "Personal GTD", "Student", or "Empty (use my own folder)" choices,
-So that I'm onboarded into the workflow within seconds (FR-18).
+I want the first-launch screen offering "Personal GTD", "Student", or "Freelancer" Starter Vault choices,
+So that I'm onboarded into the workflow within seconds (FR-18 v0.1 Alpha — Empty option deferred to v0.5 per 2026-05-20 reconciliation; user with existing `.org` folder can still designate via Settings → Vault until then).
 
 **Acceptance Criteria:**
 
 **Given** Story 6.1,
 **When** Orgsidian launches with no configured Vault,
-**Then** `shell-ui/src/components/onboarding/StarterVaultPicker.tsx` renders three options (Personal GTD, Student, Empty)
-**And** selecting Personal GTD or Student prompts for a target folder via `tauri-plugin-dialog`, then invokes the generator from Story 6.1
-**And** selecting Empty prompts for an existing `.org` folder to designate via Story 3.6's `designateVault` flow
+**Then** `shell-ui/src/components/onboarding/StarterVaultPicker.tsx` renders three primary options (Personal GTD, Student, Freelancer) plus a secondary "Use my own folder" link that routes to Story 3.6's `designateVault` flow (this is the v0.1 stand-in for the Empty Starter — the explicit Empty card with onboarding-coaching ships in Story 11.1 v0.5 Beta)
+**And** selecting Personal GTD, Student, or Freelancer prompts for a target folder via `tauri-plugin-dialog`, then invokes the generator from Story 6.1
+**And** the "Use my own folder" link prompts for an existing `.org` folder to designate via Story 3.6's `designateVault` flow
 **And** the picker is dismissed once a Vault is configured and the user lands on the `/today` route.
 
 ### Story 6.3: Implement basic Today Agenda view
@@ -1330,7 +1380,8 @@ So that Epic 7 + Epic 8 cannot accidentally break the contract in CI (Murat roun
 **Given** Stories 3.5 + 6.3 + 6.4,
 **When** the freeze gate is applied,
 **Then** `crates/orgsidian-index/src/query/mod.rs` declares the `IndexQuery` trait with `///` doc-comments documenting the contract (input types, return types, error variants)
-**And** `crates/orgsidian-index/CHANGELOG.md` records a `Query API: v1.0` entry at the end of this epic with the published semver baseline
+**And** the v0.1 baseline trait surface (per the 2026-05-20 reconciliation decision to freeze upfront rather than rely on semver-minor additions during Epic 8) includes: `agenda::{today, week, custom}` (Stories 6.3, 6.4, 7.4); `search::query(q) -> Vec<SearchResult>` *and* `search::search_stream(q) -> impl Iterator<SearchResult>` (Story 8.4 two-tier streaming `<100ms first 10` / `<200ms full 50`); `backlinks::for_headline(id) -> Vec<Backlink>` (Story 8.6); `backlinks::unlinked_mentions(headline_id) -> Vec<UnlinkedMention>` (Story 12.0 v0.5+, but signature in baseline so v0.5 lands as semver-minor body addition, not breaking); `graph::adjacency(scope) -> GraphData { nodes: Vec<NodeRef{ id, file, title }>, edges: Vec<Edge{ src_id, dst_id, kind }> }` (Story 8.10 FR-26)
+**And** `crates/orgsidian-index/CHANGELOG.md` records a `Query API: v1.0` entry at the end of this epic with the published semver baseline (incl. the streaming + graph + unlinked-mentions additions)
 **And** `.github/workflows/pr.yml` runs `cargo-semver-checks check-release --baseline-rev v0.1.0-alpha.x -p orgsidian-index` and **fails the PR** on any breaking change to the `query::*` public surface
 **And** semver-minor additions (new trait method with default impl, new variant on `#[non_exhaustive]` enum) pass the check; semver-major changes (signature, removal) require explicit CHANGELOG bump + reviewer override.
 
@@ -1364,7 +1415,8 @@ So that NFR-9 accessibility baseline is honored from v0.1 (FR-22 partial — CSS
 **When** the themes are committed,
 **Then** `shell-ui/src/themes/{tokens.css, dark.css, light.css}` declare the `--org-*` CSS variable vocabulary per architecture step 3
 **And** theme switching is instant (`document.body.dataset.theme = "dark"`)
-**And** contrast ratios for body text and primary UI chrome meet WCAG AA on both themes (verified via axe-core E2E spec)
+**And** contrast ratios for body text and primary UI chrome meet WCAG AA on both themes — **verified by the Story 1.17 LD-58 contrast-matrix Vitest test on the `--org-*-fg`/`--org-*-bg` pairs AND by the Story 1.17 axe-core gate on every `@a11y`-tagged Playwright scenario** (replaces the prior axe-core-E2E-spec wording; the gate is now per-PR + canonical via Story 1.17)
+**And** `tokens.css` declares the pair-role metadata required by Story 1.17's contrast test (body-text pairs / large-text pairs / UI-chrome pairs) so the Vitest gate has structured input rather than ad-hoc heuristics
 **And** Settings → Appearance allows toggling between dark / light / system-default.
 
 ### Story 6.8: Implement macOS DMG packaging + signing + notarization
@@ -1485,10 +1537,12 @@ So that recurring queries (e.g., "@home tag this week") are friction-free (FR-7 
 
 **Given** Story 7.4,
 **When** the user saves a preset,
-**Then** the preset is persisted at `<Vault>/.orgsidian/agenda-presets.json` with name + view + filters
+**Then** the preset is persisted in the per-Vault TOML settings store (Story 1.18 — under `[agenda_presets]`) with name + view + filters; LD-40 supersedes the prior `agenda-presets.json` location
 **And** the Agenda sidebar shows the saved presets list
 **And** clicking a preset restores the view + filters
-**And** preset deletion is available via a context menu.
+**And** preset deletion is available via a context menu
+**And** (added 2026-05-20 per PRD §4.2 FR-7 enhancement) **two default named presets ship out of the box**: `Done This Week` (filter `todo:DONE` + completion date in the rolling-7-days range) and `Done This Month` (analogous, rolling-30-days). Defaults are seeded into the per-Vault TOML store on first launch — idempotent, not re-seeded if the user deleted them
+**And** the Story 6.1 starter-vault generators include fixture content that surfaces non-empty results in both default presets on first launch (≥2 `DONE` headlines completed in the relevant ranges).
 
 ### Story 7.6: Implement Clock manager + LOGBOOK persistence
 
@@ -1611,10 +1665,11 @@ So that FR-12 surface is queryable from any consumer (UI, CLI, plugin).
 **Acceptance Criteria:**
 
 **Given** Epic 3 closed,
-**When** `crates/orgsidian-index/src/query/search.rs` exposes `pub fn search(query: &SearchQuery) -> Result<Vec<SearchResult>, IndexError>`,
+**When** `crates/orgsidian-index/src/query/search.rs` exposes **two API entry points** per the 2026-05-20 two-tier reconciliation: `pub fn search(query: &SearchQuery) -> Result<Vec<SearchResult>, IndexError>` (full-batch, returns up to 50 results) AND `pub fn search_stream(query: &SearchQuery) -> Result<impl Iterator<Item = SearchResult>, IndexError>` (streaming — first 10 yieldable for early UI render before the full batch completes; `rusqlite::Statement::query_map` is the natural backing primitive),
 **Then** the query parser handles plain words, `"exact phrase"`, `#tag:value`, `file:path-glob`, `todo:STATE`
 **And** results are returned grouped by file with the matched line previewed
-**And** latency is gated by `assert_no_perf_regression!("story-8.4-search-50results", …)` (Story 1.12) — initial baseline ≤200ms for first 50 results on a 1000-file Vault per NFR-4
+**And** latency is gated by **two** perf assertions (Story 1.12) per the FR-12 two-tier budget: `assert_no_perf_regression!("story-8.4-search-10results", …)` initial baseline ≤100ms for time-to-first-10 streaming results on a 1000-file Vault, AND `assert_no_perf_regression!("story-8.4-search-50results", …)` initial baseline ≤200ms for the full 50 results — per NFR-4 + PRD §4.3 FR-12 post-2026-05-20
+**And** both entry points are surfaced through the frozen `IndexQuery` trait (Story 6.5 baseline — `search` + `search_stream` shipped upfront, not added during Epic 8)
 **And** the CLI command `orgsidian query search <query>` exposes the same API per LD-27.
 
 **Traces:** FR-12, NFR-4, UJ-6.
@@ -1630,7 +1685,7 @@ So that "find anything" is one keystroke away (FR-12).
 **Given** Story 8.4,
 **When** the user invokes the palette,
 **Then** `shell-ui/src/components/palette/CommandPalette.tsx` (built on `cmdk` via shadcn) opens with a query input
-**And** typing a query streams results from `commands.search(query)` debounced by 50ms
+**And** typing a query consumes the **streaming** API from `commands.searchStream(query)` debounced by 50ms (paints first 10 results progressively before the full 50 arrive — per Story 8.4 two-tier contract; tested by `e2e/palette-streaming.spec.ts` asserting first-10-paint before full-50 completion)
 **And** selecting a result navigates to `/editor/$filePath/$headlineId` via TanStack Router
 **And** `Cmd/Ctrl+Shift+F` is an additional binding documented in the keybinding reference panel.
 
@@ -1677,7 +1732,7 @@ So that UJ-6 is testable as a coherent journey rather than fragmented across Sto
 **When** the integration spine test runs,
 **Then** `shell-ui/e2e/uj6-search-spine.spec.ts` (Playwright + Tauri WebDriver) executes the following scripted flow on a fixture Vault containing ≥2 years of dated `.org` files with `id:` cross-references:
   1. Press `Cmd+P` → palette opens within 100ms
-  2. Type "kubernetes ingress" → results stream in within the Story 8.4 perf budget
+  2. Type "kubernetes ingress" → first 10 results paint within the Story 8.4 two-tier perf budget (`<100ms` time-to-first-10 streaming); full 50 results complete within `<200ms`
   3. Assert results are **grouped by file** with the matched line previewed (not a flat list)
   4. Click the first result → editor route `/editor/$filePath/$headlineId` opens at the exact Headline (line scrolled into view, cursor on the source line)
   5. Backlinks sidebar (Story 8.7) renders within 100ms with ≥1 backlink showing the linking Headline title + context snippet
@@ -1693,11 +1748,70 @@ So that LD-50 final surface review at Epic 12 ratifies a coherent API (Murat P2 
 
 **Acceptance Criteria:**
 
-**Given** Stories 8.2 + 8.4 + 8.6,
+**Given** Stories 8.2 + 8.4 + 8.6 + 8.10,
 **When** the checkpoint review is performed,
-**Then** `docs/plugin-api/v0.5-checkpoint-epic-8.md` lists the `Event` variants emitted by Capture / Search / Backlinks (`CaptureSubmitted`, `AgendaQueried`, etc.) and the hook methods consumed
+**Then** `docs/plugin-api/v0.5-checkpoint-epic-8.md` lists the `Event` variants emitted by Capture / Search / Backlinks / Graph (`CaptureSubmitted`, `AgendaQueried`, `GraphRequested`, etc.) and the hook methods consumed
 **And** any deviations from LD-26 are flagged for resolution before Epic 9 begins
 **And** the checkpoint result is committed and reviewed by the parser-owner.
+
+### Story 8.10: Implement Backlink Graph adjacency query API (added 2026-05-20 per LD-56 / FR-26)
+
+As the **user**,
+I want a query returning the Vault's `:ID:`-keyed Headlines as nodes and `[[id:...]]` / `[[wiki-link]]` references as edges, scoped to a subgraph,
+So that FR-26 Graph View surface is queryable from any consumer (UI canvas, a11y list-view, CLI).
+
+**Traces:** FR-26, LD-56, LD-13 (reuses `links` table).
+
+**Acceptance Criteria:**
+
+**Given** Story 8.6 Backlinks query API (shares the `links` table),
+**When** `crates/orgsidian-index/src/query/graph.rs` exposes `pub fn adjacency(scope: GraphScope) -> Result<GraphData, IndexError>`,
+**Then** `GraphData { nodes: Vec<NodeRef { id: HeadlineId, file: PathBuf, title: String }>, edges: Vec<Edge { src_id: HeadlineId, dst_id: HeadlineId, kind: EdgeKind }> }`
+**And** `EdgeKind::{IdLink, WikiLink}` distinguishes `[[id:...]]` from `[[wiki-link]]` (typed-edge styling for v0.5+ is non-breaking — UI can ignore the distinction in v0.1)
+**And** `GraphScope::{WholeVault, NeighborhoodOf(HeadlineId, depth: u8)}` covers the v0.1 surfaces; the `Tag(TagId)` and `FilePath(PathBuf)` variants are reserved in the enum (marked `#[non_exhaustive]`) for v0.5+ subgraph filtering
+**And** the `IndexQuery` trait (Story 6.5 frozen baseline) exposes `graph::adjacency` — Epic 8 implements the signature already declared in the baseline
+**And** the CLI command `orgsidian query graph <scope>` exposes the same API per LD-27, emitting JSON adjacency
+**And** module carries `//! Implements FR-26 (Backlink Graph adjacency)` as the first doc-comment.
+
+### Story 8.11: Implement Graph View canvas + a11y textual fallback (added 2026-05-20 per LD-56 / FR-26 / LD-58)
+
+As the **user**,
+I want a `/graph` route rendering my Vault's backlink graph as a force-directed canvas (with pan/zoom, click-to-Source, zoom-in labels) AND as a keyboard-reachable textual node list,
+So that the *one object, three views* (outline + agenda + graph) wedge is live in v0.1 Alpha and the LD-58 keyboard-only happy-path scenario for Graph View has a non-canvas target to drive (FR-26 + NFR-9).
+
+**Traces:** FR-26, LD-56, LD-58, LD-29 (route), UJ-6 adjacent.
+
+**Acceptance Criteria:**
+
+**Given** Story 8.10 (`query::graph::adjacency`) AND Story 1.17 (a11y gate) AND Story 1.7 license allowlist (verified clean against `react-force-graph-2d@1.29.1` + transitive deps),
+**When** the Graph View is implemented,
+**Then** `packages/shell-ui/package.json` pins `react-force-graph-2d` at exact `1.29.1` (MIT)
+**And** `shell-ui/src/routes/_layout/graph.tsx` declares the `/graph` TanStack route per LD-29 with typed loader data invoking `commands.adjacency({ scope: { type: 'WholeVault' } })`
+**And** `shell-ui/src/components/graph/GraphCanvas.tsx` renders the adjacency via `<ForceGraph2D graphData={...} nodeId="id" onNodeClick={n => router.navigate({ to: '/editor/$filePath/$headlineId', params: { filePath: n.file, headlineId: n.id } })} />`
+**And** node labels are visible at zoom-in (per LD-56 follow-up — `nodeCanvasObject` custom draw acceptable if defaults insufficient)
+**And** `shell-ui/src/components/graph/GraphNodeList.tsx` renders a keyboard-reachable textual list of nodes sorted by degree (descending), with alphabetical jump-to-letter, fulfilling the LD-58 a11y fallback requirement; toggle between canvas + list via View menu and `g l` chord (Plain Mode hides `g l` via `data-[mode=plain]:hidden`; the View-menu toggle is always reachable)
+**And** **empty-state** when the Vault has zero `:ID:` properties shows the inline-coaching balloon (Story 6.6 / 11.4 — new coaching ID `GRAPH_EMPTY_INTRO`) pointing to `docs/user-guide/headline-ids.md` per workflow-over-syntax discipline
+**And** perf is gated by `assert_no_perf_regression!("story-8.11-graph-5k-render", …)` initial baseline ≤2s for a synthetic 5000-node force-directed render on 2020+ baseline hardware, AND `assert_no_perf_regression!("story-8.11-graph-steady-frame", …)` baseline ≤500ms for steady-state frame after layout settle — per LD-56 budget
+**And** the LD-58 keyboard-only Playwright scenario (Story 1.17) for "Graph View" tabs into `GraphNodeList`, presses Enter on the top-degree node, and asserts the `/editor/...` route lands at the expected Headline
+**And** modules carry `//! Implements FR-26` doc-comment header.
+
+### Story 8.12: Cross-webview Graph View nightly perf gate (added 2026-05-20 per LD-56)
+
+As the **author / contributor**,
+I want the Graph View `≤2s / 5k nodes` + `≤500ms steady-state frame` budgets verified nightly across macOS WebKit + Linux WebKitGTK + Windows WebView2,
+So that the LD-56 perf headroom claim is empirically valid on every supported webview (catches WebKit-vs-Blink rendering divergence before it surfaces in user bug reports).
+
+**Traces:** LD-56, LD-32, NFR-7 (cross-platform parity).
+
+**Acceptance Criteria:**
+
+**Given** Stories 8.11 + 1.12 (perf macro) + Story 1.8 nightly matrix,
+**When** the cross-webview gate runs,
+**Then** `.github/workflows/nightly.yml` adds a `graph-view-perf-matrix` job running on macOS-arm64 + Ubuntu-LTS + Windows-2022 (the platforms where Tauri webview matches the locked stack)
+**And** the job spins up a synthetic 5000-node + 8000-edge fixture Vault and measures both perf assertions on each platform
+**And** results are written to `tests/perf-baselines/cross-webview/graph-{platform}.json` with per-platform baselines (WebKit may differ from WebView2 — separate baselines, same ≤2s ceiling)
+**And** the merge gate (Story 1.8) blocks if any platform regresses >20% above its baseline
+**And** the dashboard at `docs/perf/cross-webview-trends.md` is regenerated on each successful nightly with the 14-day trend.
 
 ---
 
@@ -1890,7 +2004,7 @@ So that UJ-3 is testable as a coherent journey and the critical edge case (Activ
 **When** the integration spine test runs,
 **Then** `shell-ui/e2e/uj3-report-spine.spec.ts` (Playwright + Tauri WebDriver) executes the following scripted flow on a fixture Vault containing a 4-week project with ≥3 milestones, ≥10 clocked tasks, ≥5 linked notes, and one deliberately-open `CLOCK:` line with no end-time:
   1. Open the project file in the editor
-  2. Invoke "Project Report" action from the context menu (or `Cmd/Ctrl+Shift+R`)
+  2. Invoke "Project Report" action from the context menu (or `Cmd/Ctrl+Shift+E` for "Export" — rebound from the previously-listed `Cmd/Ctrl+Shift+R` per the 2026-05-20 reconciliation, which freed `Cmd/Ctrl+Shift+R` for the org-canonical Refile chord per Story 11.9)
   3. Pick date range "last 4 weeks" + format "PDF"
   4. Click "Generate" → PDF byte buffer is produced within Story 10.6 perf budget
   5. PDF is saved to a target path via `tauri-plugin-dialog`
@@ -1902,34 +2016,33 @@ So that UJ-3 is testable as a coherent journey and the critical edge case (Activ
 
 ## Epic 11: Onboarding Completion & Coaching
 
-### Story 11.1: Add Freelancer Starter Vault content + generator
+### Story 11.1: Add Empty Starter Vault picker card + flow polish
 
-As the **freelance consultant first-time user**,
-I want a "Freelancer" Starter Vault populated with a client project (milestones, clocked tasks), an inbox, a journal, an invoicing-prep list, and at least one backlink,
-So that the integration is demonstrated in my first 5 minutes (FR-18 + UJ-3).
+*(Re-scoped 2026-05-20: was "Add Freelancer Starter Vault content + generator" — Freelancer promoted to Story 6.1 v0.1 Alpha per the UX spec lighthouse-persona commitment; this story is what's left of the FR-18 completion in v0.5 Beta, surfacing the explicit Empty card with onboarding coaching. Subsumes the prior Story 11.2 "Add Empty Starter Vault flow" — see Story 11.2 below for the no-op marker.)*
 
-**Acceptance Criteria:**
+As the **first-time user with an existing `.org` folder**,
+I want an explicit "Empty (use my own folder)" card on the first-launch Starter Vault picker — visually equal to the Personal GTD / Student / Freelancer cards, with onboarding coaching that confirms no files will be written into my existing folder,
+So that experienced org-mode users have a peer first-launch path to designating their own vault, not just a secondary link (FR-18 v0.5 completion).
 
-**Given** Story 6.1's generator pattern,
-**When** the Freelancer starter is added,
-**Then** `crates/orgsidian-core/src/starter_vault/freelancer.rs` writes the starter's `.org` files including ≥1 project with ≥3 milestones, ≥1 clocked task in the LOGBOOK, ≥1 `id:` or `[[wiki-link]]` reference between Headlines
-**And** the starter picker UI from Story 6.2 lists "Freelancer" as an option
-**And** opening the starter immediately shows ≥1 backlink in the BacklinksPanel for the project's main Headline.
-
-### Story 11.2: Add Empty Starter Vault flow
-
-As the **user with my own existing `.org` folder**,
-I want the "Empty" option to designate that folder as my Vault without creating any new content,
-So that I can adopt Orgsidian on top of my existing vault (FR-18).
+**Traces:** FR-18, UJ-4.
 
 **Acceptance Criteria:**
 
-**Given** Story 6.2,
-**When** the user selects "Empty",
-**Then** the picker prompts for an existing folder via `tauri-plugin-dialog`
-**And** the chosen folder is designated as the Vault via Story 3.6's `designateVault` flow
-**And** no new files are written to the chosen folder
-**And** the app opens directly on the `/today` route with whatever the Vault contains.
+**Given** Story 6.2 ships the v0.1 picker with three primary cards + a "Use my own folder" link,
+**When** Story 11.1 lands in v0.5 Beta,
+**Then** `shell-ui/src/components/onboarding/StarterVaultPicker.tsx` adds a fourth peer card "Empty (use my own folder)" alongside Personal GTD / Student / Freelancer
+**And** selecting the Empty card prompts for an existing `.org` folder via `tauri-plugin-dialog`, then designates it via Story 3.6's `designateVault` flow
+**And** no new files are written to the chosen folder (the no-content invariant from the prior Story 11.2 is preserved)
+**And** the picker also shows a one-line confirmation message `[microcopy: draft] "Orgsidian will not write any new files into this folder."` so the user understands the safety contract
+**And** the legacy "Use my own folder" secondary link from Story 6.2 is removed (the explicit card supersedes it)
+**And** the app opens directly on the `/today` route with whatever the Vault contains
+**And** the implementing modules carry `//! Implements FR-18 (Empty Starter Vault — v0.5 Beta completion of the FR-18 picker)`.
+
+### Story 11.2: ~~Add Empty Starter Vault flow~~ — **subsumed into Story 11.1 (2026-05-20)**
+
+*This story was subsumed into Story 11.1 during the 2026-05-20 reconciliation. The behavior previously described here (Empty option → `tauri-plugin-dialog` → `designateVault` → no new files → land on `/today`) is now an AC of the re-scoped Story 11.1, which combines the explicit picker card with the underlying flow. Story 11.2 is kept as a no-op marker so downstream artifacts referencing "Story 11.2" do not orphan, but no implementation work happens here. Refer all FR-18 Empty Starter Vault work to Story 11.1.*
+
+**Traces:** FR-18 (see Story 11.1).
 
 ### Story 11.3: Implement Plain/Power Mode toggle with `data-[mode]` Tailwind selectors
 
@@ -1991,11 +2104,90 @@ So that searching for "thought" in the palette surfaces Quick Capture (FR-21 con
 **Given** Story 8.5 + Story 11.4,
 **When** command descriptions are audited,
 **Then** every command registered in the palette has a `description: string` written for the user's mental model, not the implementation noun
-**And** an end-to-end test in `shell-ui/e2e/palette-discoverability.spec.ts` asserts that typing "thought", "find", "track time", "report" surfaces the correct commands.
+**And** an end-to-end test in `shell-ui/e2e/palette-discoverability.spec.ts` asserts that typing "thought", "find", "track time", "report", "refile", "graph" surfaces the correct commands.
+
+### Story 11.7: Implement Refile subtree extract/insert primitives (added 2026-05-20 per FR-25 / LD-57)
+
+As the **author / contributor**,
+I want round-trip-faithful `extract_subtree(file, headline_id)` and `insert_subtree(file, dest_outline_path, subtree)` primitives in `orgsidian-vault`,
+So that Story 11.8's cross-file orchestrator has a tested foundation for moving a Headline + its children between files without whitespace drift (FR-25 v0.5 Beta foundation).
+
+**Traces:** FR-25, LD-57, FR-2 (round-trip).
+
+**Acceptance Criteria:**
+
+**Given** Epic 2 closed (tree-sitter-org + semantic layer) AND Epic 3 closed (atomic-write),
+**When** `crates/orgsidian-vault/src/refile.rs` is implemented,
+**Then** `pub fn extract_subtree(path: &Path, id: HeadlineId) -> Result<Subtree, RefileError>` uses tree-sitter-org boundaries (heading-level + body extent up to next sibling/ancestor) to extract the full subtree (children inclusive, including LOGBOOK + PROPERTIES drawers)
+**And** `pub fn insert_subtree(path: &Path, dest_outline_path: &OutlinePath, subtree: &Subtree) -> Result<(), RefileError>` writes the subtree into the destination file at the chosen outline path with heading-level adjusted to match the parent's depth + 1
+**And** unit tests cover: multi-level subtrees (depth ≥3), subtrees with nested LOGBOOK + PROPERTIES drawers, subtrees containing recurring timestamps (preserved verbatim), subtrees at end-of-file (no trailing-newline drift), empty-body subtrees (heading only), subtrees with `:ID:` property (preserved verbatim — critical for Backlinks/Graph cross-refs to survive Refile)
+**And** **round-trip property**: `extract(file, id) → insert(other_file, path, subtree) → extract(other_file, new_id)` yields a byte-identical subtree (modulo heading-level adjustment, which is documented)
+**And** module carries `//! Implements FR-25 primitives (subtree extract + insert)` doc-comment.
+
+### Story 11.8: Implement Refile cross-file orchestrator (added 2026-05-20 per FR-25 / LD-57)
+
+As the **user with a thought captured in the Inbox**,
+I want to move it to the right project file via a single action that's atomic from my perspective — either the Refile completes fully or neither file changes,
+So that triage from Inbox to project is friction-free without risking partial-state corruption (FR-25 + LD-57).
+
+**Traces:** FR-25, LD-57, LD-7 (cross-file Single Writer extension), LD-41 (failure catalog).
+
+**Acceptance Criteria:**
+
+**Given** Story 11.7 primitives, Story 3.1 atomic-write, Story 3.2 Dirty Buffer manager, Story 5.3 ConflictState (rich struct) AND Story 1.11 LD-41 failure-mode harness AND Story 1.12 perf macro,
+**When** `crates/orgsidian-core/src/orchestrator/refile.rs` is implemented,
+**Then** the orchestrator implements the LD-57 **sequence-with-`.bak`-restore** pattern: (a) precondition check — both source and destination files must be clean (no Dirty Buffer); if either dirty, return `RefileError::SaveFirstRequired` so the UI prompts the user; (b) snapshot destination to `<dest>.bak.<pid>.<ts>` in the same directory (the snapshot lives inside the Vault; LD-41 startup scan extended in Story 1.11 to clean `*.bak.*` orphans from dead PIDs); (c) atomic-write destination with the subtree inserted via Story 11.7; (d) atomic-write source with the subtree removed via Story 11.7; (e) on step-d success, delete the `.bak` and emit watcher-suppress tokens for both files; (f) on step-d failure, restore destination from `.bak`, surface `RefileError::Reverted { reason }`, both files end at pre-Refile byte-state
+**And** **fault-injection test** in `crates/orgsidian-core/tests/failure_modes.rs` (Story 1.11 harness): inject `ENOSPC` on the source atomic-write after destination commit; assert destination is restored from `.bak` and **both files are byte-identical to their pre-Refile state**; assert the user-facing error is `RefileError::Reverted` with a specific reason; assert no `.bak` orphan remains
+**And** **watcher-suppress integrity**: the LD-7 Single Writer Rule data-flow (Story 5.4) extends to emit suppress tokens for both files for the duration of the Refile operation; the Merge Dialog (Story 9.1) is NOT triggered by Orgsidian's own writes during Refile
+**And** the LD-41 "Refile partial completion" row (added 2026-05-20 to architecture.md) flips from placeholder to live: Story 1.11's `tests/failure_modes/refile_partial.rs` becomes a passing test (no longer `#[ignore]`)
+**And** perf is gated by `assert_no_perf_regression!("story-11.8-refile-roundtrip", …)` initial baseline ≤200ms end-to-end on a 1k-file Vault with a typical (≤10-Headline) subtree
+**And** the index is re-synced after Refile via `notify-rs` watcher event (both files emit modify events that the watcher handles per Story 5.1 — Refile does not need a separate re-index code path)
+**And** module carries `//! Implements FR-25 (cross-file orchestrator per LD-57)` doc-comment.
+
+### Story 11.9: Implement Refile Target Picker UI (added 2026-05-20 per FR-25)
+
+As the **user** triaging an Inbox capture,
+I want `Cmd/Ctrl+Shift+R` to open a fast picker — fuzzy-match on file paths AND on outline paths within the chosen file — so I can move the current Headline to its right home in two or three keystrokes,
+So that Refile becomes the keyboard-first triage primitive UJ-4 promises (FR-25 + UX spec Effortless Interactions).
+
+**Traces:** FR-25, UJ-4 adjacent (inbox triage), NFR-9 (keyboard-first).
+
+**Acceptance Criteria:**
+
+**Given** Story 11.8 orchestrator + Story 8.5 Command Palette infrastructure (reuses `cmdk` patterns),
+**When** the user invokes Refile,
+**Then** `shell-ui/src/components/refile/RefileTargetPicker.tsx` is the surface, opened by `Cmd/Ctrl+Shift+R` (the org-canonical Refile chord — Project Report was rebound to `Cmd/Ctrl+Shift+E` per Story 10.7 update)
+**And** the picker is **two-stage**: stage 1 fuzzy-matches on file paths (excluding the source file itself); stage 2, after a file is selected, fuzzy-matches on outline paths within that file (showing `Headline / sub-Headline / sub-sub-Headline` breadcrumbs)
+**And** keyboard navigation: arrow keys to move selection, Enter to advance/commit, Esc to cancel; mouse fallback works but the keyboard-only path is the primary tested flow (one of the Story 1.17 LD-58 `@a11y` Playwright scenarios for the Editor surface — Editor + Refile keyboard sequence)
+**And** confirming the Refile invokes `commands.refileHeadline({ srcPath, srcHeadlineId, dstPath, dstOutlinePath })` which calls Story 11.8's orchestrator
+**And** if Story 11.8 returns `RefileError::SaveFirstRequired`, the picker shows a modal "Save the source/destination file first?" with options Save-and-Refile / Cancel — no silent failures
+**And** post-Refile UI: the editor view follows the moved subtree to its new location (`/editor/$dstPath/$headlineId` route) so the user sees their work landed; a toast confirms `[microcopy: draft] "Moved to <breadcrumb>"`
+**And** keybinding remapping (Story 12.3) respects the Cmd/Ctrl+Shift+R default and allows reassignment with conflict detection
+**And** module carries `//! Implements FR-25 (Refile target picker UI)` doc-comment.
 
 ---
 
-## Epic 12: v0.5 Beta Release — Customization & Plugin Surface Lock
+## Epic 12: v0.5 Beta Release — Customization, Unlinked References & Plugin Surface Lock
+
+### Story 12.0: Implement Backlinks Unlinked References sub-panel (added 2026-05-20 per FR-13 extension)
+
+As the **user reading a note**,
+I want the Backlinks sidebar to also surface **unlinked mentions** — places where the current Headline's title appears in another file's body without an explicit `id:` or `[[wiki-link]]` reference — so I can promote those to formal links,
+So that the knowledge-graph stitching effort is incremental and discoverable rather than a manual audit (FR-13 v0.5+ extension per UX spec Tier 2 Roam pattern).
+
+**Traces:** FR-13 (extension), UX spec Tier 2 Roam pattern.
+
+**Acceptance Criteria:**
+
+**Given** Story 8.4 FTS5 search + Story 8.6 Backlinks query API + Story 6.5 frozen `IndexQuery` baseline (which already declared the `unlinked_mentions` signature),
+**When** Story 12.0 ships,
+**Then** `crates/orgsidian-index/src/query/unlinked_references.rs` implements the `unlinked_mentions(headline_id: HeadlineId) -> Result<Vec<UnlinkedMention>, IndexError>` body: FTS5 full-text query for the current Headline's title (configurable whole-word vs substring; default whole-word) outer-joined against the `links` table, excluding the source Headline itself and any Headline that already has a formal link to it
+**And** `UnlinkedMention { file: PathBuf, headline_id: HeadlineId, headline_title: String, context_snippet: String }` returns one entry per mention, deduplicating by linking Headline (one entry per Headline that mentions, not one per textual occurrence)
+**And** `shell-ui/src/components/org/BacklinksPanel.tsx` adds two collapsible sub-tabs: **Linked** (existing FR-13 v0.1 surface) and **Unlinked References** (Story 12.0 v0.5+) — Linked is the default-open sub-tab
+**And** each unlinked mention has a **"Promote to link"** action that inserts a `[[wiki-link]]` at the mention site (atomic-write per LD-8; respects Single Writer Rule)
+**And** perf is gated by `assert_no_perf_regression!("story-12.0-unlinked-mentions", …)` initial baseline ≤100ms on a 1k-file Vault (same FR-13 NFR ceiling as Linked Backlinks)
+**And** the CLI command `orgsidian query unlinked-mentions <headline-id>` exposes the same API per LD-27
+**And** module carries `//! Implements FR-13 extension (unlinked references — v0.5+)` doc-comment.
 
 ### Story 12.1: Implement user CSS file loader
 
@@ -2146,24 +2338,26 @@ So that FR-8 daily-driver UX matches the depth of the planning surface (PRD §6.
 **And** clocking out triggers a system notification "Clocked out of {Headline} — {HH:MM} recorded"
 **And** clicking the status bar opens `ClockEditor` for the active entry (Story 7.8 reused).
 
-### Story 13.5: Conduct full a11y keyboard navigation review
+### Story 13.5: Graduate a11y from happy-path to representative-coverage (v1.0 narrowing per 2026-05-20)
+
+*(Narrowed 2026-05-20: Story 1.17 — added in the post-PRD-2026-05-20 reconciliation — now ships the LD-58 hard CI gates from v0.1 Alpha (axe-core + contrast-matrix + 6 happy-path keyboard scenarios). The "deferred to v1.5+" wording that previously framed this story is no longer accurate. Story 13.5 narrows to the v1.0 graduation work: expanding happy-path to representative-coverage, focus-ring snapshot tests, qualitative sign-off. Full screen-reader certification (assistive-tech audit) remains v1.5+.)*
 
 As the **screen-reader-using or keyboard-only user**,
-I want every menu, primary surface (editor, Today Dashboard, Agenda, Settings, Merge Dialog, Quick Capture, Command Palette), and dialog reachable via keyboard with logical Tab order and visible focus rings,
-So that NFR-9 WCAG 2.1 AA keyboard navigation contract is honored.
+I want the per-PR a11y CI gates (already live from v0.1 per Story 1.17) expanded at v1.0 to cover representative scenarios — not just happy-path — across every primary surface, with visible focus rings and Tab-order snapshots verified,
+So that the v1.0 a11y posture matches the launch credibility bar (NFR-9 v1.0 graduation; full assistive-tech certification still a v1.5+ commitment).
+
+**Traces:** NFR-9 (graduation), LD-58 (extension), Story 1.17 (foundation).
 
 **Acceptance Criteria:**
 
-**Given** all UI epics closed,
-**When** the a11y review is performed,
-**Then** a Playwright E2E spec at `shell-ui/e2e/a11y-keyboard.spec.ts` navigates every primary surface using only the keyboard
-**And** `axe-core` reports **0 violations of severity `serious` or `critical`** on each surface (lint-checkable; CI gate)
-**And** focus rings are visible on all interactive elements (verified via Playwright `getComputedStyle(focusedElement).outline` assertion)
-**And** Tab order matches visual flow on each surface (Playwright snapshot test of focus sequence vs DOM order)
-**And** known limitations (e.g., screen reader best-effort per PRD §8 — full audit deferred to v1.5+) are documented in `docs/user-guide/accessibility.md`
+**Given** Story 1.17 LD-58 hard gates have been green from v0.1 through v0.5 AND all v1.0 UI epics closed,
+**When** the v1.0 a11y graduation work is performed,
+**Then** `shell-ui/e2e/a11y/` expands from the 6 happy-path scenarios (Story 1.17) to **representative-coverage** per surface: each primary surface (Today Dashboard, Agenda, Editor, Quick Capture, Settings, Merge Dialog, Graph View, **Refile Picker**, Command Palette) gets 3-5 keyboard-only scenarios exercising distinct interaction paths
+**And** focus rings are verified visible on all interactive elements via Playwright `getComputedStyle(focusedElement).outline` assertions on the expanded scenarios
+**And** Tab order matches visual flow on each surface — Playwright snapshot test of focus sequence vs DOM order; intentional reorderings (skip-link to main, focus-trap in Merge Dialog 3-pane) are explicitly documented
+**And** the axe-core gate (already per-PR via Story 1.17) is unchanged — Story 13.5 does NOT raise the gate to best-practice tier; that remains a v1.5+ evaluation
+**And** known limitations (full screen-reader certification deferred to v1.5+; assistive-tech matrix NVDA + JAWS + VoiceOver pending) are documented in `docs/user-guide/accessibility.md`
 **And** the manual qualitative judgment ("does focus order feel right with a screen reader?") is performed by a human reviewer and recorded in `docs/user-guide/accessibility.md` § Sign-off (Party Mode round 2 — Murat: automated gates handle the objective WCAG criteria; subjective experience requires human review).
-
-**Traces:** NFR-9.
 
 ### Story 13.6: Build comprehensive `docs/user-guide/` site
 

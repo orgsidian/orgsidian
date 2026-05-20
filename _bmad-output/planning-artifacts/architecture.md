@@ -42,7 +42,7 @@ This Project Context Analysis re-derives the architectural picture under that re
 
 **Non-Functional Requirements — architecturally load-bearing:**
 
-- **Performance budgets** (baseline 2020+ M1 / x86_64, 1000-file Vault): startup <2s cold, typing <30ms, agenda recompute <100ms incremental, search <200ms first 50 results, capture end-to-end <1s, memory <500MB resident.
+- **Performance budgets** (baseline 2020+ M1 / x86_64, 1000-file Vault): startup <2s cold, typing <30ms, agenda recompute <100ms incremental, search two-tier (<100ms first 10 results, <200ms full 50 results — PRD §4.3 FR-12 + §8 post-2026-05-20), capture end-to-end <1s, memory <500MB resident, **Graph View ≤2s for 5,000 nodes force-directed render** (FR-26; LD-56).
 - **Round-trip preservation (FR-2)** enforced by automated CI on every release — non-negotiable trust contract with the org community.
 - **Cross-platform parity** for v1.0: macOS + Linux + Windows feature-equivalent. macOS + Linux only in v0.1 Alpha and v0.5 Beta.
 - **Data sovereignty:** no telemetry by default, no network calls in core workflow, no cloud account ever.
@@ -66,7 +66,7 @@ Decisions that emerge from PRD + addendum, validated and refined by the Party Mo
 - **LD-4. Index: SQLite via `rusqlite`** (FTS5 built-in, better ergonomics than `better-sqlite3`). PRAGMAs locked: `journal_mode=WAL`, `synchronous=NORMAL`, `mmap_size=268435456`, `cache_size=-64000`, `temp_store=MEMORY`, `wal_autocheckpoint=4000`. FTS5 tokenizer: `unicode61 remove_diacritics 2` + `porter` (default English; per-Vault overridable). Application-level FTS5 sync (no triggers on external-content tables).
 - **LD-5. Monorepo: `@orgsidian/core` (pure logic) + `@orgsidian/shell` (Tauri app) + `@orgsidian/cli` (headless CLI, reopened per Party Mode).** In-process boundary between core and shell. CLI consumes `core` only — no shell dependency. GitHub organization `orgsidian` (newly created — Story 1.13) hosting the monorepo at `orgsidian/orgsidian`; **repo is private during pre-Alpha development and flipped to public at the v0.1 Alpha release tag** (Story 6.10, before SM-1 announcement). Org reserved as namespace for v2+ ancillary repos. Boundary enforcement via `eslint-plugin-boundaries` equivalent for Rust (workspace member visibility rules) + CI checks for cyclic dependencies.
 - **LD-6. Editor surface: CodeMirror 6** with Pseudo-WYSIWYG via decorators/widgets. Round-trip fidelity is the source-of-truth contract; widget toggling between `Decoration.replace` ↔ `Decoration.widget` is a known sharp edge (CM discuss #6504) that must be exercised by tests at the v0.1 Alpha gate. Mandatory recipes locked: `WidgetType.eq()` shallow-equal on widget props, `Transaction.userEvent` for widget-triggered changes, no `view.dispatch` inside `update()` while `view.composing` is true, `widget.ignoreEvent() === false` for interactive widgets. Multi-cursor + widget interactions documented as a known limitation in v0.1 (codemirror/dev #111).
-- **LD-7. Single Writer Rule + Dirty Buffer + Merge Dialog** as the concurrent-edit integrity contract. External writes on a clean buffer auto-reload; on a dirty buffer trigger the Merge Dialog (three-pane: Yours / External / Merged with hunk-level resolution). Race-condition surface tested deterministically via injected clock and synthetic external-write events; chaos tests offline.
+- **LD-7. Single Writer Rule + Dirty Buffer + Merge Dialog** as the concurrent-edit integrity contract. External writes on a clean buffer auto-reload; on a dirty buffer trigger the Merge Dialog (three-pane: Yours / External / Merged with hunk-level resolution). Race-condition surface tested deterministically via injected clock and synthetic external-write events; chaos tests offline. **Cross-file extension (LD-57, added 2026-05-20 for FR-25 Refile):** when an operation writes two files atomically (Refile: source loses subtree + destination gains subtree), both files must be clean before the operation begins (dirty → save-first prompt) and the rollback discipline of LD-57 applies.
 - **LD-8. Atomic writes: `atomic-write-file` crate** (Rust) + 3-retry exponential backoff wrapper for AV/Search-indexer transient locks (the dominant real-world failure mode on Windows). `MoveFileExW` *not* officially guaranteed atomic — wrapper handles platform differences.
 - **LD-9. File watcher: `notify-rs`** (Rust-native, the Tauri default). Watcher abstraction layer in `core` allows deterministic fakes for unit tests; integration tests use golden traces recorded from real external editors (vim, VS Code, Emacs save sequences). Network mounts and case-folding filesystems documented as v0.1 unsupported configurations.
 - **LD-10. Plugin API designed in v1.0 as a versioned internal contract; NOT published to crates.io until v1.5+.** The `orgsidian-plugin-api` crate lives inside the monorepo as an internal workspace member throughout v0.1 → v1.4; all v1.0 features (Agenda, Capture, Search, Report, Theme) consume the same trait surface that will eventually be exposed externally — no parallel "private" hooks. SemVer discipline + contract tests + changelog tracked internally from day 1, but external publication and SemVer-1.0 lock happen only when v1.5+ exposes the API to third-party plugin authors. Rationale (Party Mode round 3): publishing a SemVer contract before real plugin authors exist is the anti-pattern that broke React Hooks, Vue Composition API, Svelte runes — the trait shape must absorb feedback from internal-plugin churn before lock-in.
@@ -189,6 +189,9 @@ A dedicated tech-stack reference document will formalize exact version pins and 
 | `rstest` | latest stable | parameterized testing |
 | `insta` | latest stable | snapshot testing |
 | `@lingui/*` | 6.x (`^6.0.1` at lock time 2026-05-19) | i18n (LD-52); `@lingui/core`, `@lingui/react`, `@lingui/cli`, `@lingui/vite-plugin`, `@lingui/swc-plugin`, `eslint-plugin-lingui` |
+| `react-force-graph-2d` | `1.29.1` (pinned at lock time 2026-05-20) | FR-26 Backlink Graph View canvas + d3-force (LD-56); MIT |
+| `@axe-core/playwright` | latest stable | WCAG axe-core integration into Playwright suite (LD-58); MIT |
+| `toml` (crate) | latest stable | Settings TOML serialization (LD-40 amended 2026-05-20); MIT/Apache-2.0 |
 
 ### Cargo Workspace Layout — 8 Crates from Day 1
 
@@ -507,7 +510,7 @@ Output: human-readable default; `--json` flag for scripting. CLI is the primary 
 
 **LD-28. Window management.** Two Tauri windows in v1.0: `main` (editor + Today Dashboard + Agenda + Settings + Merge Dialog) and `quick-capture` (separate, lightweight, single-input — supports FR-10 latency budget <1s). Future plugin-spawned windows possible in v1.5+ via Plugin API.
 
-**LD-29. Routing: TanStack Router (latest stable).** End-to-end type-safe router for the `main` window. Surfaces: `/today` (default), `/agenda/$view`, `/editor/$filePath/$headlineId?`, `/settings/$section`. Typed search params (`?date=`, `?tag=`, `?todo-state=`), typed loader data (parsed file content, AST), compiler-checked `<Link>` targets with `params={{filePath}}`. Quick Capture window is single-surface, no router. Routes are state-driven; URLs reflect current surface for deep-linking from coaching/help links. Rationale (Party Mode round 3, Amelia): with ~5-7 surfaces in a desktop app (no SSR, no streaming), TanStack Router's compiler-enforced route + param + search safety eliminates the runtime-cast drift inherent to React Router v7's `useParams() → Record<string, string | undefined>`.
+**LD-29. Routing: TanStack Router (latest stable).** End-to-end type-safe router for the `main` window. Surfaces: `/today` (default), `/agenda/$view`, `/editor/$filePath/$headlineId?`, `/graph` (FR-26; LD-56), `/settings/$section`. Typed search params (`?date=`, `?tag=`, `?todo-state=`), typed loader data (parsed file content, AST), compiler-checked `<Link>` targets with `params={{filePath}}`. Quick Capture window is single-surface, no router. Routes are state-driven; URLs reflect current surface for deep-linking from coaching/help links. Rationale (Party Mode round 3, Amelia): with ~5-7 surfaces in a desktop app (no SSR, no streaming), TanStack Router's compiler-enforced route + param + search safety eliminates the runtime-cast drift inherent to React Router v7's `useParams() → Record<string, string | undefined>`.
 
 **LD-30. Virtualization.** **`@tanstack/react-virtual`** for Agenda views (1k+ scheduled items), Search results, and Backlinks panel. CM6 handles editor internal virtualization natively (viewport-based decoration rendering).
 
@@ -517,7 +520,7 @@ Output: human-readable default; `--json` flag for scripting. CLI is the primary 
 
 **LD-32. CI matrix** (GitHub Actions):
 
-- **Per-PR (target: <90s wall-clock total)**: `cargo build/test/clippy -- -D warnings/fmt --check`, `pnpm typecheck/test`, **round-trip subset gate** (~100 representative files from the corpus, <60s), **perf snapshot regression gate** (±10% on median of 5 runs) — runs on macOS-arm64 + Ubuntu-LTS.
+- **Per-PR (target: <90s wall-clock total)**: `cargo build/test/clippy -- -D warnings/fmt --check`, `pnpm typecheck/test`, **round-trip subset gate** (~100 representative files from the corpus, <60s), **perf snapshot regression gate** (±10% on median of 5 runs), **a11y hard gate** (LD-58 — contrast-matrix + axe-core + happy-path keyboard scenarios on the 6 primary surfaces; PRD §8 post-2026-05-20) — runs on macOS-arm64 + Ubuntu-LTS.
 - **Nightly (full)**: full matrix including Windows + Arch Linux + Ubuntu-LTS; **full round-trip corpus gate** (~2000 assertions extracted from `test-org-element.el`); perf trend dashboard; L2 oracle round-trip test via `emacs --batch` on a subset corpus.
 - **Merge gate**: PR can only merge if (a) per-PR job is green AND (b) most recent nightly is green within last 24h. Stale-nightly (>24h failing) blocks all merges to main.
 - **Release**: triggered by version tag; builds artifacts per platform, signs, publishes to GitHub Releases.
@@ -942,6 +945,7 @@ orgsidian/
 │   │   │   │   ├── today.tsx                 # /today (default landing — FR-6)
 │   │   │   │   ├── agenda.$view.tsx          # /agenda/today, /agenda/week, /agenda/custom (FR-7)
 │   │   │   │   ├── editor.$filePath.tsx      # /editor/$filePath (FR-1, FR-3, FR-4)
+│   │   │   │   ├── graph.tsx                 # /graph (FR-26 Backlink Graph View; LD-29, LD-56)
 │   │   │   │   └── settings.$section.tsx     # /settings/general, /settings/themes, etc. (FR-22, FR-23)
 │   │   │   └── index.tsx                     # / → redirect to /today
 │   │   ├── components/
@@ -953,6 +957,8 @@ orgsidian/
 │   │   │   ├── settings/                     # Settings panel components
 │   │   │   ├── merge/                        # 3-pane Merge Dialog (FR-16; custom focus mgmt)
 │   │   │   ├── palette/                      # cmdk Command Palette (FR-12 entry)
+│   │   │   ├── graph/                        # FR-26 Backlink Graph View: GraphCanvas.tsx (react-force-graph-2d) + GraphNodeList.tsx (a11y fallback per LD-58)
+│   │   │   ├── refile/                       # FR-25 Refile target picker (fuzzy file + outline path) — v0.5 Beta
 │   │   │   └── onboarding/                   # Starter Vault picker (FR-18) + Tutorial (FR-19)
 │   │   ├── capture/                          # Quick Capture window components (FR-10)
 │   │   ├── coaching/                         # FR-21
@@ -1047,12 +1053,14 @@ orgsidian-cli ────────┘                     ├──► orgsi
 | **FR-10** Quick Capture global | `orgsidian-shell-app/src/commands/capture.rs` + `shell-ui/quick-capture.html` + `shell-ui/src/capture/` + `tauri-plugin-global-shortcut` |
 | **FR-11** System tray | `orgsidian-shell-app/src/tray.rs` |
 | **FR-12** FTS5 search | `orgsidian-index/src/query/search.rs` + `shell-ui/src/components/palette/` |
-| **FR-13** Backlinks | `orgsidian-index/src/query/backlinks.rs` + `shell-ui/src/components/org/BacklinksPanel.tsx` |
+| **FR-13** Backlinks | `orgsidian-index/src/query/backlinks.rs` (Linked: `:ID:` + `[[wiki-link]]` traversal) + `orgsidian-index/src/query/unlinked_references.rs` (v0.5+: FTS5 title-match outer-joined against `links` table) + `shell-ui/src/components/org/BacklinksPanel.tsx` (Linked/Unlinked sub-tabs) |
 | **FR-14** Project Report | **`orgsidian-report/`** (new crate) + `shell-ui/src/components/settings/ReportExport.tsx` |
 | **FR-15** Vault designation | `orgsidian-vault/src/path.rs` + `shell-ui/src/components/settings/VaultPicker.tsx` |
 | **FR-16** Watcher + Single Writer | `orgsidian-watcher/*` + `orgsidian-vault/src/dirty_buffer.rs` + `shell-ui/src/components/merge/` |
 | **FR-17** SQLite derived index | `orgsidian-index/*` + rebuild logic (LD-13) |
-| **FR-18** Starter Vault | `orgsidian-core/src/starter_vault/` + `shell-ui/src/components/onboarding/` |
+| **FR-18** Starter Vault | `orgsidian-core/src/starter_vault/templates/{personal-gtd,student,freelancer,empty}/` (v0.1 Alpha ships personal-gtd + student + freelancer per PRD 2026-05-20; empty in v0.5) + `shell-ui/src/components/onboarding/` |
+| **FR-25** Refile a Headline | `orgsidian-vault/src/refile.rs` (subtree extract/insert under `tree-sitter-org`) + `orgsidian-core/src/orchestrator/refile.rs` (cross-file atomicity per LD-57) + `shell-ui/src/components/refile/RefileTargetPicker.tsx` (fuzzy file + outline path) |
+| **FR-26** Backlink Graph View | `orgsidian-index/src/query/graph.rs` (`adjacency(scope) -> GraphData { nodes, edges }`) + `shell-ui/src/components/graph/GraphCanvas.tsx` (`react-force-graph-2d` per LD-56) + `shell-ui/src/components/graph/GraphNodeList.tsx` (a11y textual fallback per LD-58) + `shell-ui/src/routes/_layout/graph.tsx` (TanStack route per LD-29) |
 | **FR-19** Tutorial | `shell-ui/src/components/onboarding/Tutorial.tsx` |
 | **FR-20** Plain/Power Mode | `stores/settingsStore.ts` + Tailwind `data-[mode=plain]:hidden` |
 | **FR-21** Inline Coaching | `shell-ui/src/coaching/` |
@@ -1183,7 +1191,7 @@ Step 7 validation surfaced gaps that were not catalogued in steps 1-6. LD-37 thr
 - **Global state** lives in OS-conventional config dir (`~/.config/orgsidian/` Linux, `~/Library/Application Support/Orgsidian/` macOS, `%APPDATA%\Orgsidian\` Windows): list of recent Vault paths, default UI language, default theme for new Vaults, telemetry decision (when reintroduced in v1.5+).
 - **SQLite index** stays OUTSIDE the Vault (OS data dir; LD-17) because it is derived and rebuildable. It does NOT follow the Vault when moved — the new machine rebuilds it automatically per LD-13.
 - User experience: moving a Vault folder to a new machine + re-opening via Settings preserves settings, keybindings, themes, coaching dismissals; only the index rebuilds silently within the FR-15 budget.
-- Supersedes any earlier implication that all settings live in `~/.config/`. `tauri-plugin-store` is configured with **two store roots**: `<Vault>/.orgsidian/` for per-Vault and OS config dir for global.
+- **Format (amended 2026-05-20 per PRD §10 OQ-7 resolution).** Settings are stored as **TOML** in human-readable files: per-Vault at `<Vault>/.orgsidian/settings.toml`; global at `<config-dir>/global.toml`. The TOML file is **authoritative** — the Settings GUI is a thin round-trip editor over it (any GUI change writes the canonical TOML; any external edit to TOML refreshes the GUI on next focus). Rationale: org-mode users expect text-editable config; TOML pairs idiomatically with the Rust core (Cargo precedent) and supports comments (JSON does not); YAML rejected on security history (billion-laughs, YAML 1.1/1.2 inconsistencies) given the local-first/no-network commitment. `tauri-plugin-store` is **retained only for ephemeral UI state** (in-session palette open/closed, scroll positions, transient view toggles) — never authoritative settings.
 
 ### LD-41. Failure mode catalog
 
@@ -1198,6 +1206,7 @@ Step 7 validation surfaced gaps that were not catalogued in steps 1-6. LD-37 thr
 | SQLite index corruption | `PRAGMA integrity_check` on startup fails | Drop + rebuild from files (LD-13) with progress UI (LD-42) | Fixture: pre-corrupted `.db` file |
 | `.tmp` orphan files from prior crash | Startup scan for `*.tmp.<pid>` matching dead PID | Delete orphans before opening Vault | Test: `kill -9` mid-write fixture, then restart |
 | External tool deletes file with Dirty Buffer open | FS watcher emits delete on path with `is_dirty=true` | Surface banner "File deleted externally. Save will recreate it." Options: Save (recreate), Discard buffer, Save-as-different-file | Integration test with watcher harness |
+| Refile partial completion (destination written, source write fails) — FR-25 | `refile_orchestrator` detects source-write error after destination commit | Restore destination from `.bak` backup taken before destination write; surface error "Refile reverted: source could not be updated"; both files end at pre-Refile state | Fault-injection: inject `ENOSPC` on source write after dest commit; verify roll-forward; see LD-57 |
 
 ### LD-42. Large-vault indexing UX
 
@@ -1255,6 +1264,8 @@ The architecture has selected MIT (LD-1) and `nvim-orgmode/tree-sitter-org` (LD-
 
 This LD is a TODO outside the architecture document scope; tracked as the first follow-up workstream "PRD reconciliation post-architecture" before v0.1 sprints begin.
 
+**Closed-loop addendum (2026-05-20) — UX-design-specification reconciliation.** A second PRD reconciliation completed 2026-05-20, absorbing the new UX design specification (`_bmad-output/planning-artifacts/ux-design-specification.md`, 2026-05-20). Architecture impact captured in this document via: LD-56 (FR-26 Graph View rendering library), LD-57 (FR-25 Refile cross-file atomicity), LD-58 (WCAG 2.1 AA hard CI gates from v0.1). Plus amendments to LD-7 (cross-file extension pointer), LD-29 (`/graph` route), LD-32 (per-PR a11y gate), LD-40 (TOML config-file authoritative; supersedes `tauri-plugin-store` for settings), LD-41 (Refile partial-failure row), stack-versions table (`react-force-graph-2d@1.29.1`, `@axe-core/playwright`, `toml` crate), FR→Component table (FR-13 amended for unlinked-references; FR-18 annotated with v0.1 templates; FR-25 + FR-26 rows added). PRD/architecture for v0.1 Alpha is now closed-loop on the 2026-05-20 reconciliation wave. Downstream: `epics.md` requires reconciliation in a separate pass (FR-25 + FR-26 story scaffolding; WCAG a11y gate scaffold story in Epic 1; Freelancer Starter Vault content stories promoted to v0.1).
+
 ### LD-47. Tauri ecosystem pinning policy
 
 - `Cargo.toml`: **exact-pin** (`=2.X.Y`, not caret) for `tauri`, `tauri-build`, every `tauri-plugin-*`, `tauri-specta`, and the transitive `webkit2gtk-rs`.
@@ -1292,6 +1303,85 @@ Before v1.5+ external publication of `orgsidian-plugin-api`, conduct a dedicated
 - **Any rename, removal, or addition** of an existing variable fails the test; explicit acceptance requires snapshot update + a CHANGELOG entry under "Theme API."
 - **Naming convention enforced**: semantic granularity (`--org-headline-h1-fg`, `--org-accent-todo`), never structural (`--org-color-blue-500`). Structural tokens are an *internal implementation* detail of `tokens.css`, never exposed in the public theme API.
 - This locks the FR-22 token vocabulary as a **public contract** with theme authors from v0.5 Beta onward (when the theme loader ships). Token additions during v0.6..v1.0 require coordinated CHANGELOG bumps.
+
+### LD-56. Backlink Graph View rendering library
+
+**Decision.** `react-force-graph-2d@1.29.1` (canvas + d3-force, React-native bindings, MIT).
+
+**Context.** FR-26 (v0.1 Alpha) requires a force-directed Backlink Graph rendering Headlines with `:ID:` as nodes and `[[id:...]]` / `[[wiki-link]]` references as edges, with click-to-Source navigation via `:ID:` lookup, pan/zoom, zoom-in labels, and an empty-state coaching message. Perf budget: ≤5k nodes <2s on 2020+ baseline hardware. Must render inside the Tauri webview alongside the locked React 19 + TanStack Router + CodeMirror 6 stack without bloating boot time.
+
+**Options considered.**
+- `react-force-graph-2d`: React-first wrapper over `force-graph` (canvas + d3-force); `onNodeClick(node)` exposes full node payload incl. configurable `nodeId`; peer `react: "*"` (React 19 compatible); deps = `force-graph` + tiny `react-kapsule` + `prop-types`. **Selected.**
+- `sigma.js`: WebGL-native, faster at 50k+ nodes, but no React bindings (would need a hand-rolled imperative wrapper), heavier integration cost, WebGL overkill at our 5k budget. Rejected on solo-OSS maintenance burden.
+- `cytoscape.js`: layout-rich (cose, dagre, klay) but ~3× the bundle of force-graph and its React wrapper (`react-cytoscapejs`) lags releases. Rejected on bundle + maintenance lag.
+
+**Rationale.**
+- Bundle: canvas-only path avoids pulling Three.js/WebGL (2D variant deps: `force-graph` + `react-kapsule` + `prop-types`; no large transitive graph).
+- Perf headroom: d3-force-on-canvas comfortably handles 5k nodes in <2s on M1-class hardware, with documented headroom toward 10k for v0.5+ vault scale.
+- React-first: idiomatic `<ForceGraph2D graphData={...} nodeId="id" onNodeClick={n => routeTo(n.id)} />` — no imperative bridge, plays cleanly with TanStack Router navigation per LD-29.
+- Maintained by `vasturiano` with steady release cadence (1.29.x current); mature, low-surprise surface for solo-OSS upkeep.
+- Doesn't lock out v0.5+ features: custom node rendering (`nodeCanvasObject`), subgraph filtering via `graphData` swap, edge styling per `[[id:]]` vs `[[wiki:]]` via `linkColor`/`linkWidth` accessors.
+
+**Consequences.**
+- Dependency added to `packages/shell-ui/package.json` at pinned `react-force-graph-2d@1.29.1` (stack-versions table).
+- Component lives at `packages/shell-ui/src/components/graph/`.
+- Index API: `orgsidian-index/src/query/graph.rs::adjacency(scope) -> GraphData { nodes: Vec<NodeRef{ id, file, title }>, edges: Vec<Edge{ src_id, dst_id, kind }> }`. Reuses the `links` table already populated by FR-13 Backlinks (LD-13).
+- Perf gate in LD-32 nightly: synthetic 5k-node force-directed render ≤2s baseline runner; ≤500ms steady-state frame after layout settle.
+- A11y fallback: a textual `GraphNodeList.tsx` view (sorted by degree, keyboard-reachable, alphabetical jump) shipped alongside the canvas view; the hard CI gate per LD-58 covers it. Toggle via View menu or `g l` chord.
+- Cross-webview tested in CI: macOS WebKit + Linux WebKitGTK + Windows WebView2 (Tauri matrix per LD-32 nightly).
+
+**Open follow-ups.**
+- v0.5+: typed-edge styling for `[[id:]]` vs `[[wiki:]]`; subgraph filter UI (by tag, by file); evaluate `nodeCanvasObject` custom labels for high-density zoom-in legibility; benchmark at 10k+ nodes against the v0.5 vault-scale target.
+
+### LD-57. Cross-file write atomicity for FR-25 Refile
+
+**Decision.** **Sequence-with-`.bak`-restore** pattern for atomic Refile across source + destination files.
+
+**Context.** FR-25 Refile moves a Headline + subtree from a source `.org` file to a destination `.org` file. From the user's perspective the operation is atomic — there is no observable state where the Headline exists in both files or in neither. The Single Writer Rule (LD-7) covers per-file integrity; cross-file atomicity is its own problem.
+
+**Options considered.**
+- **Sequence-with-`.bak`-restore.** (1) Both files must be clean (no Dirty Buffer); if dirty, prompt save-first. (2) Snapshot destination to `<dest>.bak.<pid>.<ts>` in the same directory. (3) Atomic-write destination (subtree inserted at chosen outline path) via the LD-8 temp-rename pattern. (4) Atomic-write source (subtree removed). (5) On success: delete the `.bak` and emit watcher-suppress tokens for both files. (6) On step-4 failure: restore destination from `.bak`; surface error; both files end at pre-Refile state. **Selected.**
+- Write-both-to-temp-then-atomic-rename pair. Stronger theoretically, but cross-directory atomic rename is unreliable on Windows (and even on POSIX is per-directory, not global); the second rename can fail after the first commits — same failure mode as sequence-with-bak but harder to reason about and reverse. Rejected on reliability + Windows fragility. The pattern Emacs `org-refile` itself uses is morally sequence-with-bak.
+
+**Rationale.**
+- The `.bak` file is a known recoverable artifact; orphans are collected by the LD-41 startup scan (extended to match `*.bak.*` patterns under the Vault).
+- Both-clean precondition keeps the recovery story bounded — no Dirty Buffer state to reconcile during rollback.
+- Watcher-suppress tokens (already in the save-cycle data-flow) prevent the watcher from firing Merge Dialogs on Orgsidian's own writes during the operation.
+- Implementation lives in `crates/orgsidian-core/src/orchestrator/refile.rs`; the subtree extract/insert primitives live in `orgsidian-vault/src/refile.rs` using the tree-sitter-org grammar for boundary detection.
+
+**Consequences.**
+- New row in LD-41 failure catalog (added 2026-05-20) for "Refile partial completion".
+- LD-7 extended with cross-file pointer to this LD.
+- v0.5 Beta scope (per PRD §6.2 + FR-25): the Refile orchestrator + target picker UI lands here. Story scaffolding in `epics.md` deferred to next reconciliation pass.
+- Fault-injection test: inject `ENOSPC` on source write after destination commit; assert destination rolls back from `.bak` and both files match pre-Refile bytes.
+- Future-extension hook: the same pattern generalizes to "multi-headline batch Refile" (v0.6+) — same orchestrator, snapshot all touched files first.
+
+### LD-58. Accessibility CI gates (WCAG 2.1 AA hard gate from v0.1 Alpha)
+
+**Decision.** Three hard CI gates enforcing WCAG 2.1 AA from v0.1 Alpha, integrated into the LD-32 per-PR matrix.
+
+**Context.** PRD §8 (post-2026-05-20 reconciliation with UX design specification Experience Principle 9) elevates WCAG 2.1 AA from a soft target to a hard CI gate from v0.1 Alpha. Three gates required: (1) contrast-matrix verification, (2) axe-core automated WCAG rule scan on every primary surface, (3) keyboard-only Playwright scenarios. Full screen-reader certification remains a v1.5+ commitment.
+
+**The three gates.**
+
+1. **Contrast-matrix gate.** A Vitest test in `shell-ui/src/themes/contrast.test.ts` extracts all `--org-*-fg` / `--org-*-bg` token pairs from `tokens.css` (canonical per LD-51) for both `dark` and `light` themes; computes WCAG relative-luminance contrast ratio (`(L1 + 0.05) / (L2 + 0.05)`); asserts ≥4.5:1 for body text pairs and ≥3:1 for large text / UI chrome pairs. New tokens that don't declare their pair role in `tokens.css` metadata fail the gate (forces explicit categorization).
+
+2. **axe-core gate.** `@axe-core/playwright` integrated into the existing Playwright `e2e/` suite. Each happy-path scenario auto-runs `await new AxeBuilder({ page }).analyze()`; any violations at `serious` or `critical` impact fail the test. Configured rule subset: WCAG 2.1 AA tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`), no best-practice warnings (avoid noise that erodes the gate).
+
+3. **Keyboard-only scenarios gate.** **One happy-path keyboard-only scenario per primary surface** (PRD §8 + UX spec post-2026-05-20 decision): Today Dashboard, Agenda, Editor, Quick Capture, Settings, Graph View. Each scenario starts with `page.keyboard` only (no `mouse.click`), navigates to the surface, completes a representative action (e.g., on Agenda: tab to a Headline, press Enter to open Editor; on Quick Capture: hotkey, type, submit, verify Inbox), and asserts the action's persisted side-effect. Per-PR runtime budget: ≤2-3 min total for the 6 scenarios on macOS-arm64 + Ubuntu-LTS. Exhaustive per-surface coverage is **deferred to v1.0 graduation** — happy-path is the v0.1 hard floor.
+
+**Consequences.**
+- Stack-versions table pins `@axe-core/playwright` (latest stable).
+- LD-32 per-PR job adds a `pnpm a11y` step running: `pnpm test:contrast` (Vitest) + `pnpm test:e2e -- --grep @a11y` (Playwright kbd + axe scenarios tagged with `@a11y`).
+- Test scaffolding lives at `packages/shell-ui/src/themes/contrast.test.ts` + `packages/shell-ui/e2e/a11y/`.
+- Validation Coverage (line ~1366) reworded — full **screen-reader** certification remains v1.5+; contrast + keyboard nav are v0.1 hard gates, not deferred.
+- Graph View (LD-56) ships its `GraphNodeList.tsx` textual fallback to clear gate #3 — canvas-only graphs are otherwise keyboard-hostile.
+- Token authors (theme contributors from v0.5 onward, per LD-51) inherit the contrast gate — themes that fail contrast can't merge.
+
+**Open follow-ups.**
+- v0.5+: expand keyboard-only scenario coverage from happy-path to representative-coverage (multiple scenarios per surface). Decision-grade question at v0.5 retro.
+- v1.0: evaluate `axe-core` rule expansion (best-practice tier) — likely gradual ramp, not big-bang.
+- v1.5+: full assistive-tech certification audit (NVDA + JAWS + VoiceOver matrix); ARIA live regions + structured navigation landmarks across all surfaces.
 
 ### Project Tree Amendment
 
@@ -1363,7 +1453,7 @@ orgsidian/
 - Cross-platform parity via CI matrix (LD-32).
 - Data sovereignty via CSP (LD-18), zero telemetry (LD-23), fs allow-list (LD-17), Vault-self-contained state (LD-40).
 - Reliability via atomic writes + AV retry (LD-8), Single Writer Rule (LD-7), startup integrity check + rebuild policy (LD-13), failure mode catalog (LD-41), multi-instance lockfile (LD-39), plugin panic isolation (LD-38).
-- Accessibility via shadcn/Radix primitives + Merge Dialog custom focus; full a11y audit deferred to v1.5+ per PRD §8.
+- Accessibility via shadcn/Radix primitives + Merge Dialog custom focus; **WCAG 2.1 AA contrast + keyboard navigation as hard CI gate from v0.1 Alpha** (LD-58 — axe-core + contrast-matrix + Playwright happy-path keyboard scenarios on the 6 primary surfaces; PRD §8 post-2026-05-20). Full screen-reader certification (assistive-tech compatibility audit) remains deferred to v1.5+.
 - i18n infrastructure committed; library selected: Lingui v6.x (LD-52).
 
 ### Implementation Readiness Validation ✅

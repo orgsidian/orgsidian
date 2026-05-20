@@ -2,8 +2,10 @@
 title: Orgsidian
 status: final
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-20
 revisions:
+  - date: 2026-05-20
+    summary: PRD reconciliation post-UX-design-specification (`_bmad-output/planning-artifacts/ux-design-specification.md`). §1 Vision wedge reframed to "outline + agenda + graph" three views. §3 Glossary adds Refile + Graph View. §4.2 FR-7 notes Done-This-Week/Month default preset for v0.5 Beta; new FR-25 Refile (org-canonical triage primitive). §4.3 FR-12 latency tightened to two-tier (<100ms first 10 / <200ms full 50 per UXD effortless-interactions refinement); FR-13 notes unlinked-references panel as v0.5+ extension; new FR-26 Backlink Graph View. §4.5 FR-18 assumption updated — Freelancer Starter Vault promoted to v0.1 Alpha per lighthouse-persona commitment (UX spec line 115). §6.1 v0.1 Alpha scope adds FR-26 Graph view and updates FR-18 (Personal GTD + Student + Freelancer). §6.2 v0.5 Beta scope adds FR-25 Refile + Done-This-Week preset. §8 Accessibility NFR strengthened: WCAG 2.1 AA contrast + keyboard navigation as hard CI gate from v0.1 Alpha (axe-core + contrast-matrix + Playwright keyboard scenarios). §10 OQ-5 (org syntax coverage) notes operational quarantined-malformed fallback locked by UX Journey 4; OQ-7 (Settings) ✅ Resolved — both GUI + config file ship, config file authoritative; OQ-9 Spike 3 operational invariants locked by UX UXD-8 + Journey 5. §12 Assumptions Index updated for FR-18.
   - date: 2026-05-19
     summary: PRD reconciliation post-architecture (LD-46). §7.3, §10 OQ-1/OQ-2/OQ-8, addendum §A.2 and §A.3 updated to reflect MIT (LD-1) + tree-sitter-org + custom semantic layer (LD-3) + Tauri 2.x (LD-1..LD-10).
   - date: 2026-05-19
@@ -31,7 +33,7 @@ The PRD is structured per BMad conventions: Glossary-anchored vocabulary, featur
 
 Org-mode is the most powerful integrated planner-and-knowledge format ever shipped, but it lives inside Emacs — and Emacs is a hard barrier. Existing escape hatches (Organice in the browser, Logseq with a lossy org dialect, beorg on iOS) each cover a slice of the surface but none combine *desktop-native, cross-platform, OSS, and faithful to the format*.
 
-**Orgsidian is the integrated planner-and-knowledge desktop app for people who want org-mode without Emacs.** It treats tasks, time, and notes as peers — not notes-with-tasks-bolted-on (Obsidian) or tasks-with-notes-attached (NotePlan), but a unified surface where the agenda is the front door and a backlinked knowledge graph is the second click. Files stay as `.org` on the local filesystem; sync is whatever the user already trusts (Git, Syncthing, iCloud).
+**Orgsidian is the integrated planner-and-knowledge desktop app for people who want org-mode without Emacs.** It treats tasks, time, and notes as peers — not notes-with-tasks-bolted-on (Obsidian) or tasks-with-notes-attached (NotePlan), but a unified surface where the agenda is the front door and a backlinked knowledge graph is the second click. The product surface is *one object, three views*: a Headline can be approached through its **outline** (the file as written), the **agenda** (the same Headline as a scheduled commitment), or the **graph** (the same Headline as a node in a backlink network). All three views ship in v0.1 Alpha. Files stay as `.org` on the local filesystem; sync is whatever the user already trusts (Git, Syncthing, iCloud).
 
 The marketing wedge is *task-first* — "planner powered by org-mode" is the headline that cuts through the saturated PKM space and surfaces in HN titles and r/orgmode posts. The product underneath is the integration, not a task tool with notes welded on.
 
@@ -114,6 +116,8 @@ Explicit non-audiences for v1.0 so scope stays honest:
 - **Inbox** — A user-designated `.org` file (default: `inbox.org` at Vault root) that receives Quick Capture entries.
 - **Quick Capture** — A lightweight, OS-level capture surface (global hotkey, optional system tray menu) that appends a new entry to the Inbox without focus-stealing the main application.
 - **Backlink** — A reference from one Headline to another, either by `id:` property link or by `[[wiki-link]]`. Backlinks are indexed bidirectionally.
+- **Graph View** — A visualization of the Vault's `:ID:`-keyed Headlines as nodes and `[[id:...]]` / `[[wiki-link]]` references as edges. The third view in the *one object, three views* model (outline / agenda / graph). Any node opens its source Headline via Click-to-Source.
+- **Refile** — A user-triggered operation that moves a Headline (and its subtree) to a different location, either elsewhere in the same file or into another file. The canonical org-mode triage primitive: it is how an Inbox entry becomes a real project task. Target is selected via a fast picker (file + outline path).
 - **Index** — A SQLite database derived from the Vault contents. Caches parsed structure (Headlines, properties, timestamps, links) for fast agenda and search queries. Always rebuildable from the `.org` files; never the source of truth.
 - **Starter Vault** — A pre-populated Vault template shipped with Orgsidian (Personal GTD, Student, Freelancer, Empty). Used during onboarding to give the user immediate working content rather than a blank canvas.
 - **Project Report** — A user-triggered export (PDF or HTML) summarizing TODO completions, clocked time, linked notes, and milestone status for a selected scope (a file, a Headline subtree, or a tag) over a selected date range.
@@ -207,6 +211,7 @@ A user can switch the Agenda between Today, Week (rolling 7 days), and Custom (d
 **Consequences (testable):**
 - Switching views completes in under 200ms on a 1,000-file Vault.
 - Filters persist within session; user can save named filter presets.
+- v0.5 Beta ships a **Done-This-Week** and **Done-This-Month** default named filter preset (filter: `:DONE:` + date range) as a first-class review surface; the weekly-review JTBD depends on it.
 
 #### FR-8: Clock in, clock out, clock resume
 
@@ -224,6 +229,18 @@ A user can add, modify, or remove a Scheduled timestamp or Deadline on the curre
 **Consequences (testable):**
 - Modifications write standard org `SCHEDULED:` / `DEADLINE:` lines in the planning section under the Headline.
 - Recurring timestamps (e.g., `<2026-05-19 Mon +1w>`) are preserved on round-trip and respected by Agenda (they show up on the next occurrence after completion).
+
+#### FR-25: Refile a Headline
+
+*(Added 2026-05-20 — numbered out of section order to preserve the stable global FR numbering downstream artifacts already reference. Conceptually belongs in this Planner Core section as the triage primitive that pairs with Quick Capture: Inbox → real project.)*
+
+A user can trigger a Refile action on the current Headline (default keyboard shortcut) and select a target location via a fast picker (file + outline path / Headline). On confirmation, the Headline and its full subtree are moved to the chosen location and the source position is removed. The operation persists as a standard org-mode subtree move — no Orgsidian-specific metadata. Realizes the inbox-triage JTBD (§2.2).
+
+**Consequences (testable):**
+- Target picker shows file paths + outline paths; fuzzy-matches on both.
+- Subtree integrity preserved: child Headlines, properties, drawers (LOGBOOK, PROPERTIES), and timestamps move with the parent.
+- Refile triggers Single Writer Rule discipline (FR-16) on both source and destination files: dirty buffer state is respected, atomic write on completion.
+- Undo restores the Headline to its prior location with byte-identical content.
 
 **Feature-specific NFRs:**
 - **Performance:** Agenda recomputation after a single-file edit completes in under 100ms on a 1,000-file Vault (incremental index update, not full rebuild).
@@ -259,7 +276,7 @@ On platforms that support it (macOS menubar, Windows tray, Linux indicator if av
 A user can invoke search (default `Cmd/Ctrl+P` or `Cmd/Ctrl+Shift+F`) and type a query; matching results from across all `.org` files are returned, grouped by file, with the matched line previewed. Selecting a result opens the file at that line. Realizes UJ-6.
 
 **Consequences (testable):**
-- Search query latency under 200ms on a 1,000-file Vault for first 50 results (SQLite FTS5 backing).
+- Search query latency two-tier on a 1,000-file Vault (SQLite FTS5 backing): under **100ms** for first 10 results (the streaming-results coherence budget — what the user sees first); under **200ms** for the full 50 results.
 - Query syntax supports: plain words, exact phrase quotes, tag filter (`#tag:`), file filter (`file:`), TODO state filter (`todo:`).
 
 #### FR-13: Backlinks for the current Headline
@@ -269,6 +286,7 @@ When the cursor is on a Headline, a sidebar panel shows all other Headlines that
 **Consequences (testable):**
 - Backlink panel updates within 100ms of cursor moving to a new Headline.
 - Backlinks include both the linking Headline's title and a short context snippet.
+- An **Unlinked References** sub-panel (text-matches on the current Headline's title that are not yet `[[link]]`-ified) is a v0.5+ extension of this FR; v0.1 ships only Linked Backlinks (explicit `id:` and `[[wiki-link]]` references).
 
 #### FR-14: Project Report export
 
@@ -280,8 +298,20 @@ A user can select a scope (a file, a Headline subtree, or a tag) and a date rang
 - A running Active Clock with no end time is flagged explicitly in the report rather than guessed.
 - Output formatting is customizable via a template file (CSS for HTML, template variables for header/footer). `[ASSUMPTION: template customization is a v1.0 feature, not v0.5.]`
 
+#### FR-26: Backlink Graph View
+
+*(Added 2026-05-20 — numbered out of section order to preserve stable global FR numbering. Conceptually belongs in this section as the visualization peer of FR-13 Backlinks.)*
+
+A user can open a **Graph View** surface (e.g., from a sidebar action or a `Cmd/Ctrl+G` shortcut) that visualizes the Vault as a graph: nodes are Headlines that carry an `:ID:` property; edges are `[[id:...]]` and `[[wiki-link]]` references between them. The user can pan and zoom; clicking a node opens the source Headline in the Editor (**Click-to-Source**). Realizes the *one object, three views* commitment from §1 Vision (outline + agenda + graph). Ships in v0.1 Alpha as the third defining view.
+
+**Consequences (testable):**
+- Graph renders within 2 seconds on a 1,000-file Vault with ≤5,000 nodes; degrades gracefully (e.g., neighborhood-only view) beyond that.
+- Click-to-Source navigates to the exact Headline (not just the file) using the `:ID:`-lookup invariant, not byte offsets — robust to external edits.
+- Graph respects the same Vault-scope as Agenda and Search; no cross-Vault edges.
+- Empty-state messaging when no `:ID:` properties are present points the user to documentation on how `:ID:` enables graph + backlink workflows (workflow over syntax — §1.5).
+
 **Feature-specific NFRs:**
-- **Privacy:** Quick Capture, Search, and Project Report operate entirely locally; no network calls. Telemetry is opt-in; no defaults phone home (see §7 Constraints).
+- **Privacy:** Quick Capture, Search, Project Report, and Graph View operate entirely locally; no network calls. Telemetry is opt-in; no defaults phone home (see §7 Constraints).
 
 ### 4.4 Storage & Index — Filesystem-native + SQLite
 
@@ -334,7 +364,7 @@ On first launch with no configured Vault, the user is presented with four Starte
 **Consequences (testable):**
 - Each Starter Vault opens to a non-empty Today Dashboard.
 - The Freelancer Starter includes at least one example project with milestones, a clocked task, and a backlink — to demonstrate the integration immediately.
-- `[ASSUMPTION: v0.1 Alpha ships only Personal GTD + Student starters; Freelancer + Empty land in v0.5 Beta. Confirmed against brainstorming §Phase 4 budgets.]`
+- `[ASSUMPTION: v0.1 Alpha ships Personal GTD + Student + Freelancer starters (Freelancer added 2026-05-20 per UX spec line 115 — required for the lighthouse persona to experience the full integration on first launch); Empty lands in v0.5 Beta. Scope expansion absorbed by the §6 v0.1 Alpha ceiling-with-compression discipline.]`
 
 #### FR-19: Interactive Tutorial — workflow-first
 
@@ -428,10 +458,13 @@ Target: Months 3-6 (~160h budget). Goal: first public release. Validates that re
 - **FR-9** — Schedule and Deadline editing.
 - **FR-15, FR-17** — Vault designation, SQLite index rebuild-from-files.
 - **FR-16** — Filesystem watcher (Single Writer Rule; Merge Dialog can be deferred to v0.5 if needed, in v0.1 fallback is "block save with conflict warning").
-- **FR-18** — Starter Vault selection (Personal GTD + Student only).
+- **FR-18** — Starter Vault selection (Personal GTD + Student + Freelancer; Empty deferred to v0.5).
 - **FR-22** — Dark + light themes (CSS customization deferred to v0.5).
+- **FR-26** — Backlink Graph View (third defining view per §1 *one object, three views*; ships with Click-to-Source and basic pan/zoom).
 - macOS + Linux packaging. Windows in v1.0.
 - Public repository, README, landing page, basic documentation.
+
+**Scope-expansion note (2026-05-20).** v0.1 Alpha absorbs two additions from the UX design spec — Freelancer Starter Vault (was v0.5) and FR-26 Graph View (newly added) — against the ~160h ceiling. Per §1.5 Solo-OSS Discipline and the §6 budget realism note, the ceiling is held by compression: if the integration of these two pushes the milestone past schedule, the response is to compress within FR-18 (smaller Freelancer sample), FR-26 (simpler layout algorithm), or to time-box the late additions and ship them in a v0.1.1 point release rather than to slip the v0.1 announcement.
 
 **SM-1 success criterion (v0.1 Alpha):** Announcement post on HN/Reddit r/orgmode gathers at least 50 technical comments; at least 10 early adopters report using Orgsidian on their existing `.org` vaults for at least one week.
 
@@ -446,10 +479,13 @@ Adds:
 - **FR-12, FR-13** — Search (FTS5) + Backlinks.
 - **FR-14** — Project Report export (wow demo for Beta launch).
 - **FR-16** — Merge Dialog (full).
-- **FR-18** — Starter Vault: Freelancer + Empty added.
+- **FR-18** — Starter Vault: Empty added (Freelancer shipped in v0.1).
 - **FR-20, FR-21** — Plain/Power Mode + Inline Coaching.
 - **FR-22** — Theme CSS customization.
 - **FR-23** — Keybinding remapping.
+- **FR-25** — Refile a Headline (paired with Quick Capture — the triage primitive that turns inbox captures into placed work).
+- **FR-7 enhancement** — Done-This-Week / Done-This-Month default named filter presets (per §4.2 FR-7 note).
+- **FR-13 enhancement** — Backlinks panel adds an Unlinked References sub-panel toggle (per §4.3 FR-13 note).
 
 **Phasing note on time tracking.** Brainstorming Phase 4 explicitly moved time tracking to v1.0 for UX maturity reasons. v0.5 Beta ships **functional** Clock (start/stop/resume, persistence as standard org `CLOCK:` lines) because Project Report (FR-14) — the Beta wow demo — depends on clocked data. The polished time-tracking UX (persistent toggleable status bar, clock-time editing affordance, refined timer notifications) moves to v1.0 per the brainstorming roadmap swap.
 
@@ -524,7 +560,7 @@ Requirements that apply across features and would otherwise repeat. Specific bud
 - **Quick Capture end-to-end:** under 1 second from hotkey to entry persisted.
 - **Memory footprint:** under 500MB resident on a 1,000-file Vault under typical editing load. `[ASSUMPTION: feasible with chosen stack; benchmark in Spike 3.]`
 - **Cross-platform parity:** v1.0 ships with feature-equivalent macOS, Linux, and Windows builds. Linux distribution via AppImage or Flatpak (deb/rpm best-effort). `[ASSUMPTION: packaging effort budget per brainstorming Action Plan 4.]`
-- **Accessibility:** WCAG 2.1 AA for body text contrast and keyboard navigation of all menus and primary surfaces. Screen reader support is best-effort in v1.0; `[NOTE FOR PM]: full a11y audit deferred to v1.5+.]`
+- **Accessibility:** **WCAG 2.1 AA** for body text contrast and full keyboard navigation of all menus, dialogs, and primary surfaces — enforced as a **hard CI gate from v0.1 Alpha** (per UX spec Experience Principle 9 + §Accessibility, 2026-05-20). Three CI gates: (1) automated contrast-matrix verification across all theme tokens (dark + light defaults), (2) `axe-core` rules pass on every primary surface (Today Dashboard, Editor, Agenda, Quick Capture, Settings, Merge Dialog, Graph View), (3) Playwright keyboard-only scenarios cover the core flows (capture → refile → schedule → clock → search → report). Screen-reader semantics (ARIA roles, live regions) are best-effort in v0.1 and graduate by v1.0; `[NOTE FOR PM]: full screen-reader audit and assistive-tech certification deferred to v1.5+.]`
 - **Internationalization:** UI strings extracted for translation in v1.0; default English; user-contributed translations welcomed via repo. Frontend i18n library: **Lingui v6.x** (decided via architecture workflow, 2026-05-19; see architecture LD-52). Translator-facing catalog format: **`.po` (Gettext)** at `packages/shell-ui/src/locales/{lng}/messages.po`, compiled to TypeScript at build time — the lingua franca expected by Crowdin / Weblate / Transifex, so community contributors are not forced into a project-specific format. `[ASSUMPTION: actual translations are community-driven, not author-shipped; the translation infrastructure ships in v1.0, populated locales arrive as community contributions.]`
 
 ## 9. Why Now
@@ -545,11 +581,11 @@ Numbered for tracking. Each is a future ticket or follow-up research, not a sile
 - **OQ-2. Stack — Tauri (Rust) vs. Electron (TypeScript).** ✅ **Resolved 2026-05-19** (architecture LD-1..LD-10). Adopted Tauri 2.x + Rust core/CLI + CodeMirror 6 in webview, locked by the architecture workflow. The original Spike 2 stack-comparison is reframed as ongoing CI matrix work in OD-2 of the architecture document (cross-webview CodeMirror 6 consistency under load). Parser-side dependency sustainability — coupled to this stack choice per the parser+stack co-decision rationale — is governed separately by architecture LD-48 (see OQ-1).
 - **OQ-3. File watcher cross-platform reliability.** fsevents on macOS, inotify on Linux, ReadDirectoryChangesW on Windows all have known edge cases (renames, network mounts, case-folding filesystems). **Resolution:** Spike 2 in Months 1-2; documented limits.
 - **OQ-4. Atomic write semantics on Windows.** POSIX temp-file-and-rename is canonical on macOS/Linux; Windows has historically been finickier. **Resolution:** investigated during Spike 2; if blocking, fall back to documented "write through" strategy with structured warning.
-- **OQ-5. Org-mode syntax coverage scope.** Org's full spec is huge (babel, latex export, tables with formulas, drawer types, link types). What subset does v1.0 support, and what subset is documented "not supported, opens as plain text"? **Resolution:** explicit syntax-coverage matrix shipped with v0.1 Alpha README.
+- **OQ-5. Org-mode syntax coverage scope.** Org's full spec is huge (babel, latex export, tables with formulas, drawer types, link types). What subset does v1.0 support, and what subset is documented "not supported, opens as plain text"? **Resolution:** explicit syntax-coverage matrix shipped with v0.1 Alpha README. **Operational fallback locked 2026-05-20 (UX spec Journey 4 + architecture LD-41):** files that fail the parser/semantic-layer contract are *quarantined* rather than dropped — opened in Raw mode with a banner offering "Attempt repair" / "Edit raw"; the Vault index records the quarantine so the file is excluded from Agenda/Search until repaired. The syntax-coverage matrix deliverable remains; the quarantined-malformed behavior is the runtime answer to "what happens when a file is outside the documented subset".
 - **OQ-6. Project Report template customization.** v1.0 commits to template files: HTML/CSS for the HTML output path; Typst `.typ` templates with a documented `sys.inputs` schema for the PDF output path. The `.typ` schema is generated from the `ReportData` struct in `orgsidian-report` and ships as `docs/customization/report-templates.md` alongside the default `orgsidian-report-default.typ` template. (Per architecture LD-53; PDF rendering via `typst` embedded as a Rust library — see PDF rendering research at `_bmad-output/planning-artifacts/research/technical-pdf-rendering-crate-selection-research-2026-05-19.md`.) **Resolution:** drafting deliverable lands in the v0.5 Beta sprint based on Beta tester feedback.
-- **OQ-7. Settings UI vs. config file.** Org-mode users often expect a text config (`.orgsidian/config.org` in the Vault?). Other users expect a Settings dialog. v1.0 plan: both, with config file as authoritative and Settings dialog as a thin editor over it. **Resolution:** decided during v0.5 Beta design pass.
+- **OQ-7. Settings UI vs. config file.** ✅ **Resolved 2026-05-20** (UX spec Transferable UX Patterns, line 414 — VS Code / Sublime dual-surface pattern). Both ship: a Settings GUI dialog *and* a text config file. The **config file is authoritative**; the Settings GUI is a thin editor over it that round-trips faithfully (any change in the GUI writes the canonical config file format; any external edit to the config file refreshes the GUI on focus). Config file format and exact path are decided during the v0.5 Beta design pass; the dual-surface commitment is locked.
 - **OQ-8. License of the project itself.** ✅ **Resolved 2026-05-19** (architecture LD-1). Adopted **MIT**. GPL-3.0 rejected (plugin-API contagion); Apache-2.0 considered but not chosen (overhead/verbosity not justified for an application-level project where the Rust stack is already broadly Apache-or-MIT-licensed). See §7.3 and addendum §A.2.
-- **OQ-9. Pre-MVP spike outputs and acceptance criteria.** Spikes 1-2 (parser + stack, coupled per OQ-1), Spike 3 (filesystem watcher with Single Writer Rule cross-platform), Spike 4 (SQLite index benchmark on a synthetic 1,000-file vault for agenda + search query latency). Each spike needs a written acceptance bar (pass/fail criteria, success metric) before starting so the time-box has teeth. **Resolution:** spike plans published at the start of Month 1 as a `_bmad-output/spike-plans/` artifact set.
+- **OQ-9. Pre-MVP spike outputs and acceptance criteria.** Spikes 1-2 (parser + stack, coupled per OQ-1), Spike 3 (filesystem watcher with Single Writer Rule cross-platform), Spike 4 (SQLite index benchmark on a synthetic 1,000-file vault for agenda + search query latency). Each spike needs a written acceptance bar (pass/fail criteria, success metric) before starting so the time-box has teeth. **Resolution:** spike plans published at the start of Month 1 as a `_bmad-output/spike-plans/` artifact set. **Spike 3 design invariants locked 2026-05-20** by UX spec (UXD-8 `:ID:`-lookup-at-navigation-time, not byte-offset; Journey 5 Merge Dialog 3-pane spec): the watcher spike's role is now narrowed to *platform reliability validation* (fsevents/inotify/ReadDirectoryChangesW edge cases — renames, network mounts, case-folding) rather than design discovery; the operational behavior is already designed.
 
 ## 11. Success Metrics
 
@@ -580,7 +616,7 @@ Every `[ASSUMPTION]` from the document, surfaced for explicit confirmation. Tizi
 - **§4.2 FR-7 Notes** — "today" tag is opt-in and configurable; no opinion on tag taxonomy beyond defaults.
 - **§4.3 FR-14** — Project Report template customization is a v1.0 feature, not v0.5.
 - **§4.4 FR-15 NFR** — Cross-platform atomic write semantics are tractable on macOS, Linux, and Windows.
-- **§4.5 FR-18** — v0.1 Alpha ships only Personal GTD + Student starters; Freelancer + Empty land in v0.5 Beta.
+- **§4.5 FR-18** — v0.1 Alpha ships Personal GTD + Student + Freelancer starters (Freelancer added 2026-05-20 per UX spec for the lighthouse persona); Empty lands in v0.5 Beta. Scope expansion absorbed by §6 ceiling-with-compression discipline.
 - **§4.5 FR-19** — Interactive Tutorial is a v1.0 feature, not v0.5; Starter Vault carries the v0.5 onboarding load.
 - **§4.6 FR-24 Notes** — Public Plugin API and a plugin marketplace are out of scope for v1.0.
 - **§5 Non-Goals** — True WYSIWYG deferred to v1.5+ on the basis of brainstorming Phase 4 budget rationale.

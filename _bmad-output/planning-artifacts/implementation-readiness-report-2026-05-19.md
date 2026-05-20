@@ -7,6 +7,7 @@ stepsCompleted:
   - step-05-epic-quality-review
   - step-06-final-assessment
 status: complete
+lastRefreshed: 2026-05-20
 filesIncluded:
   prd:
     - _bmad-output/planning-artifacts/prds/prd-orgsidian-2026-05-19/prd.md
@@ -15,7 +16,8 @@ filesIncluded:
     - _bmad-output/planning-artifacts/architecture.md
   epics:
     - _bmad-output/planning-artifacts/epics.md
-  ux: []
+  ux:
+    - _bmad-output/planning-artifacts/ux-design-specification.md
   supporting:
     - _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md
     - _bmad-output/planning-artifacts/prds/prd-orgsidian-2026-05-19/.decision-log.md
@@ -23,14 +25,81 @@ filesIncluded:
     - _bmad-output/planning-artifacts/prds/prd-orgsidian-2026-05-19/review-rubric.md
     - _bmad-output/planning-artifacts/research/technical-i18n-library-comparison-research-2026-05-19.md
     - _bmad-output/planning-artifacts/research/technical-pdf-rendering-crate-selection-research-2026-05-19.md
-warnings:
-  - "UX design document not found — assessment will flag UX gap. User opted to proceed; UX decisions assumed to be embedded in PRD and/or architecture."
+warnings: []
+refreshes:
+  - date: 2026-05-20
+    summary: "UX design specification added 2026-05-20; PRD + architecture + epics reconciled via three-wave cascade. Added FR-25 (Refile, v0.5), FR-26 (Backlink Graph View, v0.1), LD-56/57/58, 9 new stories (1.17, 1.18, 8.10-8.12, 11.7-11.9, 12.0). Story 11.1 re-scoped; Story 11.2 subsumed; Story 13.5 narrowed. UX gap closed. See § Refresh 2026-05-20 below."
 ---
 
 # Implementation Readiness Assessment Report
 
-**Date:** 2026-05-19
+**Date:** 2026-05-19 (original) — **Refreshed:** 2026-05-20 (UX-spec reconciliation wave; see § Refresh 2026-05-20 below).
 **Project:** orgsidian
+
+---
+
+## Refresh 2026-05-20 — UX-design-specification reconciliation cascade
+
+A UX Design specification was authored on 2026-05-20 (`_bmad-output/planning-artifacts/ux-design-specification.md`, 2348 lines). It triggered a three-wave reconciliation cascade — PRD → architecture → epics — re-validated against the same six readiness steps used in the 2026-05-19 assessment. **The body of this report (Steps 1-6, dated 2026-05-19) remains the historical baseline**; this section captures the delta and the refreshed verdict.
+
+### What changed (across all three documents)
+
+| Layer | New material | Re-scoped material |
+|---|---|---|
+| **PRD** | §3 Glossary (Refile + Graph View); §4.2 FR-25 Refile; §4.3 FR-26 Backlink Graph View; §1 wedge reframed to *outline + agenda + graph* (three views) | §4.2 FR-7 (Done-This-Week/Month presets); §4.3 FR-12 two-tier latency; §4.3 FR-13 (Unlinked References v0.5+); §4.5 FR-18 (Freelancer → v0.1 Alpha, Empty → v0.5); §8 WCAG NFR strengthened to hard CI gate from v0.1; §10 OQ-5/OQ-7/OQ-9 updated; §12 Assumptions Index updated |
+| **Architecture** | LD-56 (Backlink Graph View rendering library — `react-force-graph-2d@1.29.1` MIT); LD-57 (Cross-file write atomicity for FR-25 Refile — sequence-with-`.bak`-restore); LD-58 (WCAG 2.1 AA hard CI gates — contrast-matrix + axe-core + 6 happy-path kbd scenarios) | LD-7 (cross-file extension pointer); LD-29 (`/graph` route); LD-32 (per-PR a11y gate); LD-40 (TOML config-file authoritative, hybrid boundary with `tauri-plugin-store`); LD-41 (Refile partial-failure row); FR→Component table (FR-13 unlinked-references, FR-18 v0.1 templates, FR-25 + FR-26 rows added); stack-versions table (3 new pinned deps); LD-46 closed-loop addendum |
+| **Epics** | 9 new stories: 1.17 (LD-58 a11y CI gate), 1.18 (TOML settings), 8.10-8.12 (Graph View cluster), 11.7-11.9 (Refile cluster), 12.0 (Unlinked References) | Epic 6 / Epic 8 / Epic 11 / Epic 12 / Epic 13 descriptions reworded; Story 6.1 extended (3 v0.1 starters); Story 6.2 picker; Story 6.5 IndexQuery v0.1 baseline expanded with streaming + graph + unlinked-mentions; Story 6.7 contrast verification via Story 1.17; Story 7.5 Done-This-Week/Month presets; Story 8.4 two-tier perf assertion + `search_stream`; Story 8.5 streaming UI consumption; Story 8.8 spine two-tier reference; Story 10.7 chord rebind to `Cmd/Ctrl+Shift+E`; Story 11.1 re-scoped (Empty Starter Vault — was Freelancer); Story 11.2 subsumed into 11.1; Story 13.5 narrowed to v1.0 graduation |
+
+### Refreshed Step 2 — PRD Analysis
+
+- **Total FRs:** 24 → **26** (FR-25 Refile, FR-26 Backlink Graph View added 2026-05-20).
+- **Total NFRs:** 21 (unchanged in count; NFR-9 *strengthened* — WCAG AA now hard CI gate from v0.1 Alpha, no count delta).
+- **Open Questions resolved or operationalized:** 8/9 → **9/9** (OQ-7 ✅ resolved 2026-05-20; OQ-5 + OQ-9 additionally locked by UX spec; OQ-1, OQ-2, OQ-8 already closed 2026-05-19).
+- **Assumptions Index entries:** FR-18 entry updated (Freelancer in v0.1 Alpha).
+
+### Refreshed Step 3 — Epic Coverage Validation
+
+- **Total stories:** ~80 → **117** (9 added in this refresh; the ~80 figure in Step 3 below was approximate at original write-time; the 117 figure is exact at refresh-time).
+- **FR Coverage Map** (epics.md) updated for FR-7, FR-12, FR-13, FR-18, FR-25 (new row), FR-26 (new row).
+- **NFR-9 (Accessibility)** — previously soft target; now mapped to Story 1.17 (hard CI gate from v0.1) + Story 13.5 (v1.0 graduation to representative-coverage). Coverage 100%.
+- **OQ-7 (Settings UI vs config file)** — was deferred in the 2026-05-19 assessment as v0.5 Beta design pass; now ✅ resolved via LD-40 (TOML authoritative) + Story 1.18 (TOML settings store). v0.5 Beta design pass is no longer needed for OQ-7 itself; only the in-sprint placement of UI keys vs ephemeral state remains, covered by Story 1.18 AC.
+- **New cross-cutting infrastructure stories** (1.17 a11y gate, 1.18 TOML settings) **must precede** every UI-shipping story downstream. Sprint planning sequencing: Story 1.17 + Story 1.18 are now in the Epic 1 critical-path along with Stories 1.7, 1.8, 1.11, 1.12.
+
+### Refreshed Step 4 — UX Alignment
+
+**UX gap closed.** A UX Design specification now exists at `_bmad-output/planning-artifacts/ux-design-specification.md` (2026-05-20). The §4 UX Document Status finding ("Not Found") is **superseded** by this refresh. Compensating coverage previously distributed across PRD + Architecture + Epics remains in place but is now anchored by the dedicated UX spec. Process Discipline §G microcopy registry continues to handle per-story copy.
+
+### Refreshed Step 5 — Epic Quality Review
+
+- The 9 new stories conform to Process Discipline §A (ATDD), §B (Persona Controlled Vocabulary — "freelance consultant" / "user" / "first-time user" / "author / contributor" tokens used), §C (Traceability — every story carries a `Traces:` line + module `//! Implements FR-NN` doc-comment AC), §D (User-Voice — `So that…` clauses contain no `FR-NN` references), §E (Perf Assertions via `assert_no_perf_regression!`), §F (AC Refactor Rule — each new story's AC block under 6 `And` lines, no candidate for split).
+- **Story 13.5 narrowing** — net Epic Quality Verdict from the 2026-05-19 assessment still holds; the 13.5 wording update is a precision improvement, not a quality regression.
+
+### Refreshed Coverage Roll-up
+
+| Dimension | Coverage |
+|---|---|
+| Functional Requirements (FR-1..FR-26) | 26 / 26 → **100%** |
+| Non-Functional Requirements (NFR-1..NFR-21) | 21 / 21 → **100%** (NFR-9 strengthened to hard CI gate from v0.1) |
+| Sprint Change Proposal absorption | 4 / 4 → **100%** (unchanged) |
+| Open Questions resolved or operationalized | 9 / 9 → **100%** (OQ-7 ✅ resolved 2026-05-20) |
+| Linear Decisions (LD-1..LD-58) reflected in epics | confirmed via cross-reference; 3 new LDs (56/57/58) each have story coverage |
+| User Journeys with explicit spine integration tests | UJ-2, UJ-3, UJ-6 (unchanged); UJ-4 inbox-triage now extended by FR-25 Refile cluster |
+| UX design specification | ✅ exists, reconciled into PRD + architecture + epics |
+
+### Refreshed Verdict
+
+**READY — proceed to Sprint Planning** (verdict unchanged from 2026-05-19, **now reinforced**: the UX gap is closed and Open Questions are fully resolved). The 7 findings + 1 major framework-flag listed in the 2026-05-19 body remain accurate and actionable; no new critical or major findings were introduced by the 2026-05-20 reconciliation cascade.
+
+### Net delta to "Findings to Address"
+
+- **🟡 Minor #2 (OQ-5 syntax-coverage matrix soft gap)** — **status unchanged**, still pending Story 6.10 AC extension OR PRD explicit-close.
+- **🟡 Item #7 (OQ-7 deferred to v0.5 Beta design pass)** — **CLOSED 2026-05-20** by LD-40 amendment + Story 1.18. Remove from open list.
+- **New sequencing items for Sprint Planning attention:**
+  - Story 1.17 (a11y CI gate) and Story 1.18 (TOML settings) are foundational — Epic 1 critical-path bootstrap must include them.
+  - Story 6.5 IndexQuery freeze AC expanded; cargo-semver-checks baseline now includes streaming search, graph adjacency, and unlinked-mentions signatures upfront.
+  - Story 6.1 Freelancer content has a hard upstream dependency on Story 8.7 Backlinks panel for its "≥1 backlink visible" AC; Sprint Planning must respect that Epic 8 executes before Epic 6's release closer.
+
+---
 
 ## Step 1: Document Discovery
 

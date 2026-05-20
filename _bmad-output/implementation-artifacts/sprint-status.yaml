@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-05-19 (story 1.1 → done after code review)
+# last_updated: 2026-05-20 (epics.md sync: +1.17, +1.18, +8.10-12, +11.7-9, +12.0; renamed 6.1, 11.1, 13.5; subsumed 11.2)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-05-19
+last_updated: 2026-05-20
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -60,6 +60,8 @@ development_status:
   1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: backlog
   1-15-configure-git-cliff-for-cc-changelog-generation: backlog
   1-16-github-issues-sync-one-issue-per-story: backlog
+  1-17-establish-wcag-2-1-aa-hard-ci-gate: backlog
+  1-18-toml-settings-authoritative-store-with-hybrid-boundary: backlog
   epic-1-retrospective: optional
 
   # Epic 2: Parser & Round-trip Fidelity
@@ -115,7 +117,7 @@ development_status:
 
   # Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
   epic-6: backlog
-  6-1-implement-personal-gtd-student-starter-vault-content-generator: backlog
+  6-1-implement-personal-gtd-student-freelancer-starter-vault-content-generator: backlog
   6-2-implement-starter-vault-picker-ui-on-first-launch: backlog
   6-3-implement-basic-today-agenda-view: backlog
   6-4-implement-week-agenda-view: backlog
@@ -150,6 +152,9 @@ development_status:
   8-7-implement-backlinks-sidebar-panel: backlog
   8-8-uj-6-spine-riccardo-searches-across-two-years-party-mode-round-2-p0-sally: backlog
   8-9-plugin-api-consistency-checkpoint-preview-ld-50: backlog
+  8-10-implement-backlink-graph-adjacency-query-api: backlog
+  8-11-implement-graph-view-canvas-a11y-textual-fallback: backlog
+  8-12-cross-webview-graph-view-nightly-perf-gate: backlog
   epic-8-retrospective: optional
 
   # Epic 9: Conflict-Safe Concurrent Editing (Full Merge Dialog)
@@ -173,17 +178,21 @@ development_status:
   epic-10-retrospective: optional
 
   # Epic 11: Onboarding Completion & Coaching
+  # NOTE: Story 11.2 subsumed into Story 11.1 (2026-05-20) — removed from tracking.
   epic-11: backlog
-  11-1-add-freelancer-starter-vault-content-generator: backlog
-  11-2-add-empty-starter-vault-flow: backlog
+  11-1-add-empty-starter-vault-picker-card-flow-polish: backlog
   11-3-implement-plain-power-mode-toggle-with-data-mode-tailwind-selectors: backlog
   11-4-refactor-hardcoded-coaching-balloons-into-registry-driven-coachingslot-api: backlog
   11-5-persist-coaching-dismissals-reset-action: backlog
   11-6-wire-up-command-palette-descriptions-for-discoverability: backlog
+  11-7-implement-refile-subtree-extract-insert-primitives: backlog
+  11-8-implement-refile-cross-file-orchestrator: backlog
+  11-9-implement-refile-target-picker-ui: backlog
   epic-11-retrospective: optional
 
-  # Epic 12: v0.5 Beta Release — Customization & Plugin Surface Lock
+  # Epic 12: v0.5 Beta Release — Customization, Unlinked References & Plugin Surface Lock
   epic-12: backlog
+  12-0-implement-backlinks-unlinked-references-sub-panel: backlog
   12-1-implement-user-css-file-loader: backlog
   12-2-implement-tokens-css-snapshot-test-ld-51: backlog
   12-3-implement-keybinding-remapping-ui-in-settings: backlog
@@ -197,7 +206,7 @@ development_status:
   13-2-wire-tauri-plugin-updater-stable-channel-across-all-3-platforms: backlog
   13-3-implement-interactive-tutorial-10-minute-workflow-cycle: backlog
   13-4-implement-clock-ux-polish-persistent-status-bar-timer-notifications: backlog
-  13-5-conduct-full-a11y-keyboard-navigation-review: backlog
+  13-5-graduate-a11y-from-happy-path-to-representative-coverage: backlog
   13-6-build-comprehensive-docs-user-guide-site: backlog
   13-7-publish-v1-0-coordinated-launch-announcement: backlog
   epic-13-retrospective: optional
