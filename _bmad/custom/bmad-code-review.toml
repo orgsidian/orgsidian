@@ -1,0 +1,16 @@
+# Team override: gate GitHub Issue/PR durante code review.
+# Policy organizzativa. Da committare.
+
+[workflow]
+
+activation_steps_prepend = [
+  "GitHub Issue link gate — pre-flight: (1) Identifica la PR sotto review: `gh pr view --json number,title,body,labels`. (2) Estrai il numero issue collegato da `Closes #<N>` nel body. (3) Se manca, registra finding BLOCCANTE 'must-fix': 'PR body privo di `Closes #<issue>` — la story non è consegnabile finché la riga non viene aggiunta'. (4) Verifica corrispondenza '[Story X.Y]' tra titolo issue e story sotto review; se discordano, finding 'must-fix'.",
+]
+
+persistent_facts = [
+  "Gate bloccante di review: la PR DEVE contenere `Closes #<issue-number>` nel body, riferito all'issue della story (match su '[Story X.Y]' nel titolo issue). Se manca → finding 'must-fix' che impedisce l'approvazione.",
+  "Convenzione titolo PR attesa: `<type>(<scope>): <subject> (Story X.Y, closes #N)`. Discrepanze sono finding minori ma vanno segnalate.",
+  "All'approvazione finale (story → done), la label dell'issue va aggiornata a `status:done` via `gh issue edit <N> --remove-label 'status:review' --add-label 'status:done'`. La merge della PR chiuderà automaticamente l'issue grazie alla riga `Closes #<N>`.",
+]
+
+on_complete = "Approvazione e transizione story → done: (1) estrai issue number da `Closes #<N>` nel body della PR sotto review; (2) `gh issue edit <N> --remove-label 'status:review' --add-label 'status:done'`; (3) conferma all'utente che la merge della PR chiuderà automaticamente l'issue. Se la review NON è approvata (esistono finding 'must-fix' non risolti), NON aggiornare la label — lascia `status:review` finché i blocker non sono chiusi."

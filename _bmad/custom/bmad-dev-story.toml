@@ -1,0 +1,17 @@
+# Team override: sincronizzazione GitHub Issues/PR con stato story.
+# Policy organizzativa. Da committare.
+
+[workflow]
+
+activation_steps_prepend = [
+  "GitHub Issue sync — pre-flight bloccante: (1) Estrai 'Story X.Y' dal nome/titolo della story file. (2) Cerca l'issue GitHub corrispondente: `gh issue list --search '[Story X.Y] in:title' --state all --json number,title,labels`. (3) Se NON esiste, creala PRIMA di procedere: `gh issue create --title '[Story X.Y] <story title>' --label 'status:backlog' --body '<story summary + link to story file>'`. (4) Salva il numero issue nella story file come `github_issue: <N>` (nel front-matter o in una sezione 'Metadata'). (5) Quando la story transita a `in-progress`, aggiorna la label: `gh issue edit <N> --remove-label 'status:backlog' --add-label 'status:in-progress'`. Senza issue collegata l'implementazione NON parte.",
+]
+
+persistent_facts = [
+  "GitHub Issue/PR sync è policy OBBLIGATORIA del progetto. Ogni story ha un'issue GitHub collegata (match su '[Story X.Y]' nel titolo issue) il cui numero è salvato nella story file come `github_issue: <N>`.",
+  "Quando la story cambia stato, la label dell'issue DEVE essere aggiornata di pari passo via `gh issue edit <N> --remove-label <old> --add-label <new>`. Mapping: backlog→`status:backlog`, in-progress→`status:in-progress`, review→`status:review`, done→`status:done` (done è gestito da bmad-code-review all'approvazione).",
+  "Il body della PR DEVE contenere `Closes #<issue-number>` riferito all'issue della story. È un gate BLOCCANTE: senza questa riga la story NON è consegnabile. Se la PR è già aperta senza la riga, aggiungila via `gh pr edit <PR#> --body '<body aggiornato>'` prima di marcare la story `review`.",
+  "Convenzione titolo PR quando la story ha issue collegata: `<type>(<scope>): <subject> (Story X.Y, closes #N)`. Esempio: `feat(shell): wire IPC bridge (Story 1.4, closes #42)`.",
+]
+
+on_complete = "Transizione story → review: (1) recupera il numero issue da `github_issue:` nella story file; (2) `gh issue edit <N> --remove-label 'status:in-progress' --add-label 'status:review'`; (3) verifica che la PR esista, abbia titolo conforme alla convenzione e contenga `Closes #<N>` nel body — se manca, correggi via `gh pr edit` PRIMA di chiudere il workflow. Non considerare la story consegnata finché questi tre punti non sono verdi."
