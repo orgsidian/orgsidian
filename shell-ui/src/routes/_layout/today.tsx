@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { commands } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_layout/today")({
@@ -8,12 +8,10 @@ export const Route = createFileRoute("/_layout/today")({
 });
 
 function TodayPlaceholder() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [reply, setReply] = useState("");
 
-  async function greet() {
-    // Story 1.4 replaces this with the typed specta client.
-    setGreetMsg(await invoke("greet", { name }));
+  async function ping() {
+    setReply(await commands.ping());
   }
 
   return (
@@ -22,21 +20,12 @@ function TodayPlaceholder() {
       <p className="text-sm text-muted-foreground mt-2">
         Story 7.1 will replace this with the real Today Dashboard.
       </p>
-      <form
-        className="mt-6 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          className="border rounded px-2 py-1"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <Button type="submit">Greet</Button>
-      </form>
-      <p className="mt-3 text-sm">{greetMsg}</p>
+      <div className="mt-6 flex gap-2">
+        <Button type="button" onClick={ping}>
+          Ping
+        </Button>
+      </div>
+      <p className="mt-3 text-sm">{reply}</p>
     </main>
   );
 }
