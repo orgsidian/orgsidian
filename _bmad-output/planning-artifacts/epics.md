@@ -1,7 +1,7 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
 status: complete
-completedAt: '2026-05-19'
+completedAt: "2026-05-19"
 revisions:
   - date: 2026-05-19
     summary: Sprint Change Proposal (correct-course) absorbed. NEW Stories 1.13-1.16 added to Epic 1 (GitHub org/repo/Project board + commitlint/husky + git-cliff + Issues sync). Story 1.10 AC extended with Conventional Commits section + test-strategy pointer in CONTRIBUTING.md. Duplicate Story 1.10 block at former lines 592-603 removed (verbatim duplication cleanup). Process Discipline rule H added pointing to `_bmad-output/test-artifacts/test-design.md` as authoritative system-level test strategy. Story 6.10 AC extended with repo visibility flip (private→public) before SM-1 announcement. No other story content modified. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md`.
@@ -239,38 +239,38 @@ The following architectural requirements (LD-1 through LD-53) influence implemen
 
 ### UX Design Requirements
 
-(**Updated 2026-05-20.** A UX Design specification now exists at `_bmad-output/planning-artifacts/ux-design-specification.md` (2026-05-20). It elaborates the *one object, three views* wedge (outline + agenda + graph), the Capture/Act/Review interaction trio, and the per-surface interaction patterns. PRD + architecture were reconciled against it on 2026-05-20 — see the PRD frontmatter revision entry and architecture LD-46 closed-loop addendum. This epics file is reconciled in turn (story additions for FR-25 Refile + FR-26 Graph View, Story 1.17 a11y CI gate, Story 1.18 TOML settings, Freelancer v0.1 promotion, Empty v0.5 demotion).)
+(**Updated 2026-05-20.** A UX Design specification now exists at `_bmad-output/planning-artifacts/ux-design-specification.md` (2026-05-20). It elaborates the _one object, three views_ wedge (outline + agenda + graph), the Capture/Act/Review interaction trio, and the per-surface interaction patterns. PRD + architecture were reconciled against it on 2026-05-20 — see the PRD frontmatter revision entry and architecture LD-46 closed-loop addendum. This epics file is reconciled in turn (story additions for FR-25 Refile + FR-26 Graph View, Story 1.17 a11y CI gate, Story 1.18 TOML settings, Freelancer v0.1 promotion, Empty v0.5 demotion).)
 
 ### FR Coverage Map
 
-| FR | Epic(s) | Notes |
-|---|---|---|
-| FR-1 (open/parse `.org`) | Epic 2 | Parser & Round-trip Fidelity |
-| FR-2 (round-trip preservation) | Epic 2 | L0/L2 CI gates live here |
-| FR-3 (Editor Modes switch) | Epic 4 | Raw / Pseudo-WYSIWYG / Split |
-| FR-4 (Pseudo-WYSIWYG inline render) | Epic 4 | CM6 decorations + widgets |
-| FR-5 (cross-platform keys + Emacs mode) | Epic 4 | `tauri-plugin-os` for Cmd vs Ctrl |
-| FR-6 (Today Dashboard on launch) | Epic 7 | Full dashboard surface in v0.5 |
-| FR-7 (Agenda Today/Week/Custom) | Epic 6 (Today/Week subset) + Epic 7 (Custom + saved presets, incl. Done-This-Week/Month default presets v0.5 per 2026-05-20) | Split per PRD §6.1 vs §6.2 |
-| FR-8 (Clock in/out/resume) | Epic 7 (functional) + Epic 13 (UX polish) | Per PRD §6.2 phasing note |
-| FR-9 (Schedule + Deadline editor) | Epic 4 | `OrgDatePicker` + parser semantic/timestamp |
-| FR-10 (Global Quick Capture) | Epic 8 | Separate Tauri window `quick-capture` |
-| FR-11 (System tray Capture) | Epic 8 | macOS menubar / Windows tray / Linux indicator |
-| FR-12 (Full-text FTS5 search) | Epic 8 | `orgsidian-index::query::search` — two-tier streaming per 2026-05-20 (<100ms first 10 / <200ms full 50) |
-| FR-13 (Backlinks panel) | Epic 8 (Linked v0.1) + Epic 12 (Unlinked References sub-panel v0.5+ per 2026-05-20) | `BacklinksPanel.tsx` + `query::backlinks` + `query::unlinked_references` |
-| FR-14 (Project Report PDF/HTML) | Epic 10 | `orgsidian-report` new crate + LD-53 typst |
-| FR-15 (Vault designation) | Epic 3 | First-launch picker + Settings |
-| FR-16 (Watcher + Single Writer + Merge) | Epic 5 (fallback block-save) + Epic 9 (full three-pane Merge Dialog) | Split per PRD §6.2; `ConflictState`/`ConflictStrategy` rich-form day-1 (Party Mode P0) |
-| FR-17 (SQLite derived index) | Epic 3 | Schema + migrations + rebuild policy |
-| FR-18 (Starter Vault selection) | Epic 6 (Personal GTD + Student + Freelancer per 2026-05-20) + Epic 11 (Empty only per 2026-05-20 reshuffle) | Per PRD §6.1 vs §6.2 — Freelancer promoted to v0.1 Alpha for lighthouse-persona first-launch demonstration |
-| FR-19 (Interactive Tutorial) | Epic 13 | v1.0 only |
-| FR-20 (Plain/Power Mode) | Epic 11 | `data-[mode]` Tailwind selectors |
-| FR-21 (Inline Coaching) | Epic 11 | `coachingRegistry.ts` centralized |
-| FR-22 (Themes dark/light + CSS) | Epic 6 (dark+light defaults) + Epic 12 (CSS override + LD-51 tokens snapshot) | Split per PRD §6.1 vs §6.2 |
-| FR-23 (Keybinding remapping) | Epic 12 | Conflict detection in Settings |
-| FR-24 (Internal Plugin Pattern) | Epic 1 (plugin-api scaffold + trait stub) + woven across Epic 2-12 + Epic 8/9 consistency checkpoints + Epic 12 LD-50 surface review sign-off | Cross-cutting; every v1.0 feature consumes same trait surface |
-| **FR-25** (Refile a Headline — added 2026-05-20) | Epic 11 (Stories 11.7/11.8/11.9 — primitives + LD-57 cross-file orchestrator + Target Picker UI) | v0.5 Beta; pairs with Quick Capture as inbox-triage primitive; org-canonical Cmd+Shift+R chord (Project Report rebinds to Cmd+Shift+E per Story 10.7 update) |
-| **FR-26** (Backlink Graph View — added 2026-05-20) | Epic 8 (Stories 8.10/8.11/8.12 — `query::graph` API + `GraphCanvas`/`GraphNodeList` + cross-webview nightly perf gate) | v0.1 Alpha; third view in *one object, three views*; `react-force-graph-2d@1.29.1` per LD-56; perf ≤2s/5k nodes; a11y textual fallback per LD-58 |
+| FR                                                 | Epic(s)                                                                                                                                       | Notes                                                                                                                                                        |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-1 (open/parse `.org`)                           | Epic 2                                                                                                                                        | Parser & Round-trip Fidelity                                                                                                                                 |
+| FR-2 (round-trip preservation)                     | Epic 2                                                                                                                                        | L0/L2 CI gates live here                                                                                                                                     |
+| FR-3 (Editor Modes switch)                         | Epic 4                                                                                                                                        | Raw / Pseudo-WYSIWYG / Split                                                                                                                                 |
+| FR-4 (Pseudo-WYSIWYG inline render)                | Epic 4                                                                                                                                        | CM6 decorations + widgets                                                                                                                                    |
+| FR-5 (cross-platform keys + Emacs mode)            | Epic 4                                                                                                                                        | `tauri-plugin-os` for Cmd vs Ctrl                                                                                                                            |
+| FR-6 (Today Dashboard on launch)                   | Epic 7                                                                                                                                        | Full dashboard surface in v0.5                                                                                                                               |
+| FR-7 (Agenda Today/Week/Custom)                    | Epic 6 (Today/Week subset) + Epic 7 (Custom + saved presets, incl. Done-This-Week/Month default presets v0.5 per 2026-05-20)                  | Split per PRD §6.1 vs §6.2                                                                                                                                   |
+| FR-8 (Clock in/out/resume)                         | Epic 7 (functional) + Epic 13 (UX polish)                                                                                                     | Per PRD §6.2 phasing note                                                                                                                                    |
+| FR-9 (Schedule + Deadline editor)                  | Epic 4                                                                                                                                        | `OrgDatePicker` + parser semantic/timestamp                                                                                                                  |
+| FR-10 (Global Quick Capture)                       | Epic 8                                                                                                                                        | Separate Tauri window `quick-capture`                                                                                                                        |
+| FR-11 (System tray Capture)                        | Epic 8                                                                                                                                        | macOS menubar / Windows tray / Linux indicator                                                                                                               |
+| FR-12 (Full-text FTS5 search)                      | Epic 8                                                                                                                                        | `orgsidian-index::query::search` — two-tier streaming per 2026-05-20 (<100ms first 10 / <200ms full 50)                                                      |
+| FR-13 (Backlinks panel)                            | Epic 8 (Linked v0.1) + Epic 12 (Unlinked References sub-panel v0.5+ per 2026-05-20)                                                           | `BacklinksPanel.tsx` + `query::backlinks` + `query::unlinked_references`                                                                                     |
+| FR-14 (Project Report PDF/HTML)                    | Epic 10                                                                                                                                       | `orgsidian-report` new crate + LD-53 typst                                                                                                                   |
+| FR-15 (Vault designation)                          | Epic 3                                                                                                                                        | First-launch picker + Settings                                                                                                                               |
+| FR-16 (Watcher + Single Writer + Merge)            | Epic 5 (fallback block-save) + Epic 9 (full three-pane Merge Dialog)                                                                          | Split per PRD §6.2; `ConflictState`/`ConflictStrategy` rich-form day-1 (Party Mode P0)                                                                       |
+| FR-17 (SQLite derived index)                       | Epic 3                                                                                                                                        | Schema + migrations + rebuild policy                                                                                                                         |
+| FR-18 (Starter Vault selection)                    | Epic 6 (Personal GTD + Student + Freelancer per 2026-05-20) + Epic 11 (Empty only per 2026-05-20 reshuffle)                                   | Per PRD §6.1 vs §6.2 — Freelancer promoted to v0.1 Alpha for lighthouse-persona first-launch demonstration                                                   |
+| FR-19 (Interactive Tutorial)                       | Epic 13                                                                                                                                       | v1.0 only                                                                                                                                                    |
+| FR-20 (Plain/Power Mode)                           | Epic 11                                                                                                                                       | `data-[mode]` Tailwind selectors                                                                                                                             |
+| FR-21 (Inline Coaching)                            | Epic 11                                                                                                                                       | `coachingRegistry.ts` centralized                                                                                                                            |
+| FR-22 (Themes dark/light + CSS)                    | Epic 6 (dark+light defaults) + Epic 12 (CSS override + LD-51 tokens snapshot)                                                                 | Split per PRD §6.1 vs §6.2                                                                                                                                   |
+| FR-23 (Keybinding remapping)                       | Epic 12                                                                                                                                       | Conflict detection in Settings                                                                                                                               |
+| FR-24 (Internal Plugin Pattern)                    | Epic 1 (plugin-api scaffold + trait stub) + woven across Epic 2-12 + Epic 8/9 consistency checkpoints + Epic 12 LD-50 surface review sign-off | Cross-cutting; every v1.0 feature consumes same trait surface                                                                                                |
+| **FR-25** (Refile a Headline — added 2026-05-20)   | Epic 11 (Stories 11.7/11.8/11.9 — primitives + LD-57 cross-file orchestrator + Target Picker UI)                                              | v0.5 Beta; pairs with Quick Capture as inbox-triage primitive; org-canonical Cmd+Shift+R chord (Project Report rebinds to Cmd+Shift+E per Story 10.7 update) |
+| **FR-26** (Backlink Graph View — added 2026-05-20) | Epic 8 (Stories 8.10/8.11/8.12 — `query::graph` API + `GraphCanvas`/`GraphNodeList` + cross-webview nightly perf gate)                        | v0.1 Alpha; third view in _one object, three views_; `react-force-graph-2d@1.29.1` per LD-56; perf ≤2s/5k nodes; a11y textual fallback per LD-58             |
 
 **NFRs** are addressed continuously across all epics via CI gates and review checkpoints. Notable epic-specific NFR placements:
 
@@ -315,7 +315,8 @@ PROJECT ROLES (build the product)
 Each story implementing an FR carries a **`Traces:`** line immediately below the `So that…` stanza, listing FRs and UJs covered.
 
 Each AC list for an FR-implementing story includes a final AC of the form:
-> *And the implementing module(s) carry `//! Implements FR-NN` as the first doc-comment line, verified by `tests/traceability.rs` (bidirectional: doc-comment ↔ enumerated FR in PRD).*
+
+> _And the implementing module(s) carry `//! Implements FR-NN` as the first doc-comment line, verified by `tests/traceability.rs` (bidirectional: doc-comment ↔ enumerated FR in PRD)._
 
 Stories below were authored before this rule was finalized; they are brought into compliance by agents during implementation as a no-brainer fixup (no separate epic).
 
@@ -350,55 +351,68 @@ The binding system-level test strategy lives at **`_bmad-output/test-artifacts/t
 ## Epic List
 
 ### Epic 1: Foundation & CI Baseline
+
 Scaffold the Tauri 2.x + Rust 9-crate workspace, React 19 + CM6 + Tailwind 4 + shadcn frontend at `shell-ui/`, plugin-api crate stub with `OrgsidianPlugin` trait (day-1 shape per LD-26), `tauri-specta` typed IPC bridge, Lingui v6 scaffold (LD-52), `[profile.release] panic = "unwind"` (LD-38), `cargo-deny` + `cargo audit` supply-chain gates (LD-37), SECURITY.md, root README/ARCHITECTURE/CHANGELOG, and CI matrix (per-PR macOS+Ubuntu + nightly Windows+Arch+Ubuntu with merge gate, LD-32). Ships with **3 anchor smoke tests** to prove CI is alive end-to-end (parse trivial `.org`, write+read 1-file round-trip, watcher detect 1 event) — anti-placebo-green discipline per Party Mode P2.
 **FRs covered:** none directly (foundation only — enables FR-1..FR-24). Establishes scaffold for FR-24 Internal Plugin Pattern across all subsequent epics.
 
 ### Epic 2: Parser & Round-trip Fidelity
+
 Implement `orgsidian-parser` crate with `tree-sitter-org` (nvim-orgmode fork, MIT, SHA-pinned submodule per LD-48) wrapper + custom Rust semantic layer + round-trip-faithful serializer. Light up the L0 byte-identical CI gate on a ~100-file subset (LD-44 selection criteria) per PR, the full ~2000-assertion nightly corpus (extracted via `tools/corpus-extractor/`), and the L2 Emacs ground-truth oracle pinned to `emacs:29.x` + `emacs:30.x` with hand-written canonical AST (LD-45). Establish **fixture governance** (`tests/fixtures/vault-corpus/` versioned via git-LFS, `fixtures.toml` declaring per-epic ownership) per Party Mode P1. Ship `orgsidian parse <file>` as the first public artifact CLI command (LD-27) — a tweet-ready early signal that the parser exists, before Epic 6's v0.1 Alpha public release.
 **FRs covered:** FR-1, FR-2.
 **Risk profile:** **highest single-epic technical risk in v0.1 Alpha** per all four Party Mode voices — Epic 2 is a go/no-go gate before Epic 4+ work begins.
 
 ### Epic 3: Vault & SQLite Index Foundation
+
 Implement `orgsidian-vault` (atomic-write-file LD-8 with 3-retry exponential backoff for AV/Search-indexer transient locks, Dirty Buffer scaffold), `orgsidian-index` (normalized SQLite schema LD-11, `rusqlite_migration` forward-only LD-12, rebuild policy LD-13, connection management LD-14, locked PRAGMAs from LD-4), and the watcher abstraction (`orgsidian-watcher` with `notify-rs` LD-9 + debounce + golden-trace fixtures from vim/VS Code/Emacs save sequences per OD-3). User can designate a Vault folder; initial 1000-file scan completes in <30s with progress UI (LD-42 checkpoints every 100 files); deleting the SQLite index file and relaunching rebuilds identically.
 **FRs covered:** FR-15, FR-17. Lays the foundation for FR-16 (Epic 5).
 
 ### Epic 4: Editor Surface & Org-mode Awareness
+
 Wire CodeMirror 6 host in `shell-ui/src/components/editor/` with StrictMode-safe `EditorView` lifecycle and React-19 ref-as-prop pattern. Implement Editor Modes (Raw / Pseudo-WYSIWYG / Split) with persistent per-file preference; CM6 decorators/widgets for headings, TODO badges, tag pills, timestamp dates, checkbox widgets, clickable links (LD-6 mandatory recipes: `WidgetType.eq()`, `Transaction.userEvent`, no dispatch during `view.composing`, `widget.ignoreEvent() === false`). Default cross-platform keybindings + optional Emacs mode. Date picker + Schedule/Deadline editing on Headlines (with recurring timestamp `+1w` preservation). **Memory soak nightly gate (LD-43, <10% RSS drift over 11h) activated here** — CM6 decorations are the most likely leak source per Party Mode P1.
 **FRs covered:** FR-3, FR-4, FR-5, FR-9.
 
 ### Epic 5: External-Edits Co-existence (Safe Fallback)
+
 Connect the watcher to the Dirty Buffer to enforce the Single Writer Rule v0.1 contract: clean buffers auto-reload + re-index on external write; dirty buffers **block save with conflict warning** (no Merge Dialog UI yet — Epic 9). **Day-1 AC per Party Mode P0 (Winston + Murat consensus):** the watcher state machine is implemented as a `ConflictStrategy` pattern with `BlockWithWarning` as one of N strategies, and the `ConflictState` data model is a **rich struct** (`ancestor_hash`, `external_content`, `buffer_content`) not a boolean — even though v0.1 UI consumes only the strategy variant. This avoids the Epic 9 watcher-rewrite trap.
 **FRs covered:** FR-16 (v0.1 fallback only — block-save with warning).
 
 ### Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
-Implement Starter Vault picker on first launch with **Personal GTD + Student + Freelancer** starters (FR-18 partial — Empty deferred to Epic 11 per 2026-05-20 reconciliation), basic Today + Week Agenda views in `shell-ui/src/components/agenda/` (FR-7 partial — Custom view + saved presets in Epic 7), dark + light default themes with WCAG AA contrast in `shell-ui/src/themes/` (FR-22 partial — CSS customization in Epic 12), macOS DMG + Homebrew cask + Linux AppImage packaging (LD-19 signing, LD-34 distribution), README + landing page + basic docs. **Critical pre-Epic-7 AC per Party Mode P0 (Amelia):** the `IndexQuery` trait in `crates/orgsidian-index/src/query/mod.rs` is **frozen** as a stable API surface before Epic 6 closes — without this freeze, Epic 7 (agenda extensions) and Epic 8 (search/backlinks queries) will collide. Per the 2026-05-20 reconciliation, the v0.1 baseline freeze includes the streaming search contract (`search_stream`), `graph(scope)`, and `unlinked_mentions(headline_id)` — see Story 6.5. **Note on execution order:** Epic 6 closes v0.1 Alpha and therefore runs *after* Epics 7+8 in execution time despite its lower number; Story 6.1's Freelancer content depends on Story 8.7 Backlinks panel for its "≥1 backlink visible" AC. **Closes SM-1.**
+
+Implement Starter Vault picker on first launch with **Personal GTD + Student + Freelancer** starters (FR-18 partial — Empty deferred to Epic 11 per 2026-05-20 reconciliation), basic Today + Week Agenda views in `shell-ui/src/components/agenda/` (FR-7 partial — Custom view + saved presets in Epic 7), dark + light default themes with WCAG AA contrast in `shell-ui/src/themes/` (FR-22 partial — CSS customization in Epic 12), macOS DMG + Homebrew cask + Linux AppImage packaging (LD-19 signing, LD-34 distribution), README + landing page + basic docs. **Critical pre-Epic-7 AC per Party Mode P0 (Amelia):** the `IndexQuery` trait in `crates/orgsidian-index/src/query/mod.rs` is **frozen** as a stable API surface before Epic 6 closes — without this freeze, Epic 7 (agenda extensions) and Epic 8 (search/backlinks queries) will collide. Per the 2026-05-20 reconciliation, the v0.1 baseline freeze includes the streaming search contract (`search_stream`), `graph(scope)`, and `unlinked_mentions(headline_id)` — see Story 6.5. **Note on execution order:** Epic 6 closes v0.1 Alpha and therefore runs _after_ Epics 7+8 in execution time despite its lower number; Story 6.1's Freelancer content depends on Story 8.7 Backlinks panel for its "≥1 backlink visible" AC. **Closes SM-1.**
 **FRs covered:** FR-18 (Personal GTD + Student + Freelancer), FR-7 (Today/Week subset), FR-22 (dark + light defaults), FR-26 (Graph View — via Epic 8 stories 8.10/8.11/8.12 closed-by-release).
 
 ### Epic 7: Today Dashboard & Time Tracking
+
 Implement full Today Dashboard surface in `shell-ui/src/components/today/` (FR-6 — Scheduled + Deadline + today-tag + Inbox preview + Active Clock; <500ms render on 1k-file Vault; collapsible sections with persistent preferences; empty-state messages). Add Custom Agenda view (date range picker) + saved filter presets to complete FR-7. Implement Clock in/out/resume in `orgsidian-core/src/clock.rs` + `stores/clockStore.ts` + `shell-ui/src/components/org/ClockEditor.tsx`: LOGBOOK `CLOCK:` persistence, single Active Clock invariant, prior-session running-clock prompt on launch (discard/adjust/keep). UX polish (persistent toggleable status bar, refined timer notifications, clock-time editing affordance) deferred to Epic 13 per PRD §6.2 phasing note.
 **FRs covered:** FR-6, FR-7 (Custom + presets — full), FR-8 (functional).
 
 ### Epic 8: Capture, Search, Backlinks, Graph View
+
 Implement Quick Capture as a separate Tauri window (`quick-capture.html` + separate Vite bundle for FR-10 <1s latency, LD-28) wired to `tauri-plugin-global-shortcut` (default `Cmd/Ctrl+Shift+Space`); system tray fallback (LD-28 + `orgsidian-shell-app/src/tray.rs`). FTS5 full-text search via `Cmd/Ctrl+P` Command Palette with query syntax `#tag:`, `file:`, `todo:` (`orgsidian-index::query::search`, **two-tier streaming per 2026-05-20: <100ms first 10 results, <200ms full 50 on 1k-file Vault**). Backlinks sidebar panel updating <100ms on Headline cursor move (`orgsidian-index::query::backlinks` + `BacklinksPanel.tsx`). **Backlink Graph View (FR-26 added 2026-05-20)** ships in this epic for v0.1 Alpha: `orgsidian-index::query::graph` adjacency API + `shell-ui/src/components/graph/{GraphCanvas, GraphNodeList}` via `react-force-graph-2d@1.29.1` (LD-56) + `/graph` TanStack route (LD-29) + ≤2s/5k-node cross-webview nightly perf gate + a11y textual fallback per LD-58 (Stories 8.10/8.11/8.12). **Author daily-driving SM-2 sub-criterion (task + clock + backlink in same session) becomes possible at the end of this epic per Party Mode (John).** **Plugin API consistency checkpoint:** verify Capture, Search, and Graph View consume the `OrgsidianPlugin` trait surface unchanged (no parallel "private" hooks); preview for LD-50 final review in Epic 12.
 **FRs covered:** FR-10, FR-11, FR-12, FR-13 (Linked v0.1; Unlinked References sub-panel v0.5+ in Epic 12), FR-26.
 
 ### Epic 9: Conflict-Safe Concurrent Editing (Full Merge Dialog)
+
 Build the three-pane Merge Dialog (`shell-ui/src/components/merge/` with custom focus management for 3-pane hunk navigation): Yours / External / Merged panes with diff hunks individually selectable (use-yours / use-external) + free-edit of Merged + atomic save on accept + Dirty Buffer preservation on cancel. Consumes the `ConflictState` rich struct + `ConflictStrategy` pattern frozen in Epic 5 — Epic 9 ships the `ThreePaneMergeDialog` strategy variant and **retires** `BlockWithWarning`. Watcher golden-trace fixtures from Epic 5 carry over ~85% unchanged; only the outcome assertion flips per Party Mode (Amelia + Murat consensus). **Sequenced AFTER Epic 8** per Party Mode P1 (Murat: watcher event bus cross-contamination between Capture and Merge requires write path stabilized first). **Plugin API consistency checkpoint** as in Epic 8.
 **FRs covered:** FR-16 (full — replaces Epic 5 fallback).
 
 ### Epic 10: Project Report Export (Wow Demo)
+
 Implement `crates/orgsidian-report/` new crate (isolated dep cost — `typst@0.14` + `typst-pdf@0.14` + `typst-as-lib@0.15` per LD-53, plus `orgsidian-report-default.typ` template and the `sys.inputs` schema generated from the `ReportData` struct). Bundled fonts (Inter Variable + JetBrains Mono + Noto Sans Latin/Cyrillic subset ≤8 MB for v0.5; CJK + Arabic added in v1.0). HTML path uses parallel `html_renderer.rs` (templater choice deferred to in-sprint micro-decision). User selects scope (file/subtree/tag) + date range → PDF or HTML report in <5s including TODO completions, Clock totals per Headline, linked-notes excerpts grouped by file, milestone status. Active Clock without end-time explicitly flagged. `docs/customization/report-templates.md` documents the `sys.inputs` schema (OQ-6 resolution). **SM-2 wow demo.**
 **FRs covered:** FR-14.
 
 ### Epic 11: Onboarding Completion, Coaching & Refile
+
 Add **Empty Starter Vault** to the picker (FR-18 completion — Freelancer moved to Epic 6 per 2026-05-20 reconciliation). Implement Plain Mode / Power Mode toggle in Settings via `data-[mode=plain]:hidden` Tailwind selectors (LD-29 — visibility flip, not conditional render; preserves keyboard-shortcut muscle memory). Centralized `coachingRegistry.ts` mapping coaching IDs to content + dismissal conditions; `<CoachingSlot id="..." />` as the only API used in surfaces; "Don't show again" persists per-context; "show all coaching tips" reset action in Settings. **FR-25 Refile (added 2026-05-20)** — the org-canonical inbox-triage primitive — lands here as Stories 11.7/11.8/11.9: subtree extract/insert primitives (`orgsidian-vault::refile`) + LD-57 sequence-with-`.bak` cross-file orchestrator + `RefileTargetPicker.tsx` UI bound to `Cmd/Ctrl+Shift+R` (Project Report rebinds to `Cmd/Ctrl+Shift+E` per Story 10.7 update).
 **FRs covered:** FR-18 (Empty only), FR-20, FR-21, FR-25.
 
 ### Epic 12: v0.5 Beta Release — Customization, Unlinked References & Plugin Surface Lock
+
 Implement the **Unlinked References** sub-panel on the existing Backlinks UI (FR-13 extension per 2026-05-20): `orgsidian-index::query::unlinked_references` (FTS5 title-match outer-joined against `links` table) + `BacklinksPanel.tsx` Linked/Unlinked sub-tabs. User CSS file override loaded from `~/.orgsidian/themes/*.css` after the bundle (FR-22 full — invalid CSS falls back to default with warning, never crashes). LD-51 `tokens.test.ts` Vitest snapshot test extracts the set of `--org-*` variables from `tokens.css` and locks the public theme API contract. Keybinding remapping in Settings with conflict detection (FR-23, per-Vault persistence via LD-40 `<Vault>/.orgsidian/settings.toml`). **LD-50 plugin event surface review sign-off** — audit every `Event` variant + hook method signature + `HookOutcome` semantics added during Epics 1-11; output `docs/plugin-api/v1.0-surface-review.md` committed before v0.5 → v1.0 transition. Final v0.5 Beta release artifacts + announcement. **Closes SM-2.**
 **FRs covered:** FR-13 (Unlinked References extension), FR-22 (CSS customization), FR-23. Closes FR-24 v1.0 contract lock-in path.
 
 ### Epic 13: v1.0 — Cross-Platform Launch & Tutorial
+
 Windows MSI packaging via Tauri bundler + code-signing cert (LD-19, EV upgrade evaluated) + WebView2 + ReadDirectoryChangesW reliability hardening (per OQ-3 / OQ-4 known edge cases). Auto-update via `tauri-plugin-updater` stable channel across macOS + Linux + Windows (LD-20). Interactive Tutorial — 10-minute guided cycle (capture → triage → schedule → agenda → clock in/out → one-line report) launchable from "Get started" menu + first-launch prompt; completion tracked locally (no telemetry); re-launchable from Settings (FR-19). Clock UX polish — persistent toggleable status bar, refined timer notifications, clock-time editing affordance (FR-8 polish per PRD §6.2 phasing). Performance budgets verified across full matrix (NFR-1..NFR-7). **A11y graduation:** expand the LD-58 happy-path keyboard scenarios (which ship as hard CI gate from v0.1 per Story 1.17) to representative-coverage per surface; add focus-ring visual snapshot tests; document known limitations + qualitative sign-off in `docs/user-guide/accessibility.md`. Full screen-reader certification (assistive-tech audit) remains deferred to v1.5+ per LD-58 follow-up. Comprehensive `docs/user-guide/` site. Coordinated announcement HN + ProductHunt + org-mode community channels. **Closes SM-3.**
 **FRs covered:** FR-19, FR-8 (UX polish), NFR-8 (Windows feature parity added).
 
@@ -775,23 +789,24 @@ So that FR-1 renders correctly and Epic 4+ can build TODO badges, timestamp pick
 **And** drawer types (PROPERTIES, LOGBOOK, custom) are distinguished
 **And** link types (`id:`, `[[wiki]]`, `[[file://]]`, `[[http://]]`) are parsed into variants
 **And** unit tests in `tests/semantic.rs` cover each of the following LD-44 syntax constructs (enumerated explicitly per Party Mode round 2 P0 — Murat):
-  - Heading levels 1-6 with TODO states (`TODO`, `NEXT`, `DONE`, `WAITING`, custom via `#+TODO:`)
-  - Scheduled timestamp (`SCHEDULED:`); active + inactive
-  - Deadline timestamp (`DEADLINE:`); active + inactive
-  - Clock entries (`CLOCK: [start]--[end] => HH:MM`); open + closed + ranged
-  - Recurring timestamps (`<2026-05-19 Mon +1w>`, `+1d`, `+1m`, `+1y`)
-  - Drawer `:PROPERTIES:`; `:LOGBOOK:`; custom drawer types
-  - Inline markup: `*bold*`, `/italic/`, `=verbatim=`, `~code~`, `+strike+`, `_underline_`
-  - Links: `[[id:abc]]`, `[[wiki-link]]`, `[[wiki-link][description]]`, `[[file://path]]`, plain `http://...`
-  - Lists: `-`, `+`, numbered `1.`, checkbox `- [ ]` / `- [X]`
-  - Tables: simple + with separator row + with formula line `#+TBLFM:`
-  - Block elements: `#+BEGIN_SRC`, `#+BEGIN_QUOTE`, `#+BEGIN_EXAMPLE`, `#+BEGIN_VERSE`
-  - Inline LaTeX: `$...$`, `\\(...\\)`, `\\[...\\]`
-  - Footnotes: `[fn:N]`, `[fn::inline]`
-  - Citations: org-cite syntax `[cite:@key]`
-  - Tags: `:tag:`, `:tag1:tag2:` (multi)
-**And** each enumerated construct has ≥1 unit test in `tests/semantic.rs` named `semantic_{construct_kebab}`
-**And** `KNOWN_DIVERGENCES.md` at `docs/parser/` is initialized with the known tree-sitter-org coverage gaps.
+
+- Heading levels 1-6 with TODO states (`TODO`, `NEXT`, `DONE`, `WAITING`, custom via `#+TODO:`)
+- Scheduled timestamp (`SCHEDULED:`); active + inactive
+- Deadline timestamp (`DEADLINE:`); active + inactive
+- Clock entries (`CLOCK: [start]--[end] => HH:MM`); open + closed + ranged
+- Recurring timestamps (`<2026-05-19 Mon +1w>`, `+1d`, `+1m`, `+1y`)
+- Drawer `:PROPERTIES:`; `:LOGBOOK:`; custom drawer types
+- Inline markup: `*bold*`, `/italic/`, `=verbatim=`, `~code~`, `+strike+`, `_underline_`
+- Links: `[[id:abc]]`, `[[wiki-link]]`, `[[wiki-link][description]]`, `[[file://path]]`, plain `http://...`
+- Lists: `-`, `+`, numbered `1.`, checkbox `- [ ]` / `- [X]`
+- Tables: simple + with separator row + with formula line `#+TBLFM:`
+- Block elements: `#+BEGIN_SRC`, `#+BEGIN_QUOTE`, `#+BEGIN_EXAMPLE`, `#+BEGIN_VERSE`
+- Inline LaTeX: `$...$`, `\\(...\\)`, `\\[...\\]`
+- Footnotes: `[fn:N]`, `[fn::inline]`
+- Citations: org-cite syntax `[cite:@key]`
+- Tags: `:tag:`, `:tag1:tag2:` (multi)
+  **And** each enumerated construct has ≥1 unit test in `tests/semantic.rs` named `semantic_{construct_kebab}`
+  **And** `KNOWN_DIVERGENCES.md` at `docs/parser/` is initialized with the known tree-sitter-org coverage gaps.
 
 **Traces:** FR-1, LD-44 (subset corpus syntax-feature matrix).
 
@@ -1380,7 +1395,7 @@ So that Epic 7 + Epic 8 cannot accidentally break the contract in CI (Murat roun
 **Given** Stories 3.5 + 6.3 + 6.4,
 **When** the freeze gate is applied,
 **Then** `crates/orgsidian-index/src/query/mod.rs` declares the `IndexQuery` trait with `///` doc-comments documenting the contract (input types, return types, error variants)
-**And** the v0.1 baseline trait surface (per the 2026-05-20 reconciliation decision to freeze upfront rather than rely on semver-minor additions during Epic 8) includes: `agenda::{today, week, custom}` (Stories 6.3, 6.4, 7.4); `search::query(q) -> Vec<SearchResult>` *and* `search::search_stream(q) -> impl Iterator<SearchResult>` (Story 8.4 two-tier streaming `<100ms first 10` / `<200ms full 50`); `backlinks::for_headline(id) -> Vec<Backlink>` (Story 8.6); `backlinks::unlinked_mentions(headline_id) -> Vec<UnlinkedMention>` (Story 12.0 v0.5+, but signature in baseline so v0.5 lands as semver-minor body addition, not breaking); `graph::adjacency(scope) -> GraphData { nodes: Vec<NodeRef{ id, file, title }>, edges: Vec<Edge{ src_id, dst_id, kind }> }` (Story 8.10 FR-26)
+**And** the v0.1 baseline trait surface (per the 2026-05-20 reconciliation decision to freeze upfront rather than rely on semver-minor additions during Epic 8) includes: `agenda::{today, week, custom}` (Stories 6.3, 6.4, 7.4); `search::query(q) -> Vec<SearchResult>` _and_ `search::search_stream(q) -> impl Iterator<SearchResult>` (Story 8.4 two-tier streaming `<100ms first 10` / `<200ms full 50`); `backlinks::for_headline(id) -> Vec<Backlink>` (Story 8.6); `backlinks::unlinked_mentions(headline_id) -> Vec<UnlinkedMention>` (Story 12.0 v0.5+, but signature in baseline so v0.5 lands as semver-minor body addition, not breaking); `graph::adjacency(scope) -> GraphData { nodes: Vec<NodeRef{ id, file, title }>, edges: Vec<Edge{ src_id, dst_id, kind }> }` (Story 8.10 FR-26)
 **And** `crates/orgsidian-index/CHANGELOG.md` records a `Query API: v1.0` entry at the end of this epic with the published semver baseline (incl. the streaming + graph + unlinked-mentions additions)
 **And** `.github/workflows/pr.yml` runs `cargo-semver-checks check-release --baseline-rev v0.1.0-alpha.x -p orgsidian-index` and **fails the PR** on any breaking change to the `query::*` public surface
 **And** semver-minor additions (new trait method with default impl, new variant on `#[non_exhaustive]` enum) pass the check; semver-major changes (signature, removal) require explicit CHANGELOG bump + reviewer override.
@@ -1577,10 +1592,11 @@ So that I never silently record 14 hours from leaving the app open overnight (UJ
 **Given** Story 7.6 (with `last_active_at` field persistence),
 **When** Orgsidian launches with a non-empty Active Clock state in `<Vault>/.orgsidian/active-clock.json`,
 **Then** a modal prompts with the following `[microcopy: draft]` content (final copy pass recorded in `docs/microcopy-registry.md`):
+
 > **Still tracking from yesterday?**
-> *{Headline}* was being tracked when Orgsidian last closed at *{last_active_at | formatted}*.
+> _{Headline}_ was being tracked when Orgsidian last closed at _{last_active_at | formatted}_.
 > Currently logged: **{HH:MM} (if you keep tracking) / {HH:MM} (if you adjust to last-active)**.
-> `[ Adjust end time ]`  `[ Keep tracking ]`  `[ Discard this session ]`
+> `[ Adjust end time ]` `[ Keep tracking ]` `[ Discard this session ]`
 
 **And** the keyboard default-focused button is "Adjust end time" (safest); Enter confirms; Esc invokes Adjust (not Cancel)
 **And** "Adjust end time" opens a time picker pre-filled with `last_active_at` from Story 7.6
@@ -1731,14 +1747,15 @@ So that UJ-6 is testable as a coherent journey rather than fragmented across Sto
 **Given** Stories 8.4 + 8.5 + 8.6 + 8.7 closed,
 **When** the integration spine test runs,
 **Then** `shell-ui/e2e/uj6-search-spine.spec.ts` (Playwright + Tauri WebDriver) executes the following scripted flow on a fixture Vault containing ≥2 years of dated `.org` files with `id:` cross-references:
-  1. Press `Cmd+P` → palette opens within 100ms
-  2. Type "kubernetes ingress" → first 10 results paint within the Story 8.4 two-tier perf budget (`<100ms` time-to-first-10 streaming); full 50 results complete within `<200ms`
-  3. Assert results are **grouped by file** with the matched line previewed (not a flat list)
-  4. Click the first result → editor route `/editor/$filePath/$headlineId` opens at the exact Headline (line scrolled into view, cursor on the source line)
-  5. Backlinks sidebar (Story 8.7) renders within 100ms with ≥1 backlink showing the linking Headline title + context snippet
-  6. Click the backlink → navigate to the linked source Headline; original Backlinks panel updates in <100ms
-**And** the spine test runs on macOS-arm64 + Ubuntu-LTS per PR (Windows nightly)
-**And** any single-step failure produces a screenshot of the failing step in `test-results/`.
+
+1. Press `Cmd+P` → palette opens within 100ms
+2. Type "kubernetes ingress" → first 10 results paint within the Story 8.4 two-tier perf budget (`<100ms` time-to-first-10 streaming); full 50 results complete within `<200ms`
+3. Assert results are **grouped by file** with the matched line previewed (not a flat list)
+4. Click the first result → editor route `/editor/$filePath/$headlineId` opens at the exact Headline (line scrolled into view, cursor on the source line)
+5. Backlinks sidebar (Story 8.7) renders within 100ms with ≥1 backlink showing the linking Headline title + context snippet
+6. Click the backlink → navigate to the linked source Headline; original Backlinks panel updates in <100ms
+   **And** the spine test runs on macOS-arm64 + Ubuntu-LTS per PR (Windows nightly)
+   **And** any single-step failure produces a screenshot of the failing step in `test-results/`.
 
 ### Story 8.9: Plugin API consistency checkpoint (preview LD-50)
 
@@ -1777,7 +1794,7 @@ So that FR-26 Graph View surface is queryable from any consumer (UI canvas, a11y
 
 As the **user**,
 I want a `/graph` route rendering my Vault's backlink graph as a force-directed canvas (with pan/zoom, click-to-Source, zoom-in labels) AND as a keyboard-reachable textual node list,
-So that the *one object, three views* (outline + agenda + graph) wedge is live in v0.1 Alpha and the LD-58 keyboard-only happy-path scenario for Graph View has a non-canvas target to drive (FR-26 + NFR-9).
+So that the _one object, three views_ (outline + agenda + graph) wedge is live in v0.1 Alpha and the LD-58 keyboard-only happy-path scenario for Graph View has a non-canvas target to drive (FR-26 + NFR-9).
 
 **Traces:** FR-26, LD-56, LD-58, LD-29 (route), UJ-6 adjacent.
 
@@ -2003,14 +2020,15 @@ So that UJ-3 is testable as a coherent journey and the critical edge case (Activ
 **Given** Stories 10.1-10.6 closed,
 **When** the integration spine test runs,
 **Then** `shell-ui/e2e/uj3-report-spine.spec.ts` (Playwright + Tauri WebDriver) executes the following scripted flow on a fixture Vault containing a 4-week project with ≥3 milestones, ≥10 clocked tasks, ≥5 linked notes, and one deliberately-open `CLOCK:` line with no end-time:
-  1. Open the project file in the editor
-  2. Invoke "Project Report" action from the context menu (or `Cmd/Ctrl+Shift+E` for "Export" — rebound from the previously-listed `Cmd/Ctrl+Shift+R` per the 2026-05-20 reconciliation, which freed `Cmd/Ctrl+Shift+R` for the org-canonical Refile chord per Story 11.9)
-  3. Pick date range "last 4 weeks" + format "PDF"
-  4. Click "Generate" → PDF byte buffer is produced within Story 10.6 perf budget
-  5. PDF is saved to a target path via `tauri-plugin-dialog`
-  6. Inspect the generated PDF (via `pdfium-render` or `pdf-extract` in the test harness): assert ≥1 page contains "Total: …", grouped TODO completions per week, milestone status section, and a **prominent warning** for the deliberately-open clock entry containing the literal `⚠` glyph and the Headline name
-**And** the spine test runs on macOS-arm64 + Ubuntu-LTS per PR
-**And** the test fails if the open-clock warning is absent or buried below the fold (rendered only on page 2+).
+
+1. Open the project file in the editor
+2. Invoke "Project Report" action from the context menu (or `Cmd/Ctrl+Shift+E` for "Export" — rebound from the previously-listed `Cmd/Ctrl+Shift+R` per the 2026-05-20 reconciliation, which freed `Cmd/Ctrl+Shift+R` for the org-canonical Refile chord per Story 11.9)
+3. Pick date range "last 4 weeks" + format "PDF"
+4. Click "Generate" → PDF byte buffer is produced within Story 10.6 perf budget
+5. PDF is saved to a target path via `tauri-plugin-dialog`
+6. Inspect the generated PDF (via `pdfium-render` or `pdf-extract` in the test harness): assert ≥1 page contains "Total: …", grouped TODO completions per week, milestone status section, and a **prominent warning** for the deliberately-open clock entry containing the literal `⚠` glyph and the Headline name
+   **And** the spine test runs on macOS-arm64 + Ubuntu-LTS per PR
+   **And** the test fails if the open-clock warning is absent or buried below the fold (rendered only on page 2+).
 
 ---
 
@@ -2018,7 +2036,7 @@ So that UJ-3 is testable as a coherent journey and the critical edge case (Activ
 
 ### Story 11.1: Add Empty Starter Vault picker card + flow polish
 
-*(Re-scoped 2026-05-20: was "Add Freelancer Starter Vault content + generator" — Freelancer promoted to Story 6.1 v0.1 Alpha per the UX spec lighthouse-persona commitment; this story is what's left of the FR-18 completion in v0.5 Beta, surfacing the explicit Empty card with onboarding coaching. Subsumes the prior Story 11.2 "Add Empty Starter Vault flow" — see Story 11.2 below for the no-op marker.)*
+_(Re-scoped 2026-05-20: was "Add Freelancer Starter Vault content + generator" — Freelancer promoted to Story 6.1 v0.1 Alpha per the UX spec lighthouse-persona commitment; this story is what's left of the FR-18 completion in v0.5 Beta, surfacing the explicit Empty card with onboarding coaching. Subsumes the prior Story 11.2 "Add Empty Starter Vault flow" — see Story 11.2 below for the no-op marker.)_
 
 As the **first-time user with an existing `.org` folder**,
 I want an explicit "Empty (use my own folder)" card on the first-launch Starter Vault picker — visually equal to the Personal GTD / Student / Freelancer cards, with onboarding coaching that confirms no files will be written into my existing folder,
@@ -2040,7 +2058,7 @@ So that experienced org-mode users have a peer first-launch path to designating 
 
 ### Story 11.2: ~~Add Empty Starter Vault flow~~ — **subsumed into Story 11.1 (2026-05-20)**
 
-*This story was subsumed into Story 11.1 during the 2026-05-20 reconciliation. The behavior previously described here (Empty option → `tauri-plugin-dialog` → `designateVault` → no new files → land on `/today`) is now an AC of the re-scoped Story 11.1, which combines the explicit picker card with the underlying flow. Story 11.2 is kept as a no-op marker so downstream artifacts referencing "Story 11.2" do not orphan, but no implementation work happens here. Refer all FR-18 Empty Starter Vault work to Story 11.1.*
+_This story was subsumed into Story 11.1 during the 2026-05-20 reconciliation. The behavior previously described here (Empty option → `tauri-plugin-dialog` → `designateVault` → no new files → land on `/today`) is now an AC of the re-scoped Story 11.1, which combines the explicit picker card with the underlying flow. Story 11.2 is kept as a no-op marker so downstream artifacts referencing "Story 11.2" do not orphan, but no implementation work happens here. Refer all FR-18 Empty Starter Vault work to Story 11.1._
 
 **Traces:** FR-18 (see Story 11.1).
 
@@ -2249,12 +2267,13 @@ So that LD-50 gate is honored and v1.5+ public publication is unblocked.
 **Given** Stories 8.9 + 9.5 checkpoints + completed v0.5 Beta plugin set,
 **When** the manual review is performed by the parser-owner role,
 **Then** `docs/plugin-api/v1.0-surface-review.md` exists, is non-empty, and contains the following **lint-checkable structural requirements** (verified by `scripts/check-surface-review.sh` as a CI gate):
-  - A section per `Event` variant currently defined in `orgsidian-plugin-api::Event` (one heading per variant, lint asserts variant count matches)
-  - A section per hook method currently defined on `OrgsidianPlugin` trait (lint asserts method count matches)
-  - A `HookOutcome` semantics section
-  - A final `## Signed-off-by` line containing at least one signoff in the format `parser-owner @username (YYYY-MM-DD)`
-**And** any `Event` or hook surface changes that arise from the review land as separate PRs **before** the `v0.5.0` release tag — release pipeline refuses to tag if `docs/plugin-api/v1.0-surface-review.md` lacks the lint-asserted structure
-**And** the qualitative content (semantic correctness, granularity judgments) is reviewed by the parser-owner and other reviewers via PR review — explicitly not automatable.
+
+- A section per `Event` variant currently defined in `orgsidian-plugin-api::Event` (one heading per variant, lint asserts variant count matches)
+- A section per hook method currently defined on `OrgsidianPlugin` trait (lint asserts method count matches)
+- A `HookOutcome` semantics section
+- A final `## Signed-off-by` line containing at least one signoff in the format `parser-owner @username (YYYY-MM-DD)`
+  **And** any `Event` or hook surface changes that arise from the review land as separate PRs **before** the `v0.5.0` release tag — release pipeline refuses to tag if `docs/plugin-api/v1.0-surface-review.md` lacks the lint-asserted structure
+  **And** the qualitative content (semantic correctness, granularity judgments) is reviewed by the parser-owner and other reviewers via PR review — explicitly not automatable.
 
 ### Story 12.5: Publish v0.5 Beta release + announcement
 
@@ -2340,7 +2359,7 @@ So that FR-8 daily-driver UX matches the depth of the planning surface (PRD §6.
 
 ### Story 13.5: Graduate a11y from happy-path to representative-coverage (v1.0 narrowing per 2026-05-20)
 
-*(Narrowed 2026-05-20: Story 1.17 — added in the post-PRD-2026-05-20 reconciliation — now ships the LD-58 hard CI gates from v0.1 Alpha (axe-core + contrast-matrix + 6 happy-path keyboard scenarios). The "deferred to v1.5+" wording that previously framed this story is no longer accurate. Story 13.5 narrows to the v1.0 graduation work: expanding happy-path to representative-coverage, focus-ring snapshot tests, qualitative sign-off. Full screen-reader certification (assistive-tech audit) remains v1.5+.)*
+_(Narrowed 2026-05-20: Story 1.17 — added in the post-PRD-2026-05-20 reconciliation — now ships the LD-58 hard CI gates from v0.1 Alpha (axe-core + contrast-matrix + 6 happy-path keyboard scenarios). The "deferred to v1.5+" wording that previously framed this story is no longer accurate. Story 13.5 narrows to the v1.0 graduation work: expanding happy-path to representative-coverage, focus-ring snapshot tests, qualitative sign-off. Full screen-reader certification (assistive-tech audit) remains v1.5+.)_
 
 As the **screen-reader-using or keyboard-only user**,
 I want the per-PR a11y CI gates (already live from v0.1 per Story 1.17) expanded at v1.0 to cover representative scenarios — not just happy-path — across every primary surface, with visible focus rings and Tab-order snapshots verified,

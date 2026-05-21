@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-plugin-api"
+description = "Plugin API trait + Event enum + HookOutcome + HookContext/PluginContext traits (LEAF crate; published at v1.5+ per LD-10)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# LEAF crate — no project deps. Full trait surface lands in Story 1.5.

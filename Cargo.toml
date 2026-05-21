@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/orgsidian-parser",
+    "crates/orgsidian-index",
+    "crates/orgsidian-watcher",
+    "crates/orgsidian-vault",
+    "crates/orgsidian-plugin-api",
+    "crates/orgsidian-report",
+    "crates/orgsidian-core",
+    "crates/orgsidian-cli",
+    "crates/orgsidian-shell-app",
+]
+exclude = ["tools/corpus-extractor"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["Tiziano Basile <tiz.basile@gmail.com>", "Orgsidian contributors"]
+repository = "https://github.com/orgsidian/orgsidian"
+# rust-version intentionally OMITTED in Story 1.2 — `rust-toolchain.toml` pins
+# `stable` and Story 1.8 will harden CI; an MSRV declaration is deferred to
+# Story 1.10 (CONTRIBUTING.md owns the policy text).
+
+[workspace.dependencies]
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

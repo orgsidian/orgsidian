@@ -1,0 +1,10 @@
+[package]
+name = "orgsidian-corpus-extractor"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "Extracts test corpus from org-element.el assertions (Story 2.5)"
+
+[dependencies]
+# Standalone — no project deps. Real deps land in Story 2.5.

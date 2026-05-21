@@ -13,3 +13,7 @@
 - **`src/App.tsx:39-43` `<input>` missing `<label>`/`aria-label`** [LOW] — demo UI accessibility; Story 1.3.
 - **`.gitignore` ignores `src-tauri/gen/schemas/` but `src-tauri/capabilities/default.json:2` `$schema` references that path** [LOW] — editor JSON-schema warnings on fresh checkout until first `tauri dev`/`build`. Cosmetic; expected behavior.
 - **`.gitignore` only ignores `src-tauri/gen/schemas/`, not future `gen/android/` or `gen/apple/`** [LOW] — mobile targets out of scope until post-v1.0; flag for when mobile is added.
+
+## Deferred from: code review of story-1.2 (2026-05-21)
+
+- **`crates/orgsidian-shell-app/Cargo.toml` shown as new file rather than rename** [LOW] — Content diverged enough during refactor that git rename detection fell below similarity threshold, breaking the blame trail on this single file. Other Tauri files (build.rs, icons, tauri.conf.json, src/lib.rs, src/main.rs) preserved rename history correctly. Cannot retroactively fix without rewriting history.

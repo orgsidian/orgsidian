@@ -25,8 +25,15 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching the Rust shell app and workspace build outputs.
+      //    BMAD markdown churn (epics.md, sprint-status.yaml, etc.) is also ignored
+      //    to avoid spurious Vite reloads while planning artifacts evolve.
+      ignored: [
+        "**/crates/orgsidian-shell-app/**",
+        "**/target/**",
+        "**/_bmad-output/**",
+        "**/_bmad/**",
+      ],
     },
   },
 }));
