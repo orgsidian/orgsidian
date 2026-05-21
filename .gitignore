@@ -39,3 +39,6 @@ crates/orgsidian-shell-app/target/
 crates/orgsidian-shell-app/gen/schemas/
 tools/corpus-extractor/target/
 *.local
+
+# TanStack Router generated route tree (Story 1.3 Dev Notes §6 — regenerated on each dev/build)
+shell-ui/src/routeTree.gen.ts

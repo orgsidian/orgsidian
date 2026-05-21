@@ -17,3 +17,9 @@
 ## Deferred from: code review of story-1.2 (2026-05-21)
 
 - **`crates/orgsidian-shell-app/Cargo.toml` shown as new file rather than rename** [LOW] — Content diverged enough during refactor that git rename detection fell below similarity threshold, breaking the blame trail on this single file. Other Tauri files (build.rs, icons, tauri.conf.json, src/lib.rs, src/main.rs) preserved rename history correctly. Cannot retroactively fix without rewriting history.
+
+## Deferred from: code review of story-1.3 (2026-05-21)
+
+- **`shell-ui/src/routes/__root.tsx` does NOT mount `<TooltipProvider>`** [MED] — The first story that mounts a `<Tooltip>` consumer must add `<TooltipProvider>` either at `__root.tsx` (preferred — global) or scoped to the consumer. Without it, Radix Tooltip throws "`Tooltip` must be used within `TooltipProvider`" on first use. Owner: first story to render a tooltip.
+- **`shell-ui/src/components/ui/sonner.tsx:14` calls `useTheme()` from `next-themes` outside a `<ThemeProvider>`** [LOW] — degrades to `theme: undefined` → destructure default `"system"` until ThemeProvider wraps the tree. No real toasts are triggered in Story 1.3 so the effect is latent. Owner: Story 6.7 (themes) — wire `<ThemeProvider>` at app root.
+- **`shell-ui/src/routes/_layout/today.tsx` has no parent `_layout.tsx` — pathless group children parent to root; adding `_layout.tsx` later retroactively reparents every existing child** [MED] — Story 1.3 spec explicitly designs this as intentional (line 112). Owner: Story 7.1 (Today Dashboard) — when introducing the real layout file, audit every existing child of `routes/_layout/` for layout-wrapping assumptions.
