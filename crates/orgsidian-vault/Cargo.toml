@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-vault"
+description = "Vault designation + atomic write subsystem + dirty-buffer manager (FR-15, NFR-14, NFR-15)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Real deps added in Story 3.x.

@@ -1,0 +1,12 @@
+[package]
+name = "orgsidian-cli"
+description = "orgsidian headless CLI (parse, index, query, validate-plugin) per LD-27"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "orgsidian"
+path = "src/main.rs"

@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-report"
+description = "Typst-based project report renderer (FR-14, LD-14)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Real deps (typst, etc.) added in Story 10.x.

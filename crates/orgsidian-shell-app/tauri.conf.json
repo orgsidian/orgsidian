@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "identifier": "com.orgsidian.app",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm --filter shell-ui dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "pnpm --filter shell-ui build",
+    "frontendDist": "../../shell-ui/dist"
   },
   "app": {
     "windows": [

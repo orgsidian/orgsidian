@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-watcher"
+description = "Filesystem watcher (notify-rs) + debounce + external-edits reconciliation (FR-16, NFR-16)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Real deps (notify, etc.) added in Story 5.x.

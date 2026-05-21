@@ -30,9 +30,12 @@ _bmad/
 node_modules/
 pnpm-debug.log*
 
-# Vite / Tauri scaffold
+# Vite / Tauri / Cargo workspace build outputs
 dist/
 dist-ssr/
-src-tauri/target/
-src-tauri/gen/schemas/
+shell-ui/dist/
+target/
+crates/orgsidian-shell-app/target/
+crates/orgsidian-shell-app/gen/schemas/
+tools/corpus-extractor/target/
 *.local

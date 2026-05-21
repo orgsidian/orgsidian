@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-index"
+description = "SQLite index + query API + FTS5 search (FR-12, FR-17)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Real deps (rusqlite, deadpool-sqlite, etc.) added in Story 3.x.

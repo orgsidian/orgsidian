@@ -1,0 +1,11 @@
+[package]
+name = "orgsidian-parser"
+description = "tree-sitter-org wrapper + semantic AST + serializer (FR-1, FR-2)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Real deps (tree-sitter, etc.) added in Story 2.x.

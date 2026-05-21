@@ -2009,9 +2009,9 @@ dependencies = [
 
 [[package]]
 name = "muda"
-version = "0.19.1"
+version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ae8844f63b5b118e334e205585b8c5c17b984121dbdb179d44aeb087ffad3cb"
+checksum = "47a2e3dff89cd322c66647942668faee0a2b1f88ea6cbb4d374b4a8d7e92528c"
 dependencies = [
  "crossbeam-channel",
  "dpi",
@@ -2325,7 +2325,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "orgsidian"
+name = "orgsidian-cli"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-core"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-index"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-parser"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-plugin-api"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-report"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-shell-app"
 version = "0.0.0"
 dependencies = [
  "serde",
@@ -2334,6 +2358,14 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
 ]
+
+[[package]]
+name = "orgsidian-vault"
+version = "0.0.0"
+
+[[package]]
+name = "orgsidian-watcher"
+version = "0.0.0"
 
 [[package]]
 name = "pango"
