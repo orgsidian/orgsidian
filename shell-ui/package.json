@@ -7,9 +7,14 @@
     "dev": "vite",
     "prebuild": "tsr generate && cargo test --locked --package orgsidian-shell-app --test export_bindings --quiet",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "extract": "lingui extract --clean",
+    "compile": "lingui compile",
+    "i18n:check": "lingui extract --clean && git diff --exit-code src/locales"
   },
   "dependencies": {
+    "@lingui/core": "^6.0.1",
+    "@lingui/react": "^6.0.1",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-router": "^1.170.4",
     "@tauri-apps/api": "^2",
@@ -37,13 +42,18 @@
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
+    "@lingui/cli": "^6.0.1",
+    "@lingui/conf": "^6.0.1",
+    "@lingui/swc-plugin": "^6.0.1",
+    "@lingui/vite-plugin": "^6.0.1",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/router-cli": "^1.167.8",
     "@tanstack/router-plugin": "^1.168.6",
     "@types/node": "^24",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
+    "@vitejs/plugin-react-swc": "^4.0.0",
+    "eslint-plugin-lingui": "^0.13.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
   }
