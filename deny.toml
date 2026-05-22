@@ -1,0 +1,190 @@
+# deny.toml — LD-37 supply-chain hygiene configuration (Story 1.7).
+#
+# This file is the machine-readable enforcement of LD-37
+# (see _bmad-output/planning-artifacts/architecture.md#LD-37). The companion
+# human-readable ledger lives at docs/security/advisory-exceptions.md — every
+# entry added to [advisories].ignore or [licenses].exceptions MUST have a
+# matching row in that ledger with rationale + 90-day review date.
+#
+# Rejection contract (LD-37, architecture.md line 1167): GPL-*, AGPL-*,
+# proprietary, and unknown licenses are rejected by construction — the
+# [licenses].allow list below is a *closed allowlist*, so any SPDX expression
+# not present in it fails `cargo deny check licenses`. No explicit deny-list
+# is needed.
+
+[graph]
+# LD-32 CI matrix targets (macOS Intel + Apple Silicon, Ubuntu-LTS x86_64,
+# Windows x86_64). aarch64-unknown-linux-gnu is intentionally omitted: the
+# nightly arm of the LD-32 matrix runs the same x86_64 binary, so no separate
+# triple sweep is required.
+targets = [
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
+# Cover every feature gate's dep set — without all-features = true a
+# feature-gated dep (e.g., rusqlite/bundled) could slip past licenses/bans.
+all-features = true
+
+[advisories]
+# RustSec advisory DB pinned explicitly (cargo-deny default, but future-proofed
+# against silent default changes).
+db-urls = ["https://github.com/RustSec/advisory-db"]
+# `ignore` is the *machine-readable* exception ledger. Every entry here MUST
+# have a matching row in docs/security/advisory-exceptions.md with rationale
+# and a 90-day review date.
+ignore = [
+    # RUSTSEC-2024-0429 — glib 0.18.5 unsoundness. Transitive via the Linux
+    # gtk/glib stack pulled in by Tauri 2.11.x (gtk → atk/cairo-rs/gdk →
+    # glib). Upstream fix requires glib >=0.20; Tauri 2.x has not yet bumped.
+    # Linux-only impact (macOS/Windows targets are unaffected). Re-evaluate
+    # on next Tauri-ecosystem milestone bump per [[feedback_version_policy]].
+    { id = "RUSTSEC-2024-0429", reason = "transitive via Tauri 2.x Linux gtk/glib stack; upstream fix needs glib >=0.20 (not yet vendored by Tauri). Linux-only. Review next Tauri bump." },
+]
+# Unmaintained crates: only fail if they are our *direct* deps. Transitive
+# unmaintained crates surface but don't fail until they're our problem to fix.
+unmaintained = "workspace"
+# NOTE: `unsound = "all"` was removed in cargo-deny 0.18 (PR #611). Unsound
+# advisories now always fail the check by default — a stricter posture than
+# the pre-0.18 toggle. Matches LD-37 intent: memory safety is non-negotiable.
+# Any yanked crate version anywhere in the graph fails the check.
+yanked = "deny"
+
+[licenses]
+# LD-37 canonical allowlist (architecture.md line 1167). Intentionally stricter
+# than cargo-deny defaults: Unicode-3.0 is NOT pre-allowed (LD-37 silent on
+# it; add only when a transitive dep forces the question), and
+# `Apache-2.0 WITH LLVM-exception` is NOT pre-allowed (same reasoning —
+# escalate to `exceptions` with justification when needed).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unlicense",
+    "Zlib",
+    "MPL-2.0",
+    # --- Transitive-forced additions (Story 1.7) ---
+    # All three below were not in LD-37's original allowlist; they entered
+    # as transitive deps from the Tauri 2.x ecosystem and are recorded with
+    # rationale in docs/security/advisory-exceptions.md under
+    # "License exceptions". Each is OSI-approved and FSF-compatible.
+    "Unicode-3.0",                    # icu_* / idna / url chain (foundational Unicode handling)
+    "BSL-1.0",                        # Boost Software License (permissive, OSI/FSF approved)
+    "Apache-2.0 WITH LLVM-exception", # LLVM-style relaxed patent clause (Apache-2.0 base)
+]
+# cargo-deny default for high-confidence SPDX inference.
+confidence-threshold = 0.93
+# NOTE: `unlicensed = "deny"` was removed in cargo-deny 0.18 (PR #611). The
+# closed-allowlist semantics now apply by default: any crate whose SPDX
+# expression is not on the `allow` list — including crates with no
+# detectable LICENSE file — fails the check. Stricter than the pre-0.18
+# toggle; matches LD-37 intent.
+# Per-crate exceptions land here with a justification comment when first
+# needed (and a matching row in docs/security/advisory-exceptions.md under
+# "License exceptions"). Empty initially.
+exceptions = []
+
+[bans]
+# Workspace-wide: duplicate major versions of any crate fail the check.
+multiple-versions = "deny"
+# Wildcard version requirements (`"*"`) in any Cargo.toml are a supply-chain
+# anti-pattern (transitive surprises) — not used anywhere in our workspace.
+wildcards = "deny"
+# Path-resolved workspace members (e.g., `orgsidian-core = { workspace = true }`
+# pointing to a path dep) are NOT semver wildcards — they are intra-workspace
+# references with no version resolution risk. cargo-deny would otherwise flag
+# them under the `wildcards` rule, so we exempt them explicitly.
+allow-wildcard-paths = true
+# Dev-only duplicate versions are tolerated: dev-deps don't ship to users.
+# Matches the spirit of `pnpm audit --prod` on the JS side.
+multiple-versions-include-dev = false
+
+# Binding rule (LD-37, architecture.md line 1168): tokio, serde, chrono, and
+# rusqlite MUST NEVER appear in `[bans].skip` or `[bans].skip-tree`. These
+# four are the LD-37 canonical-version invariants — duplicate-version
+# carve-outs for them are forbidden. Per-incident exceptions for *other*
+# crates land here with a `reason = "..."` justification.
+#
+# Story 1.7 entries below are all transitive-forced by the Tauri 2.11.x dep
+# tree (gtk/glib/wry/specta stack). Each is recorded in
+# docs/security/advisory-exceptions.md and re-evaluated on the next
+# Tauri-ecosystem milestone bump.
+skip = [
+    { crate = "base64@0.21.7",            reason = "Tauri 2.x → swift-rs pins base64 0.21; main tree uses 0.22 (hyper-util/plist/reqwest)." },
+    { crate = "bitflags@1.3.2",           reason = "legacy v1 pulled in transitively by older gtk-rs bindings; main tree uses v2." },
+    { crate = "foldhash@0.1.5",           reason = "transitive churn between hashbrown 0.15 (foldhash 0.1) and hashbrown 0.17 (foldhash 0.2)." },
+    { crate = "getrandom@0.2.17",         reason = "ring/rustls family pins old getrandom; main tree uses 0.3/0.4." },
+    { crate = "getrandom@0.3.4",          reason = "intermediate version pulled in by rand_core 0.9; coexists with 0.2 + 0.4." },
+    { crate = "hashbrown@0.12.3",         reason = "indexmap 1.x pins old hashbrown; coexists with 0.15 + 0.17 transitively." },
+    { crate = "hashbrown@0.15.5",         reason = "intermediate version on the upgrade path; coexists with 0.12 + 0.17." },
+    { crate = "heck@0.4.1",               reason = "older proc-macros pin heck 0.4; modern stack uses 0.5." },
+    { crate = "indexmap@1.9.3",           reason = "schemars 0.8 + older Tauri deps pin indexmap 1.x; main tree uses 2.x." },
+    { crate = "png@0.17.16",              reason = "ico → tauri-codegen pins png 0.17; main tree uses 0.18." },
+    { crate = "proc-macro-crate@1.3.1",   reason = "older proc-macro stack; coexists with v2 + v3 on the upgrade path." },
+    { crate = "proc-macro-crate@2.0.2",   reason = "intermediate version on the upgrade path; coexists with v1 + v3." },
+    { crate = "serde_spanned@0.6.9",      reason = "toml 0.8 pins serde_spanned 0.6; toml 1.x uses 1.1." },
+    { crate = "thiserror@1.0.69",         reason = "Tauri + workspace pin thiserror 1.x; some transitive deps adopt 2.x." },
+    { crate = "syn@1.0.109",              reason = "legacy proc-macros (still widespread); main tree uses syn 2.x." },
+    { crate = "thiserror-impl@1.0.69",    reason = "matches thiserror@1 above." },
+    { crate = "toml@0.8.2",               reason = "Tauri build chain pins toml 0.8; newer crates use 0.9/1.x." },
+    { crate = "toml@0.9.12+spec-1.1.0",   reason = "intermediate version on the upgrade path; coexists with 0.8 + 1.x." },
+    { crate = "toml_datetime@0.6.3",      reason = "paired with toml 0.8." },
+    { crate = "toml_datetime@0.7.5+spec-1.1.0", reason = "paired with toml 0.9 intermediate." },
+    { crate = "toml_edit@0.19.15",        reason = "older toml_edit pinned by transitive deps; main tree uses 0.25." },
+    { crate = "toml_edit@0.20.2",         reason = "intermediate version on the upgrade path." },
+    { crate = "windows-link@0.1.3",       reason = "windows-sys 0.59/0.60 family pins windows-link 0.1; 0.61 uses 0.2." },
+    { crate = "windows-sys@0.59.0",       reason = "Tauri's tao/wry pin windows-sys 0.59; newer crates use 0.60/0.61." },
+    { crate = "windows-sys@0.60.2",       reason = "intermediate version on the upgrade path." },
+    { crate = "windows-targets@0.52.6",   reason = "paired with windows-sys 0.59." },
+    { crate = "windows_x86_64_gnu@0.52.6", reason = "paired with windows-targets 0.52." },
+    { crate = "windows_x86_64_msvc@0.52.6", reason = "paired with windows-targets 0.52." },
+    { crate = "winnow@0.5.40",            reason = "toml_edit 0.19/0.20 pin winnow 0.5; toml_edit 0.25 uses 0.7/1.x." },
+    { crate = "winnow@0.7.15",            reason = "intermediate version on the upgrade path." },
+]
+skip-tree = []
+
+# --- LD-37 LEAF crate graph rule ---
+# Each LEAF crate (parser, index, watcher, vault, report, plugin-api) may
+# only be a *direct* dependency of `orgsidian-core` (the hub). Transitive
+# reach through `orgsidian-core` is allowed: a shell or CLI crate depending
+# on `orgsidian-core` which depends on a LEAF is fine. Direct edges from
+# non-core crates fail `cargo deny check bans`.
+#
+# This is the cargo-deny *native* mechanism for the LEAF graph rule. The
+# custom-CI-check alternative (parsing consumer Cargo.toml files directly,
+# mentioned at architecture.md line 1028) is NOT IMPLEMENTED in Story 1.7 —
+# `wrappers` supersedes it.
+
+[[bans.deny]]
+name = "orgsidian-parser"
+wrappers = ["orgsidian-core"]
+
+[[bans.deny]]
+name = "orgsidian-index"
+wrappers = ["orgsidian-core"]
+
+[[bans.deny]]
+name = "orgsidian-watcher"
+wrappers = ["orgsidian-core"]
+
+[[bans.deny]]
+name = "orgsidian-vault"
+wrappers = ["orgsidian-core"]
+
+[[bans.deny]]
+name = "orgsidian-report"
+wrappers = ["orgsidian-core"]
+
+[[bans.deny]]
+name = "orgsidian-plugin-api"
+wrappers = ["orgsidian-core"]
+
+[sources]
+# Only crates.io + explicitly-allowed git sources are permitted. The future
+# nvim-orgmode/tree-sitter-org submodule (LD-48) is a *git submodule* on the
+# filesystem, not a cargo git dependency, so this gate stays clean.
+unknown-registry = "deny"
+unknown-git = "deny"

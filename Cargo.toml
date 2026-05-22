@@ -1,4 +1,8 @@
 [workspace]
+# Cargo.lock is committed (LD-37, binary-application convention).
+# - Reproducible builds across CI matrix.
+# - Required for cargo-audit / cargo-deny to lock advisory + license verdicts.
+# - Auto-bumped via Dependabot / Renovate PRs (Story 1.8+ wiring).
 resolver = "2"
 members = [
     "crates/orgsidian-parser",
@@ -36,4 +40,13 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 specta-typescript = "=0.0.12"
 thiserror = "1"
-orgsidian-core = { path = "crates/orgsidian-core" }
+# Explicit `version` paired with `path` keeps `cargo deny check bans` happy
+# (otherwise a path-only dep is interpreted as a `*` wildcard for a public
+# crate). Version stays in lockstep with workspace.package.version.
+orgsidian-core = { path = "crates/orgsidian-core", version = "0.0.0" }
+
+# Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
+# per-crate license exceptions). Empty as of Story 1.7 — slot exists so a
+# future contributor sees the convention.
+[workspace.metadata.cargo-deny]
+

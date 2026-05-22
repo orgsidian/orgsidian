@@ -9,7 +9,10 @@
     "commitlint": "commitlint",
     "dev": "pnpm --filter shell-ui dev",
     "build": "pnpm --filter shell-ui build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "audit:js": "pnpm audit --audit-level=moderate --prod",
+    "audit:licenses:js": "pnpm licenses ls --prod --long --json | node scripts/check-pnpm-licenses.mjs",
+    "supply-chain": "pnpm run audit:js && pnpm run audit:licenses:js"
   },
   "devDependencies": {
     "@commitlint/cli": "21.0.1",
