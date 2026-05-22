@@ -1,6 +1,6 @@
 # Story 1.6: Install Lingui v6.x i18n scaffold
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -301,6 +301,28 @@ Allowed touched files (full list):
   - [x] 12.1 Populated Dev Agent Record sections below.
   - [x] 12.2 `sprint-status.yaml` updated: `1-6-install-lingui-v6-x-i18n-scaffold: ready-for-dev → in-progress → review`; `last_updated` bumped.
 
+### Review Findings
+
+_Code review run: 2026-05-22. Layers: Blind Hunter + Edge Case Hunter + Acceptance Auditor. Auditor verdict: all 12 ACs pass with 5 disclosed deviations (all justified). One blocking issue surfaced by Blind + Edge Case Hunters and empirically verified (fresh-clone `tsc` failure). All other Hunter findings either spec-mandated, empirically false, speculative, or out-of-scope — see triage notes below._
+
+- [x] [Review][Patch] Fresh-clone `tsc` fails: `messages.ts` is gitignored (AC9), eagerly imported by `main.tsx` (AC8), and no script in `pnpm install` / `pnpm prebuild` generates it. Empirically reproduced: `rm src/locales/en/messages.ts && pnpm exec tsc --noEmit` → `TS2307`. **Resolution (user-authorized 2026-05-22):** added `lingui compile` to `prebuild` script (option (a)) — `prebuild` now reads `tsr generate && lingui compile && cargo test ...`. AC6 letter intact (the `build` script itself is unchanged). Verified end-to-end: `rm messages.ts && pnpm build` → exit 0, bundle sizes identical to original test plan. Disclosed as a new deviation in Completion Notes. [shell-ui/package.json:8]
+
+_Dismissed (with rationale, for audit trail):_
+
+- `i18n:check` flakiness from `POT-Creation-Date` drift (Blind + Edge Case) — **empirically false**: `lingui extract --clean` followed by `git diff` is empty in this repo. Lingui v6 normalizes the PO header timestamp.
+- `--clean` destructive in CI / `--clean` no review gate (Blind + Edge Case) — **spec-mandated** (AC6 verbatim `lingui extract --clean`).
+- `sr-only` "Orgsidian" announces on every route (Blind) — **spec-mandated** (AC5 verbatim placement + rationale).
+- `eslint-plugin-lingui` installed but dead (Blind) — **explicit AC12 deferral**, disclosed in Completion Notes.
+- `.gitignore` glob `src/locales/**/messages.ts` too broad (Edge Case) — **spec-mandated** (AC9 verbatim pattern).
+- `messages.mjs` ignore line dead (Edge Case) — **spec-mandated forward-compat hedge** (AC9 rationale).
+- SWC plugin caret pinning supply-chain (Blind) / `^6.0.1` minor float (Edge Case) — **policy** per `[[feedback_version_policy]]` (caret pinning is the norm; lockfile is the integrity story).
+- `@swc/core` unsupported triples (Edge Case) — **outside Tauri supported matrix**; not a regression.
+- HMR boundary regression Babel → SWC (Blind + Edge Case) / StrictMode + HMR re-eval (Edge Case) — **speculative**; manual `pnpm dev` smoke (Task 9.4) showed zero console errors.
+- `i18n.load(undefined)` silent failure (Edge Case) — **speculative**; would only fire if `messages.ts` emitted as empty stub, which would itself break tsc per the open decision-needed item above.
+- `compileNamespace: "ts"` couples to TS resolver (Blind) — speculative; current pipeline (Vite + tsc) handles it.
+- YAML quoting inconsistency in `allowBuilds` (Blind) — **cosmetic NIT**.
+- No regression test for `I18nProvider` mount order / SWC macro transform smoke test missing (Blind + Edge Case) — **out of scope**; Story 1.6 Dev Notes §(testing requirements) explicitly states "scaffold + smoke — no unit tests are added".
+
 ## Dev Notes
 
 ### Developer Context Section
@@ -502,13 +524,15 @@ Claude Opus 4.7 (1M context) — `claude-opus-4-7[1m]`
 
 - **Anti-creep audit clean.** `git diff --stat crates/` empty; no `eslint.config.*` present; no direct `@vitejs/plugin-react` references; no direct Babel macro deps. Transitive Babel mentions in `pnpm-lock.yaml` are peer-dep metadata of `@lingui/vite-plugin` only — no `babel-plugin-macros` is installed in the actual `node_modules` tree (verified).
 
+- **`prebuild` extended with `lingui compile` (DEVIATION — post-review patch, AC6 letter borderline).** Original `prebuild` was `tsr generate && cargo test ...`. After code review surfaced a fresh-clone `tsc` failure (`messages.ts` gitignored per AC9 + eagerly imported per AC8 + no script generating it before `tsc` runs), the prebuild was changed to `tsr generate && lingui compile && cargo test ...`. AC6 forbids adding `compile` to `build` itself but is silent on the `npm-lifecycle` `prebuild` script; the `build` command (`tsc && vite build`) is untouched, and `@lingui/vite-plugin` still owns the compile-during-`vite build` path. The double-run with `vite build` is idempotent (same `.po` → same `.ts`). Authorized by user during code review (2026-05-22). Verified: `rm messages.ts && pnpm build` → exit 0 with identical bundle sizes (index 324.68 kB / today 32.23 kB / css 27.58 kB).
+
 - **First two `pnpm extract` runs produced a non-idempotent diff.** Lingui CLI's first extract emits a minimal PO header; the second run adds the full standard PO headers (`Project-Id-Version`, `Report-Msgid-Bugs-To`, `Plural-Forms`, etc.). The third and subsequent runs are idempotent. The committed `messages.po` reflects the stable form (post-2nd-extract). This is a known Lingui v6 behavior; subsequent `pnpm i18n:check` runs are deterministic.
 
 ### File List
 
 **Modified**
 
-- `shell-ui/package.json` — Removed `@vitejs/plugin-react`; added `@lingui/core`, `@lingui/react` (deps) + `@lingui/cli`, `@lingui/conf`, `@lingui/vite-plugin`, `@lingui/swc-plugin`, `@vitejs/plugin-react-swc`, `eslint-plugin-lingui` (devDeps); added `extract`, `compile`, `i18n:check` scripts.
+- `shell-ui/package.json` — Removed `@vitejs/plugin-react`; added `@lingui/core`, `@lingui/react` (deps) + `@lingui/cli`, `@lingui/conf`, `@lingui/vite-plugin`, `@lingui/swc-plugin`, `@vitejs/plugin-react-swc`, `eslint-plugin-lingui` (devDeps); added `extract`, `compile`, `i18n:check` scripts; **post-review:** extended `prebuild` with `lingui compile` (fresh-clone `tsc` fix — see Completion Notes).
 - `shell-ui/vite.config.ts` — Swapped Babel react plugin → SWC; added Lingui SWC plugin entry + `lingui()` Vite plugin.
 - `shell-ui/src/main.tsx` — Imported `i18n` from `@lingui/core` + `I18nProvider` from `@lingui/react`; statically loaded the `en` catalog and activated at boot; wrapped `<RouterProvider>` with `<I18nProvider>`.
 - `shell-ui/src/routes/__root.tsx` — Imported `Trans` from `@lingui/react/macro`; added `<span className="sr-only"><Trans>Orgsidian</Trans></span>` as the smoke string anchor.
@@ -528,4 +552,4 @@ Claude Opus 4.7 (1M context) — `claude-opus-4-7[1m]`
 
 ### Change Log
 
-- 2026-05-22 — Story 1.6 implementation. Installed Lingui v6.x i18n scaffold: `@lingui/core` + `@lingui/react` (deps `^6.0.1`), `@lingui/cli` + `@lingui/conf` + `@lingui/vite-plugin` + `@lingui/swc-plugin` (devDeps `^6.0.1`), `eslint-plugin-lingui` (devDep `^0.13.1` — disclosed deviation from architecture's "all `^6.0.1`" assumption; the package has independent SemVer cadence). Swapped `@vitejs/plugin-react` (Babel) → `@vitejs/plugin-react-swc@^4.0.0` to honour LD-52 SWC mandate (Story 1.3 drift fix, disclosed). Added `shell-ui/lingui.config.ts` with `en` source locale + PO catalog format (default in Lingui v6 — explicit `format: "po"` field removed because v6 requires a CatalogFormatter factory; PO default behavior is identical). Added `extract` / `compile` / `i18n:check` pnpm scripts; mounted `I18nProvider` in `main.tsx` with statically-imported `en` catalog; added `<Trans>Orgsidian</Trans>` smoke string in `__root.tsx` as a `sr-only` span; committed initial `messages.po` catalog (1 msgid); gitignored compiled `messages.ts`. Drift simulation verified end-to-end (Task 10). All AC1-AC12 satisfied with 5 disclosed deviations (eslint-plugin-lingui version, plugin-react-swc major, @lingui/conf addition, lingui.config.ts `format` removal, pnpm-workspace.yaml allowBuilds addition). Local gates: `pnpm build` ✅, `pnpm i18n:check` ✅, `cargo build --workspace` ✅, `cargo test --workspace` ✅, `pnpm audit --audit-level=moderate` ✅. Anti-creep audit clean. ESLint plugin installed but config scaffold deferred (AC12) to a future story (suggested: Story 1.8 or a dedicated ESLint-scaffold story).
+- 2026-05-22 — Story 1.6 implementation. Installed Lingui v6.x i18n scaffold: `@lingui/core` + `@lingui/react` (deps `^6.0.1`), `@lingui/cli` + `@lingui/conf` + `@lingui/vite-plugin` + `@lingui/swc-plugin` (devDeps `^6.0.1`), `eslint-plugin-lingui` (devDep `^0.13.1` — disclosed deviation from architecture's "all `^6.0.1`" assumption; the package has independent SemVer cadence). Swapped `@vitejs/plugin-react` (Babel) → `@vitejs/plugin-react-swc@^4.0.0` to honour LD-52 SWC mandate (Story 1.3 drift fix, disclosed). Added `shell-ui/lingui.config.ts` with `en` source locale + PO catalog format (default in Lingui v6 — explicit `format: "po"` field removed because v6 requires a CatalogFormatter factory; PO default behavior is identical). Added `extract` / `compile` / `i18n:check` pnpm scripts; mounted `I18nProvider` in `main.tsx` with statically-imported `en` catalog; added `<Trans>Orgsidian</Trans>` smoke string in `__root.tsx` as a `sr-only` span; committed initial `messages.po` catalog (1 msgid); gitignored compiled `messages.ts`. Drift simulation verified end-to-end (Task 10). All AC1-AC12 satisfied with 5 disclosed deviations (eslint-plugin-lingui version, plugin-react-swc major, @lingui/conf addition, lingui.config.ts `format` removal, pnpm-workspace.yaml allowBuilds addition). Post-review patch: `prebuild` extended with `lingui compile` to fix a fresh-clone `tsc` failure surfaced by the Blind + Edge Case Hunter layers (AC6 letter intact; `build` itself untouched). User-authorized 2026-05-22. Local gates: `pnpm build` ✅, `pnpm i18n:check` ✅, `cargo build --workspace` ✅, `cargo test --workspace` ✅, `pnpm audit --audit-level=moderate` ✅. Anti-creep audit clean. ESLint plugin installed but config scaffold deferred (AC12) to a future story (suggested: Story 1.8 or a dedicated ESLint-scaffold story).

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-05-22 (story 1.6 → review via bmad-dev-story)
+last_updated: 2026-05-22 (story 1.6 → done via bmad-code-review)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -49,7 +49,7 @@ development_status:
   1-3-install-tauri-plugin-set-tailwind-4-shadcn-ui-forked-tanstack-router: done
   1-4-wire-tauri-specta-typed-ipc-bridge-with-project-wide-camelcase-rename: done
   1-5-scaffold-orgsidian-plugin-api-leaf-crate-with-day-1-trait-surface: done
-  1-6-install-lingui-v6-x-i18n-scaffold: review
+  1-6-install-lingui-v6-x-i18n-scaffold: done
   1-7-configure-cargo-deny-cargo-audit-supply-chain-hygiene: backlog
   1-8-configure-ci-matrix-profile-release-panic-unwind-invoke-plugin-hook-macro-stub: backlog
   1-9-add-anchor-smoke-tests-anti-placebo-green-per-party-mode-p2: backlog
