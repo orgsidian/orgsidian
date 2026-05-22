@@ -1,6 +1,6 @@
 # Story 1.5: Scaffold `orgsidian-plugin-api` leaf crate with day-1 trait surface
 
-Status: review
+Status: done
 
 ## Metadata
 
