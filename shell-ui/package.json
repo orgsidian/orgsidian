@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "tsr generate && cargo test --package orgsidian-shell-app --test export_bindings --quiet",
+    "prebuild": "tsr generate && cargo test --locked --package orgsidian-shell-app --test export_bindings --quiet",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

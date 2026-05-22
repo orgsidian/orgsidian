@@ -1,6 +1,6 @@
 # Story 1.4: Wire `tauri-specta` typed IPC bridge with project-wide camelCase rename
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -39,6 +39,8 @@ pub enum OrgError {
 - `OrgError` is `pub use`-re-exported from `crates/orgsidian-core/src/lib.rs` as `pub use error::{OrgError, Result};`.
 - `crates/orgsidian-core/Cargo.toml` adds `thiserror`, `serde`, `specta` (workspace deps).
 - The four `String` payload fields are wrapped in struct variants so each error carries diagnostic detail — matching architecture LD-NN error format (`OrgError::Parse { file, reason }`, etc.).
+
+> ⚠️ **Implementation reality (see Completion Notes deviation #4)**: the `#[specta(rename_all = "camelCase")]` attribute shown in the code block above is rejected by `specta = "=2.0.0-rc.25"` on containers. Ship `#[serde(tag = "kind", rename_all = "camelCase")]` alone on `OrgError` — specta-serde's Format symmetry covers the TS output. Do **not** copy the above code block verbatim for new IPC types.
 
 **AC3 — `orgsidian-shell-app` depends on `orgsidian-core` and uses `OrgError`.**
 - `crates/orgsidian-shell-app/Cargo.toml` adds `orgsidian-core = { path = "../orgsidian-core" }` to `[dependencies]` and `tauri-specta`/`specta`/`specta-typescript` (workspace).
@@ -218,6 +220,8 @@ The epic AC text says: `Builder::new().commands(collect_commands![ping]).config(
 **Implementation choice**: declare `#[specta(rename_all = "camelCase")]` on every IPC-boundary type (Story 1.4 only has `OrgError`). This achieves the architecture's intent ("a single, uniform casing rule across the boundary") even though it is not literally "configured once in the builder."
 
 **Recorded deviation** (logged in Change Log + Completion Notes): Story 1.4 deviates from the literal epic AC by attaching `#[specta(rename_all = "camelCase")]` per-type instead of a non-existent builder-level config. Architectural intent satisfied; literal text superseded.
+
+> ⚠️ **Implementation reality (Completion Notes deviation #4)**: specta `=2.0.0-rc.25` rejects `#[specta(rename_all)]` on containers (compile error: "no longer supported on containers. Use `#[serde(rename_all = …)]` instead"). The shipped mechanism is `#[serde(rename_all = "camelCase")]` alone on `OrgError`, relying on specta-serde Format symmetry to mirror it into the generated TS. For NEW IPC types in future stories, declare `#[serde(rename_all = "camelCase")]` on the type — the previously-cited "specta-native attribute primarily" guidance above is obsolete in this specta version.
 
 ### Generation timing — when does `tauri.ts` get written?
 
@@ -565,7 +569,9 @@ claude-opus-4-7
 ### File List
 
 - `Cargo.toml` (MODIFIED) — added `tauri-specta`, `specta` (with `derive` feature), `specta-typescript`, `thiserror`, and `orgsidian-core` to `[workspace.dependencies]`.
+- `Cargo.lock` (MODIFIED, generated) — picks up `tauri-specta`, `specta`, `specta-macros`, `specta-serde`, `specta-typescript`, `specta-util`, `tauri-specta-macros`, `paste`, `Inflector`, and the second-major `thiserror 2.x` transitive.
 - `.gitignore` (MODIFIED) — added `shell-ui/src/lib/tauri.ts`.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED, process) — `development_status[1-4-…]: backlog → review`; `last_updated` advanced to 2026-05-21.
 - `crates/orgsidian-core/Cargo.toml` (MODIFIED) — added `thiserror`, `serde`, `specta` workspace deps.
 - `crates/orgsidian-core/src/lib.rs` (MODIFIED) — `mod error;` + `pub use error::{OrgError, Result};`.
 - `crates/orgsidian-core/src/error.rs` (NEW) — `OrgError` enum + `Result<T>` alias.
@@ -579,3 +585,52 @@ claude-opus-4-7
 ### Change Log
 
 - 2026-05-21 — Story 1.4 implementation: typed IPC bridge wired (`tauri-specta = "=2.0.0-rc.25"`), `OrgError` declared in `orgsidian-core`, `ping()` placeholder, `commands.ping()` consumed by `/today`. Generated bindings gitignored; regen via `cargo test --test export_bindings` from `shell-ui` `prebuild`. Six deviations recorded in Completion Notes (literal API gap, `build_specta()` helper preempt, `#[specta(rename_all)]` removal, `derive` feature, debug-only Typescript import, generation-timing).
+
+### Review Findings
+
+_Code review 2026-05-21 — three parallel layers (Blind Hunter / Edge Case Hunter / Acceptance Auditor) on diff `main...HEAD` (PR #114). 1 must-fix (gate-blocking), 7 patch, 12 defer, 7 dismissed._
+
+#### Must-fix (BLOCKER — gate)
+
+- [x] **[Review][Patch] PR body missing `Closes #4`** — PR #114 body has no `Closes #<issue>` line referring to issue #4 ([Story 1.4]). Without it, merging the PR will not auto-close the story issue, breaking the project's issue-tracking flow. Add `Closes #4` to the body. (Reference: bmad-code-review pre-flight gate.)
+
+#### Patch (unambiguous fixes)
+
+- [x] **[Review][Patch] Anchor `tauri.ts` export path on `CARGO_MANIFEST_DIR`** [`crates/orgsidian-shell-app/src/lib.rs:39`, `crates/orgsidian-shell-app/tests/export_bindings.rs:14`] — both call sites pass the literal `"../../shell-ui/src/lib/tauri.ts"`, which is resolved against the process CWD. `cargo test` (called from `shell-ui/` `prebuild`) and the dev binary launched by `pnpm tauri dev` run with different working directories; the test path works empirically today but is fragile to refactor or to invocations from non-default CWDs. Replace with `Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shell-ui/src/lib/tauri.ts")` (or `concat!(env!("CARGO_MANIFEST_DIR"), …)`) to make the destination deterministic.
+
+- [x] **[Review][Patch] Remove dead `let _ = OrgError::Io {…}` placeholder in `ping()` and simplify import** [`crates/orgsidian-shell-app/src/lib.rs:1, 9-11`] — the `let _ = OrgError::Io { reason: "unused placeholder so OrgError participates in the bindings export".to_string() };` block runs on every `ping()` invocation (per-call heap allocation) and the comment is misleading: `OrgError` is already reachable from the bindings via the `OrgResult<String>` alias expansion (specta collects it through the return-type), so the placeholder neither keeps it alive in bindings nor is required by the compiler. Drop the block and trim the import to `use orgsidian_core::Result as OrgResult;`. Verify with `cargo test --package orgsidian-shell-app --test export_bindings` that `shell-ui/src/lib/tauri.ts` still contains the `OrgError` discriminated union (AC9.3 invariant).
+
+- [x] **[Review][Patch] Add `#[doc(hidden)]` to `pub fn build_specta()`** [`crates/orgsidian-shell-app/src/lib.rs:22`] — the function must remain `pub` for the integration test in `tests/export_bindings.rs` to import it (integration tests cannot see `pub(crate)` items). `#[doc(hidden)]` signals "not part of the crate's public API" and discourages external consumers from registering the IPC handler twice once `orgsidian-shell-app` is consumed by another crate.
+
+- [x] **[Review][Patch] Add `--locked` to `cargo test` in `shell-ui` prebuild** [`shell-ui/package.json:8`] — `"prebuild": "tsr generate && cargo test --package orgsidian-shell-app --test export_bindings --quiet"` does not enforce the lockfile. CI on a fresh runner could update `Cargo.lock` mid-build, producing non-reproducible bindings. Append `--locked` to the cargo invocation. (Floating `thiserror = "1"` is the most likely drift vector today.)
+
+- [x] **[Review][Patch] Document deviation #4 inline at AC2 reference shape + Dev Notes §Casing** [this story file, AC2 code block (~line 226) + Dev Notes §Casing (~line 415)] — both locations still prescribe `#[specta(rename_all = "camelCase")]` on `OrgError` as the chosen mechanism, but the shipped code drops the attribute (per disclosed deviation #4). Add a one-line callout near each location pointing to deviation #4, so a future contributor adding a new IPC type does not copy the obsolete reference and break the build.
+
+- [x] **[Review][Patch] Add `Cargo.lock` and `sprint-status.yaml` to §File List** [this story file §File List] — diff actually modifies both, but the File List in the Dev Agent Record does not enumerate them. Cosmetic completeness.
+
+- [x] **[Review][Patch] PR title convention** [PR #114 meta] — title is `feat(ipc): wire tauri-specta typed IPC bridge (Story 1.4)`; project convention is `<type>(<scope>): <subject> (Story X.Y, closes #N)`. Rename to `feat(ipc): wire tauri-specta typed IPC bridge (Story 1.4, closes #4)`. Cosmetic but consistent with the workflow's per-story PR convention.
+
+#### Deferred (real but not actionable in Story 1.4)
+
+- [x] **[Review][Defer] `prebuild` couples frontend build to full Rust toolchain + Tauri compile** [`shell-ui/package.json:8`] — deferred, chosen Option A.3 in spec §Generation timing.
+- [x] **[Review][Defer] AC9 round-trip validated manually only (no automated end-to-end gate)** — deferred to Story 1.7/1.8 (CI) per spec §Testing requirements.
+- [x] **[Review][Defer] `Builder::<tauri::Wry>::new()` hardcodes desktop runtime** [`crates/orgsidian-shell-app/src/lib.rs:23`] — deferred, mobile-incompat acceptable for v0.1 desktop scope.
+- [x] **[Review][Defer] `thiserror = "1"` floating while transitive `thiserror 2.0.18` is pulled in by tauri-specta** [`Cargo.toml`, `Cargo.lock:160`] — deferred to dep-graph hygiene pass (Story 1.7 cargo-deny / cargo-audit).
+- [x] **[Review][Defer] Unmaintained `Inflector` 0.11.4 transitive (last released 2018)** [`Cargo.lock:20-24`] — deferred to Story 1.7 (cargo-deny / cargo-audit).
+- [x] **[Review][Defer] `pnpm tauri dev` does not run `prebuild` → stale `tauri.ts` race window when commands change** — deferred; HMR + binary boot reconcile within seconds in practice; tighter chaining is a workflow-ergonomics story, not infra-wiring.
+- [x] **[Review][Defer] Concurrent `pnpm tauri dev` + `cargo test --test export_bindings` can torn-write `tauri.ts`** — deferred; theoretical race, low probability; tauri-specta upstream does not yet do atomic rename.
+- [x] **[Review][Defer] `setup` closure borrows `specta_builder` after `invoke_handler()` call; pattern not test-asserted** [`crates/orgsidian-shell-app/src/lib.rs:62-67`] — deferred; depends on tauri-specta API stability across upgrades; locked-in via Tiziano's manual verification 2026-05-21.
+- [x] **[Review][Defer] `rm tauri.ts && pnpm tsc` (bare typecheck) reports cryptic missing-module from `today.tsx:3`** — deferred; minor footgun; documented contributor flow is `pnpm --filter shell-ui build`, which triggers `prebuild`.
+- [x] **[Review][Defer] `#[serde(tag = "kind")]` on `OrgError` may not round-trip if `Deserialize` is derived later** [`crates/orgsidian-core/src/error.rs:15-17`] — deferred; `OrgError` is `Serialize`-only by spec; revisit only when a plugin-host deserialization path appears.
+- [x] **[Review][Defer] AC1 spec text omits `features = ["derive"]` requirement on `specta` (disclosed deviation #5)** — deferred; deviation correctly disclosed in Completion Notes; spec text could be amended in epic-update, not story-update.
+- [x] **[Review][Defer] Test `export_bindings` does not assert on generated content (only that `export()` does not panic)** [`crates/orgsidian-shell-app/tests/export_bindings.rs`] — deferred; AC9.2/9.3 verified manually 2026-05-21; snapshot/golden-file test belongs with CI hardening (Story 1.7/1.8).
+
+#### Dismissed (false positive or handled by spec)
+
+- Crate naming `orgsidian_shell_app_lib` flagged as undisclosed drift — false positive; the `[lib] name = …` block is scaffold-time (Story 1.1), commented Windows-compat rationale.
+- "No `[lib]`/`[[test]]` entry in Cargo.toml diff" — false positive; section pre-exists Story 1.4.
+- `shell-ui/src/lib/` parent dir missing on fresh clone — false positive; directory exists from Story 1.3 (`shell-ui/src/lib/utils.ts` shadcn helper).
+- `OrgError` is exported in `tauri.ts` but not bound to `commands.ping()` signature TS-side — TypeScript language limitation (TS does not type `throws`); spec compliance via the discriminated-union export is sufficient.
+- "`pnpm tauri build` writes the source tree, contradicting Dev Notes" — not a contradiction; Dev Notes §Generation timing explicitly describes Option A.3 (prebuild writes; `lib.rs::run()` debug-only export skips on release).
+- `.expect("tauri-specta TS client export failed")` panics in `run()` — debug-only (`#[cfg(debug_assertions)]`); fail-fast in dev is appropriate.
+- Anti-creep audit positive findings (Anti-pattern §X items absent, `mount_events()` no-op required, `prebuild` matches spec verbatim) — positive findings, no action.

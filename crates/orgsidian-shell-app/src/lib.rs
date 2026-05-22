@@ -1,4 +1,4 @@
-use orgsidian_core::{OrgError, Result as OrgResult};
+use orgsidian_core::Result as OrgResult;
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, Builder, ErrorHandlingMode};
@@ -6,9 +6,6 @@ use tauri_specta::{collect_commands, Builder, ErrorHandlingMode};
 #[tauri::command]
 #[specta::specta]
 fn ping() -> OrgResult<String> {
-    let _ = OrgError::Io {
-        reason: "unused placeholder so OrgError participates in the bindings export".to_string(),
-    };
     Ok("pong".to_string())
 }
 
@@ -19,7 +16,10 @@ fn ping() -> OrgResult<String> {
 /// the Dev Notes "don't preempt the v0.5 Beta cleanup" guidance: `pub(crate)
 /// fn ping` + `#[tauri::command]` + `#[specta::specta]` triggers an
 /// `__cmd__ping` macro name collision under tauri-specta `=2.0.0-rc.25`, so
-/// the cleanup path was promoted to the implementation here.
+/// the cleanup path was promoted to the implementation here. `#[doc(hidden)]`
+/// because the function must be `pub` for the integration test to import it,
+/// but is not part of the crate's intentional public API.
+#[doc(hidden)]
 pub fn build_specta() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .error_handling(ErrorHandlingMode::Throw)
@@ -36,7 +36,10 @@ pub fn run() -> tauri::Result<()> {
     // reproducibility.
     #[cfg(debug_assertions)]
     specta_builder
-        .export(Typescript::default(), "../../shell-ui/src/lib/tauri.ts")
+        .export(
+            Typescript::default(),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../shell-ui/src/lib/tauri.ts"),
+        )
         .expect("tauri-specta TS client export failed");
 
     let tauri_builder = tauri::Builder::default()

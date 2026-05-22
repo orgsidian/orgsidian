@@ -11,6 +11,9 @@ use specta_typescript::Typescript;
 #[test]
 fn export_bindings() {
     build_specta()
-        .export(Typescript::default(), "../../shell-ui/src/lib/tauri.ts")
+        .export(
+            Typescript::default(),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../shell-ui/src/lib/tauri.ts"),
+        )
         .expect("tauri-specta TS client export failed");
 }
