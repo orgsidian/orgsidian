@@ -8,4 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# LEAF crate — no project deps. Full trait surface lands in Story 1.5.
+# LEAF crate — no project deps. Third-party deps minimal: serde for payload
+# struct round-trip, thiserror for the local PluginError enum.
+serde = { workspace = true }
+thiserror = { workspace = true }
