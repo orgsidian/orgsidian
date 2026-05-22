@@ -29,3 +29,11 @@ tauri-build = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Story 1.4: typed IPC bridge. specta/tauri-specta are RC-only; pin exactly per
+# upstream docs. thiserror floats on 1.x (stable since 2019). See
+# [[feedback_version_policy]] Tauri-ecosystem exemption.
+tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+specta = { version = "=2.0.0-rc.25", features = ["derive"] }
+specta-typescript = "=0.0.12"
+thiserror = "1"
+orgsidian-core = { path = "crates/orgsidian-core" }

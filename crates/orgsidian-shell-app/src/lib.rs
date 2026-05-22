@@ -1,12 +1,48 @@
-// Story 1.4 replaces this with the typed `tauri-specta` client.
+use orgsidian_core::Result as OrgResult;
+#[cfg(debug_assertions)]
+use specta_typescript::Typescript;
+use tauri_specta::{collect_commands, Builder, ErrorHandlingMode};
+
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+#[specta::specta]
+fn ping() -> OrgResult<String> {
+    Ok("pong".to_string())
+}
+
+/// Construct the project's `tauri-specta` builder.
+///
+/// Shared between `run()` and `tests/export_bindings.rs` so the command list
+/// stays in lockstep with the bindings-export test. Story 1.4 deviation from
+/// the Dev Notes "don't preempt the v0.5 Beta cleanup" guidance: `pub(crate)
+/// fn ping` + `#[tauri::command]` + `#[specta::specta]` triggers an
+/// `__cmd__ping` macro name collision under tauri-specta `=2.0.0-rc.25`, so
+/// the cleanup path was promoted to the implementation here. `#[doc(hidden)]`
+/// because the function must be `pub` for the integration test to import it,
+/// but is not part of the crate's intentional public API.
+#[doc(hidden)]
+pub fn build_specta() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new()
+        .error_handling(ErrorHandlingMode::Throw)
+        .commands(collect_commands![ping])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
-    let builder = tauri::Builder::default()
+    let specta_builder = build_specta();
+
+    // Debug builds re-export the typed TS client on every app start. Release
+    // builds skip the write — bindings are produced via the
+    // `cargo test --test export_bindings` step from `prebuild` for
+    // reproducibility.
+    #[cfg(debug_assertions)]
+    specta_builder
+        .export(
+            Typescript::default(),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../shell-ui/src/lib/tauri.ts"),
+        )
+        .expect("tauri-specta TS client export failed");
+
+    let tauri_builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
@@ -26,7 +62,11 @@ pub fn run() -> tauri::Result<()> {
     // capability permission only — runtime registration without real config
     // fails deserialization at startup.
 
-    builder
-        .invoke_handler(tauri::generate_handler![greet])
+    tauri_builder
+        .invoke_handler(specta_builder.invoke_handler())
+        .setup(move |app| {
+            specta_builder.mount_events(app);
+            Ok(())
+        })
         .run(tauri::generate_context!())
 }

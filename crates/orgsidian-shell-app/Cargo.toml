@@ -22,6 +22,10 @@ tauri = { workspace = true }
 tauri-plugin-opener = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+orgsidian-core = { workspace = true }
+tauri-specta = { workspace = true }
+specta = { workspace = true }
+specta-typescript = { workspace = true }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"

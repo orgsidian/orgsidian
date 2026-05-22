@@ -9,3 +9,8 @@ repository.workspace = true
 
 [dependencies]
 # Cross-crate edges wired incrementally per first-use story (see Dev Notes §1).
+# Story 1.4: first real deps — OrgError IPC type derives thiserror::Error +
+# serde::Serialize + specta::Type.
+thiserror = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true }
