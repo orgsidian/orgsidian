@@ -1,0 +1,11 @@
+# .cargo/config.toml — Story 1.7 supply-chain aliases (LD-37).
+#
+# Scope-fence: this file declares ONLY the four cargo aliases below. No
+# [build], [target.*], [net], [term], [registries], or [env] sections —
+# those are out of Story 1.7 scope (supply-chain only).
+
+[alias]
+deny-all = "deny check all"
+deny-licenses = "deny check licenses"
+deny-bans = "deny check bans"
+deny-advisories = "deny check advisories"
