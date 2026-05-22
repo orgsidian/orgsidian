@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-05-20 (epics.md sync: +1.17, +1.18, +8.10-12, +11.7-9, +12.0; renamed 6.1, 11.1, 13.5; subsumed 11.2)
+# last_updated: 2026-05-22 (story 1.7 → done via bmad-code-review)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   1-4-wire-tauri-specta-typed-ipc-bridge-with-project-wide-camelcase-rename: done
   1-5-scaffold-orgsidian-plugin-api-leaf-crate-with-day-1-trait-surface: done
   1-6-install-lingui-v6-x-i18n-scaffold: done
-  1-7-configure-cargo-deny-cargo-audit-supply-chain-hygiene: review
+  1-7-configure-cargo-deny-cargo-audit-supply-chain-hygiene: done
   1-8-configure-ci-matrix-profile-release-panic-unwind-invoke-plugin-hook-macro-stub: backlog
   1-9-add-anchor-smoke-tests-anti-placebo-green-per-party-mode-p2: backlog
   1-10-add-security-md-architecture-md-changelog-md-contributing-md: backlog

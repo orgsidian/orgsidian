@@ -1,6 +1,6 @@
 # Story 1.7: Configure `cargo-deny` + `cargo audit` supply-chain hygiene
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -276,6 +276,23 @@ Allowed touched files (full list):
   - [x] 11.1 Populate Dev Agent Record sections at the bottom of this file.
   - [x] 11.2 `sprint-status.yaml` updated: `1-7-...: ready-for-dev → in-progress → review`; `last_updated` bumped.
 
+### Review Findings
+
+**Review date:** 2026-05-22 — bmad-code-review (Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+
+- [x] [Review][Defer] Lockstep cargo↔JS allowlists not enforced — `deny.toml` `[licenses].allow` and `scripts/check-pnpm-licenses.mjs` `ALLOWLIST` are documented as "kept in lockstep" but enforced only by goodwill. Today the two sides intentionally diverge (cargo has `Unicode-3.0`/`BSL-1.0`/`Apache-2.0 WITH LLVM-exception`; JS has `0BSD`/`CC-BY-4.0`). **Deferred to Story 1.8** — CI wiring is the natural place to add a cross-file sync check as a workflow step. Story 1.7 stays scope-fenced.
+- [x] [Review][Defer] `cargo audit` does not honor `deny.toml [advisories].ignore` — separate tools, separate config surfaces. `cargo audit` exits 0 today on macOS dev; on a Linux runner RUSTSEC-2024-0429 (glib 0.18.5 unsoundness) may fire. **Deferred to Story 1.8** — CI wiring will pass `--ignore RUSTSEC-2024-0429` explicitly to `cargo audit` and keep the flag list in lockstep with the ledger.
+- [x] [Review][Patch][FIXED] SPDX OR/AND precedence bug in `check-pnpm-licenses.mjs` [scripts/check-pnpm-licenses.mjs:42-65] — rewritten with a small recursive parser (`stripOuterParens` + `findTopLevel` + `evalSpdx`) that respects SPDX-2 precedence (parens > AND > OR). 13/13 smoke tests pass including `(MIT AND GPL-3.0) OR Apache-2.0`, `MIT OR Apache-2.0 AND GPL-3.0`, and nested parens.
+- [x] [Review][Patch][FIXED] `WITH` exception clauses now handled at atom level [scripts/check-pnpm-licenses.mjs:62] — atom strips `\s+WITH\s+\S+-exception\s*$` suffix before allowlist lookup. LD-37 policy: `Apache-2.0 WITH LLVM-exception` is allowed by virtue of `Apache-2.0` on the allowlist. `GPL-3.0 WITH Classpath-exception-2.0` correctly rejected.
+- [x] [Review][Patch][FIXED] License-failure report now reads `entry.versions[]` array first [scripts/check-pnpm-licenses.mjs:73-77] — falls back to `entry.version` scalar then `<unknown>`. Verified live against pnpm 11.1.1 output shape.
+- [x] [Review][Patch][REVERTED — invalid premise] Add `expiration` to `[advisories].ignore` — cargo-deny 0.18.9 schema accepts only `{ id, reason }` or `{ crate, reason }` on advisory ignore entries (verified via ctx7 docs + live `unexpected-keys` error). The `expiration` field is not part of the advisories.ignore schema. The 90-day review cadence remains markdown-ledger-only; mechanism deferred to Story 1.8 CI (e.g., scheduled re-eval).
+- [x] [Review][Defer] `scripts/check-pnpm-licenses.mjs` LOC budget renegotiated — was 85 lines (5 over the AC9 `<80 LOC` budget); after the SPDX precedence + WITH + versions-array patches the file is 96 lines. Disclosed as **deviation #11** below (Completion Notes update): the AC9 budget was authored before the SPDX correctness requirements surfaced; the rewrite added 11 lines of recursive-parser machinery (`stripOuterParens` + `findTopLevel` + `evalSpdx`) in exchange for SPDX-2 grammar correctness. Worth the trade.
+- [x] [Review][Defer] Add `deny-sources` alias to `.cargo/config.toml` [.cargo/config.toml:13-17] — deferred to a future hardening pass; AC8 binds the 4-alias list. The `cargo deny check sources` invocation is rare enough to spell out.
+- [x] [Review][Defer] `bans.skip` entries lack drift signal — cargo-deny does NOT support `expiration` on `[bans].skip` (only on advisories). Drift-detection must come via a separate mechanism (Story 1.8 CI scheduled re-eval, or quarterly ledger review).
+- [x] [Review][Defer] `orgsidian-core` workspace dep hard-codes `version = "0.0.0"` [Cargo.toml:39] — will collide on the first `workspace.package.version` bump (e.g. → `0.1.0-alpha.1`). Disclosed deviation #7 acknowledges the pin; the foreseeable two-place edit is left as a `# Keep in sync with workspace.package.version` reminder for the v0.1 Alpha bump story.
+
+**Dismissed as noise / disclosed / speculative** (24 items): cosmetic alias-prefix bikeshedding, speculative `taplo fmt` strip of empty `[workspace.metadata.cargo-deny]`, `SECURITY.md` forward-link (explicitly disclosed in AC6), `--prod` × `optionalDependencies` semantics, `--deny warnings` future toggle, JSON-parse stack-trace UX, shebang vs invocation, locale/CWD subdir invocation, etc.
+
 ## Dev Notes
 
 ### Developer Context Section
@@ -521,6 +538,7 @@ Final post-revert sweep: `cargo deny-all` exit 0; `pnpm run supply-chain` exit 0
 8. **`allow-wildcard-paths = true` added under `[bans]`.** Allows future workspace-internal path deps on non-publishable crates without triggering wildcard rule.
 9. **Wrapper LEAF rules emit `unused-wrapper` warnings.** The 6 `[[bans.deny]]` entries with `wrappers = ["orgsidian-core"]` are correctly declared but inert until `orgsidian-core` adds direct deps on the LEAF crates (Epic 2+). cargo-deny surfaces this as a `warning[unused-wrapper]`, not an error — the policy is in place ahead of the consumers.
 10. **`[licenses].exceptions` left empty.** All transitive-forced licenses landed in `[licenses].allow` (with explanatory comments) rather than per-crate exceptions, which keeps the ledger row count manageable. If a future crate forces a license that should NOT broaden the workspace-wide allowlist (e.g., a single transitive dep with a weird SPDX), it would land in `exceptions`.
+11. **`scripts/check-pnpm-licenses.mjs` is 96 LOC vs AC9 budget `<80 LOC`** — post-review SPDX correctness rewrite. The original 85-line file used a flat AND/OR split that violated SPDX-2 grammar (AND binds tighter than OR) and silently rejected `Apache-2.0 WITH LLVM-exception`. Rewrite added a small recursive parser (`stripOuterParens` + `findTopLevel` + `evalSpdx`, ~11 lines net) and a `WITH \S+-exception` suffix strip; offender reports now read `entry.versions[]` correctly. 13/13 smoke tests pass.
 
 **Architecture wording clarifications (no behavioural change):**
 
@@ -541,3 +559,4 @@ Final post-revert sweep: `cargo deny-all` exit 0; `pnpm run supply-chain` exit 0
 ### Change Log
 
 - 2026-05-22 — Story 1.7 landed. LD-37 supply-chain hygiene enforced locally via cargo-deny ^0.18 + cargo-audit ^0.22 + pnpm audit (moderate) + pnpm licenses filter. CI wiring deferred to Story 1.8 (per AC11). Transitive-forced batch (1 advisory, 23 dup-skips, 5 license additions) accepted and ledger-documented; binding rule (no tokio/serde/chrono/rusqlite skip) preserved. Three deviations from spec are disclosed in Completion Notes (cargo-deny 0.18 schema migration; cargo-audit version bump to ^0.22 for CVSS 4.0 support; root Cargo.toml `version = "0.0.0"` pin on `orgsidian-core` workspace dep).
+- 2026-05-22 — Code review (bmad-code-review). 2 decisions deferred to Story 1.8 (cargo↔JS allowlist sync; `cargo audit` vs `deny.toml` ignore lockstep). 3 patches applied to `scripts/check-pnpm-licenses.mjs` — SPDX OR/AND precedence fixed via small recursive parser; `WITH <X>-exception` suffix stripped at atom level; offender report now reads `entry.versions[]` array correctly. 1 proposed patch reverted (cargo-deny 0.18.9 does not accept `expiration` on `[advisories].ignore`). Disclosed deviation #11 added: file now 96 LOC vs `<80` AC9 budget (necessary for SPDX-2 correctness). All gates re-validated clean: `cargo deny-all` exit 0; `pnpm run supply-chain` exit 0.
