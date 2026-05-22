@@ -8,4 +8,5 @@
 packages:
   - shell-ui
 allowBuilds:
+  '@swc/core': true
   esbuild: true
