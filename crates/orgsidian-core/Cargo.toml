@@ -14,3 +14,7 @@ repository.workspace = true
 thiserror = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true }
+# Story 1.8 (LD-38): structured-logging facade used by the
+# `invoke_plugin_hook!` panic-isolation macro in `registry.rs`. Subscriber
+# wiring is the binary's job (LD-35); the leaf crate consumes the facade only.
+tracing = { workspace = true }

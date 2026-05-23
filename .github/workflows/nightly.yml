@@ -1,0 +1,239 @@
+# nightly.yml — Story 1.8 nightly full-matrix CI gate (LD-32).
+#
+# LD-32 (CI matrix + merge-gate anti-atrophy, architecture.md §LD-32): the
+#   nightly path runs the full matrix (macOS + Ubuntu + Arch + Windows) on a
+#   schedule. The PR-side merge-gate-nightly-fresh check in pr.yml asserts
+#   the most recent nightly is green within 24h — without this, full-corpus
+#   gates atrophy under merge pressure (the rust-analyzer / biomejs /
+#   ruff / swc pattern that survives at scale).
+# LD-43 (memory soak): nightly Linux-only memory soak placeholder reserved
+#   for Story 4.9 (Epic 4 close-out).
+# LD-44 (full corpus): nightly L0 round-trip full corpus + L2 Emacs oracle
+#   placeholders reserved for Story 2.7.
+# LD-56 (Graph View cross-webview perf gate): nightly placeholder reserved
+#   for Story 8.12.
+# LD-58 (a11y hard gate): NOT scheduled nightly — wired into pr.yml by
+#   Story 1.17 (it's a per-PR gate, not a nightly one).
+# Reference: _bmad-output/planning-artifacts/architecture.md
+#
+# Slot reservations (filled by later stories): see comment markers below.
+
+name: nightly
+
+on:
+  schedule:
+    # Daily at 05:00 UTC — off-peak for GitHub-hosted runners. Chosen so the
+    # most-recent-nightly check at start-of-US/EU-work-day sees today's run.
+    - cron: '0 5 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: nightly
+  # Manual re-runs queue rather than cancel (preserves the audit trail).
+  cancel-in-progress: false
+
+jobs:
+  # Hosted runners (macOS arm64 + Ubuntu LTS + Windows Server 2022). The
+  # GitHub-hosted Windows-2022 image has WebView2 pre-installed (since 2022),
+  # so the `cargo test ...export_bindings` step inside `pnpm --filter
+  # shell-ui build` (which exercises tauri::Wry) works without an extra
+  # install step.
+  hosted:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # fail-fast: false — we need ALL platforms' status for triage. PR-side
+      # uses fail-fast: true (different posture).
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04, windows-2022]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: nightly-${{ matrix.os }}
+
+      # pnpm/action-setup BEFORE setup-node so `cache: 'pnpm'` finds the
+      # pnpm binary on PATH (footgun documented in pr.yml step 3).
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11.1.1
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install cargo-deny + cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.18,cargo-audit@0.21
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: cargo build
+        run: cargo build --workspace --locked
+
+      - name: cargo test
+        run: cargo test --workspace --locked
+
+      # Story 1.11: failure-mode test harness (LD-41) lands here as a
+      # nightly-only gate. Per-PR runs the fast path; nightly exercises the
+      # full failure-mode catalog.
+
+      - name: cargo deny
+        run: cargo deny --locked check all
+
+      # cargo-audit `--ignore` list kept in lockstep with
+      # docs/security/advisory-exceptions.md (Cargo advisories table) per
+      # LD-37. See pr.yml comment for rationale.
+      - name: cargo audit
+        run: |
+          cargo audit --deny warnings \
+            --ignore RUSTSEC-2024-0429 \
+            --ignore RUSTSEC-2024-0411 \
+            --ignore RUSTSEC-2024-0412 \
+            --ignore RUSTSEC-2024-0413 \
+            --ignore RUSTSEC-2024-0414 \
+            --ignore RUSTSEC-2024-0415 \
+            --ignore RUSTSEC-2024-0416 \
+            --ignore RUSTSEC-2024-0417 \
+            --ignore RUSTSEC-2024-0418 \
+            --ignore RUSTSEC-2024-0419 \
+            --ignore RUSTSEC-2024-0420 \
+            --ignore RUSTSEC-2024-0436 \
+            --ignore RUSTSEC-2024-0370 \
+            --ignore RUSTSEC-2025-0075 \
+            --ignore RUSTSEC-2025-0080 \
+            --ignore RUSTSEC-2025-0081 \
+            --ignore RUSTSEC-2025-0098 \
+            --ignore RUSTSEC-2025-0100
+
+      - name: pnpm audit
+        run: pnpm audit --audit-level=moderate --prod
+
+      - name: pnpm licenses
+        run: pnpm licenses ls --prod --long --json | node scripts/check-pnpm-licenses.mjs
+
+      - name: Cross-tool allowlist sync
+        run: node scripts/check-allowlist-sync.mjs
+
+      - name: Build shell-ui (typecheck + bindings + i18n)
+        run: pnpm --filter shell-ui build
+
+      - name: i18n catalog drift check
+        run: pnpm --filter shell-ui i18n:check
+
+      # Slot reservations (filled by later stories):
+      # Story 2.7: nightly L0 full corpus + L2 Emacs oracle gates land here
+      # Story 8.12: Graph View cross-webview perf gate lands here
+
+      # Linux-only nightly memory soak (Story 4.9 / LD-43). The 12-hour
+      # memory soak runs on Linux runners only; macOS/Windows don't carry
+      # the same allocator-pressure baseline. Story 4.9 owns the body.
+      - name: nightly memory soak (LD-43) — placeholder
+        if: matrix.os == 'ubuntu-24.04'
+        run: echo "Story 4.9 wires the LD-43 12-hour memory soak here (Linux-only)."
+
+  # Arch Linux nightly cell — rolling-release canary per LD-32. No
+  # GitHub-hosted Arch image exists; we run inside an `archlinux:base-devel`
+  # container on an Ubuntu-LTS runner. dtolnay/rust-toolchain does not work
+  # inside a non-Ubuntu container; we install via pacman + rustup directly.
+  arch-linux:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Install Arch toolchain (rust + node + pnpm + Tauri 2.x Linux deps)
+        # Tauri 2.x Linux backend needs gtk3, webkit2gtk-4.1 (NOT 4.0 — Tauri
+        # 2.x bumped), libsoup3, librsvg. base-devel covers the rest.
+        run: |
+          set -euo pipefail
+          pacman -Syu --noconfirm rust nodejs gtk3 webkit2gtk-4.1 libsoup3 librsvg base-devel git jq python
+          npm install -g pnpm@11.1.1
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: false
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install cargo-deny + cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.18,cargo-audit@0.21
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: cargo build
+        run: cargo build --workspace --locked
+
+      - name: cargo test
+        run: cargo test --workspace --locked
+
+      - name: cargo deny
+        run: cargo deny --locked check all
+
+      # cargo-audit `--ignore` list kept in lockstep with
+      # docs/security/advisory-exceptions.md (Cargo advisories table) per
+      # LD-37. See pr.yml comment for rationale.
+      - name: cargo audit
+        run: |
+          cargo audit --deny warnings \
+            --ignore RUSTSEC-2024-0429 \
+            --ignore RUSTSEC-2024-0411 \
+            --ignore RUSTSEC-2024-0412 \
+            --ignore RUSTSEC-2024-0413 \
+            --ignore RUSTSEC-2024-0414 \
+            --ignore RUSTSEC-2024-0415 \
+            --ignore RUSTSEC-2024-0416 \
+            --ignore RUSTSEC-2024-0417 \
+            --ignore RUSTSEC-2024-0418 \
+            --ignore RUSTSEC-2024-0419 \
+            --ignore RUSTSEC-2024-0420 \
+            --ignore RUSTSEC-2024-0436 \
+            --ignore RUSTSEC-2024-0370 \
+            --ignore RUSTSEC-2025-0075 \
+            --ignore RUSTSEC-2025-0080 \
+            --ignore RUSTSEC-2025-0081 \
+            --ignore RUSTSEC-2025-0098 \
+            --ignore RUSTSEC-2025-0100
+
+      - name: pnpm audit
+        run: pnpm audit --audit-level=moderate --prod
+
+      - name: pnpm licenses
+        run: pnpm licenses ls --prod --long --json | node scripts/check-pnpm-licenses.mjs
+
+      - name: Cross-tool allowlist sync
+        run: node scripts/check-allowlist-sync.mjs
+
+      - name: Build shell-ui (typecheck + bindings + i18n)
+        run: pnpm --filter shell-ui build
+
+      - name: i18n catalog drift check
+        run: pnpm --filter shell-ui i18n:check
+
+      # Same Story-4.9 memory soak slot also applies to Arch (Linux family).
+      - name: nightly memory soak (LD-43) — placeholder
+        run: echo "Story 4.9 wires the LD-43 12-hour memory soak here (Linux-only, applies to Arch too)."
