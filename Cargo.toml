@@ -44,6 +44,8 @@ thiserror = "1"
 # panic-isolation macro. The leaf crate consumes the facade only; the binary
 # wires the subscriber later (Story 1.13 / Epic 2.x) per LD-35.
 tracing = "0.1"
+# Story 1.9: atomic file writes (LD-8) — anchor smoke + future Story 3.1 retry wrapper.
+atomic-write-file = "0.3"
 # Explicit `version` paired with `path` keeps `cargo deny check bans` happy
 # (otherwise a path-only dep is interpreted as a `*` wildcard for a public
 # crate). Version stays in lockstep with workspace.package.version.

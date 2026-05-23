@@ -122,6 +122,7 @@ skip = [
     { crate = "hashbrown@0.15.5",         reason = "intermediate version on the upgrade path; coexists with 0.12 + 0.17." },
     { crate = "heck@0.4.1",               reason = "older proc-macros pin heck 0.4; modern stack uses 0.5." },
     { crate = "indexmap@1.9.3",           reason = "schemars 0.8 + older Tauri deps pin indexmap 1.x; main tree uses 2.x." },
+    { crate = "nix@0.30.1",               reason = "Story 1.9: atomic-write-file 0.3 pins nix 0.30; tauri-plugin-os pins nix 0.31. Re-evaluate when atomic-write-file bumps nix." },
     { crate = "png@0.17.16",              reason = "ico → tauri-codegen pins png 0.17; main tree uses 0.18." },
     { crate = "proc-macro-crate@1.3.1",   reason = "older proc-macro stack; coexists with v2 + v3 on the upgrade path." },
     { crate = "proc-macro-crate@2.0.2",   reason = "intermediate version on the upgrade path; coexists with v1 + v3." },

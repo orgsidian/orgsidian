@@ -7,6 +7,12 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Story 1.9 (LD-9): opt-in surface for the `test_support` module. Consumer crates
+# enable it via `[dev-dependencies] orgsidian-core = { features = ["test-support"] }`
+# so `FakeClock` (and Story 1.12's perf helpers) stay out of release builds.
+test-support = []
+
 [dependencies]
 # Cross-crate edges wired incrementally per first-use story (see Dev Notes §1).
 # Story 1.4: first real deps — OrgError IPC type derives thiserror::Error +

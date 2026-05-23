@@ -8,4 +8,9 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Real deps added in Story 3.x.
+# Real deps: atomic-write-file (Story 1.9, anchor + LD-8 foundation); rusqlite etc. land in Story 3.x.
+atomic-write-file = { workspace = true }
+
+[dev-dependencies]
+# Story 1.9: tempfile is dev-only; per-crate (no workspace pin needed for dev deps).
+tempfile = "3"
