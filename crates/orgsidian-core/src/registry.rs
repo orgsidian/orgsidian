@@ -53,19 +53,30 @@ impl PluginRegistry {
     /// Subsequent `is_disabled(id)` queries return `true`. The registry
     /// resets at process restart (no on-disk persistence) per LD-38 ("user
     /// can re-enable after restart").
+    ///
+    /// Poison recovery: if a prior panic poisoned the lock, the guard is
+    /// recovered via `into_inner()` so the disable set stays mutable. The
+    /// LD-38 invariant ("a panicking plugin gets disabled") must hold even
+    /// across poisoning.
     pub fn disable_for_session(&self, plugin_id: &str) {
-        if let Ok(mut guard) = self.disabled.lock() {
-            guard.insert(plugin_id.to_string());
-        }
+        let mut guard = self
+            .disabled
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        guard.insert(plugin_id.to_string());
     }
 
     /// Returns `true` if the plugin has been marked disabled this session.
+    ///
+    /// Poison recovery: same as `disable_for_session` — recover the inner
+    /// guard. Failing open here (returning `false` on poison) would let a
+    /// panicking plugin keep re-entering the hook, breaking LD-38.
     #[must_use]
     pub fn is_disabled(&self, plugin_id: &str) -> bool {
         self.disabled
             .lock()
-            .map(|guard| guard.contains(plugin_id))
-            .unwrap_or(false)
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .contains(plugin_id)
     }
 }
 
@@ -89,6 +100,15 @@ impl PluginRegistry {
 /// - `$call: expr` — the actual hook invocation (a closure or block that
 ///   does the work).
 ///
+/// ### Sync-only constraint
+///
+/// `catch_unwind(AssertUnwindSafe(|| $call))` wraps `$call` in a non-async
+/// closure. Callers MUST NOT use `await`, `?` against an outer `Result`, or
+/// early `return` inside `$call` — they would resolve against the closure,
+/// not the caller's scope. An `invoke_plugin_hook_async!` sibling (built on
+/// `futures::FutureExt::catch_unwind`) is deferred to Epic 4+ when WASM v1.5
+/// async hooks materialize. Tracked in deferred-work.md (Story 1.8 review).
+///
 /// ### Why `AssertUnwindSafe`
 ///
 /// `catch_unwind` requires its argument to be `UnwindSafe`. Hook closures
@@ -99,9 +119,13 @@ impl PluginRegistry {
 #[macro_export]
 macro_rules! invoke_plugin_hook {
     ($registry:expr, $plugin_id:expr, $default:expr, $call:expr) => {{
-        let registry: &$crate::registry::PluginRegistry = $registry;
-        let plugin_id: &str = $plugin_id;
-        if registry.is_disabled(plugin_id) {
+        // Internal bindings are name-mangled so caller-written identifiers
+        // `registry` / `plugin_id` inside `$call` resolve to the caller's
+        // outer scope, not the macro's internal `let`s (macro hygiene
+        // belt-and-suspenders).
+        let __invoke_plugin_hook_registry: &$crate::registry::PluginRegistry = $registry;
+        let __invoke_plugin_hook_plugin_id: &str = $plugin_id;
+        if __invoke_plugin_hook_registry.is_disabled(__invoke_plugin_hook_plugin_id) {
             $default
         } else {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $call));
@@ -110,10 +134,10 @@ macro_rules! invoke_plugin_hook {
                 Err(_panic) => {
                     ::tracing::error!(
                         target: "orgsidian::plugin",
-                        plugin_id = plugin_id,
+                        plugin_id = __invoke_plugin_hook_plugin_id,
                         "plugin panicked in hook; disabling for session per LD-38",
                     );
-                    registry.disable_for_session(plugin_id);
+                    __invoke_plugin_hook_registry.disable_for_session(__invoke_plugin_hook_plugin_id);
                     $default
                 }
             }
@@ -176,5 +200,28 @@ mod tests {
         });
         assert_eq!(value, -1);
         assert!(registry.is_disabled("p1"));
+    }
+
+    #[test]
+    fn test_macro_does_not_shadow_caller_identifiers() {
+        // F10 regression guard: caller-written `registry` and `plugin_id`
+        // inside $call MUST resolve to the caller's outer scope, not the
+        // macro's internal `let`s. Compilation succeeds when hygiene holds;
+        // would fail (type mismatch on the &str / &PluginRegistry below) if
+        // the macro shadowed these identifiers.
+        let registry: &str = "outer-registry-ident";
+        let plugin_id: i64 = 42;
+        let actual_reg = PluginRegistry::new();
+        let value: i32 = invoke_plugin_hook!(&actual_reg, "p1", -1_i32, {
+            // Reference both outer-scope idents inside the call body. If
+            // the macro's `let __invoke_plugin_hook_registry: &PluginRegistry`
+            // had been named `registry`, the line below would fail to
+            // compile because `&str` does not implement the methods we'd
+            // expect on `&PluginRegistry`.
+            assert_eq!(registry, "outer-registry-ident");
+            assert_eq!(plugin_id, 42);
+            7_i32
+        });
+        assert_eq!(value, 7);
     }
 }

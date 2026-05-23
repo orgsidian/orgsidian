@@ -36,6 +36,12 @@ if ! gh api "repos/${REPO}" >/dev/null 2>&1; then
   echo "ERROR: gh CLI cannot read ${REPO}. Check token scopes (needs 'repo' or 'public_repo' + admin:repo for branch protection)." >&2
   exit 1
 fi
+# Pre-flight: target branch must exist. PUT on a missing branch returns 404
+# with a confusing message; surface it cleanly now.
+if ! gh api "repos/${REPO}/branches/${BRANCH}" >/dev/null 2>&1; then
+  echo "ERROR: branch '${BRANCH}' not found on ${REPO}. (Default branch may be 'master' on a fresh repo — re-run as BRANCH=master.)" >&2
+  exit 1
+fi
 
 echo "Configuring branch protection on ${REPO}:${BRANCH}..."
 
@@ -44,23 +50,34 @@ echo "Configuring branch protection on ${REPO}:${BRANCH}..."
 #   up-to-date with main before merge (avoids the rebase-loop trap on
 #   parallel PRs; LD-32 fast-merge cadence).
 # - required_status_checks.contexts: the 3 checks introduced by Story 1.8.
-# - required_pull_request_reviews=null: 0 enforced reviewers.
+# - required_pull_request_reviews=null: 0 enforced reviewers. MUST be JSON
+#   `null` (not empty string) per GitHub API contract — empty string returns
+#   HTTP 422. We build the payload as JSON via `jq -n` and pipe to
+#   `gh api --input -` for unambiguous typing.
 # - enforce_admins=false: maintainer can bypass for genuine emergencies.
 # - restrictions=null: no push-restriction allowlist (open contributor model).
 # - allow_force_pushes=false, allow_deletions=false: standard hardening.
-RESPONSE="$(gh api \
+PAYLOAD="$(jq -n '{
+  required_status_checks: {
+    strict: false,
+    contexts: [
+      "pr (macos-14)",
+      "pr (ubuntu-24.04)",
+      "merge-gate-nightly-fresh"
+    ]
+  },
+  enforce_admins: false,
+  required_pull_request_reviews: null,
+  restrictions: null,
+  allow_force_pushes: false,
+  allow_deletions: false
+}')"
+
+RESPONSE="$(echo "$PAYLOAD" | gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
-  "repos/${REPO}/branches/${BRANCH}/protection" \
-  -f required_status_checks[strict]=false \
-  -f 'required_status_checks[contexts][]=pr (macos-14)' \
-  -f 'required_status_checks[contexts][]=pr (ubuntu-24.04)' \
-  -f 'required_status_checks[contexts][]=merge-gate-nightly-fresh' \
-  -F enforce_admins=false \
-  -f required_pull_request_reviews= \
-  -f restrictions= \
-  -F allow_force_pushes=false \
-  -F allow_deletions=false)"
+  --input - \
+  "repos/${REPO}/branches/${BRANCH}/protection")"
 
 echo "$RESPONSE" | jq .
 echo ""

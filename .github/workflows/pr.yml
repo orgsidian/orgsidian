@@ -31,6 +31,7 @@ concurrency:
 jobs:
   pr:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: true
       matrix:
@@ -42,6 +43,26 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: false
+
+      # Step 1.5 — Linux native deps for Tauri 2.x (GTK3 + WebKit2GTK 4.1 +
+      # libsoup3 + librsvg + ayatana-appindicator3). The GitHub-hosted
+      # `ubuntu-24.04` image does NOT pre-install these; `glib-sys` /
+      # `webkit2gtk-sys` build scripts fail at `pkg-config glib-2.0` /
+      # `webkit2gtk-4.1` otherwise. macOS-arm64 gets the equivalents from
+      # Xcode's system frameworks (no install step needed).
+      - name: Install Linux native deps (Tauri 2.x)
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            build-essential \
+            libssl-dev \
+            pkg-config
 
       # Step 2 — Rust toolchain + cache. `rust-toolchain.toml` pins channel +
       # rustfmt + clippy components, so dtolnay/rust-toolchain@stable respects
@@ -100,38 +121,16 @@ jobs:
       - name: cargo deny
         run: cargo deny --locked check all
 
-      # Step 11 — cargo-audit. `--ignore RUSTSEC-2024-0429` tracks the
-      # transitive glib 0.18.5 unsoundness flagged in Story 1.7 deferred-work
-      # (Linux-only; macOS doesn't see it). Lockstep with
-      # docs/security/advisory-exceptions.md is enforced by Story 1.7's
-      # ledger discipline + the cross-tool allowlist check at step 13.5.
-      # cargo-audit `--ignore` list is kept in lockstep with
-      # docs/security/advisory-exceptions.md "Cargo advisories" table per
-      # LD-37. The set covers the Tauri 2.x gtk-rs Linux transitive stack
-      # + paste/proc-macro-error/unic-* transitives (all informational
-      # warnings; cargo-deny's `unmaintained = "workspace"` already handles
-      # the workspace-owned case).
+      # Step 11 — cargo-audit. The advisory `--ignore` set is externalized to
+      # `.cargo/audit-ignore.txt` (single source of truth across pr.yml +
+      # nightly.yml hosted/arch cells). cargo-audit 0.21/0.22 has no
+      # `--config` flag, so we expand the list inline. Kept in lockstep with
+      # the "Cargo advisories" table in docs/security/advisory-exceptions.md
+      # per LD-37.
       - name: cargo audit
         run: |
-          cargo audit --deny warnings \
-            --ignore RUSTSEC-2024-0429 \
-            --ignore RUSTSEC-2024-0411 \
-            --ignore RUSTSEC-2024-0412 \
-            --ignore RUSTSEC-2024-0413 \
-            --ignore RUSTSEC-2024-0414 \
-            --ignore RUSTSEC-2024-0415 \
-            --ignore RUSTSEC-2024-0416 \
-            --ignore RUSTSEC-2024-0417 \
-            --ignore RUSTSEC-2024-0418 \
-            --ignore RUSTSEC-2024-0419 \
-            --ignore RUSTSEC-2024-0420 \
-            --ignore RUSTSEC-2024-0436 \
-            --ignore RUSTSEC-2024-0370 \
-            --ignore RUSTSEC-2025-0075 \
-            --ignore RUSTSEC-2025-0080 \
-            --ignore RUSTSEC-2025-0081 \
-            --ignore RUSTSEC-2025-0098 \
-            --ignore RUSTSEC-2025-0100
+          IGNORES="$(awk '/^RUSTSEC-/ {printf "--ignore %s ", $1}' .cargo/audit-ignore.txt)"
+          cargo audit --deny warnings $IGNORES
 
       # Step 12 — JS supply-chain audit.
       - name: pnpm audit
@@ -169,18 +168,37 @@ jobs:
       # Story 1.12: perf snapshot regression macro lands here
       # Story 2.6: L0 round-trip subset gate (~100 files, <60s) lands here
 
-      # Step 16 — merge gate: most-recent-nightly green within 24h
-      # (LD-32 anti-atrophy: GitHub doesn't natively understand this rule;
-      # we enforce by querying the Actions API and asserting conclusion +
-      # freshness). The PR cannot merge until this check is green. Skipped
-      # on push-to-main (only enforced on PRs) so the merge commit's CI
-      # run isn't gated by its own nightly that hasn't run yet.
+  # Standalone merge-gate job. MUST be a top-level job (not a matrix step) so
+  # GitHub publishes a `merge-gate-nightly-fresh` status context that branch
+  # protection can require. Step-level checks are not reported as contexts.
+  #
+  # LD-32 anti-atrophy: GitHub does not natively understand "most-recent
+  # nightly on main was green within 24h". This job queries the Actions API
+  # and enforces the rule. Bootstrap-safe: if `.github/workflows/nightly.yml`
+  # does not yet exist on the base ref (i.e., this PR is the one introducing
+  # the workflow), the gate soft-passes with a warning.
+  merge-gate-nightly-fresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout base ref (for nightly.yml presence check)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          submodules: false
       - name: merge-gate-nightly-fresh
-        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # Bootstrap path: if nightly.yml does not exist on the base ref,
+          # this PR is the one introducing it. Soft-pass — the gate becomes
+          # active starting from the next PR (once nightly.yml is on main).
+          if [ ! -f .github/workflows/nightly.yml ]; then
+            echo "merge-gate-nightly-fresh: SOFT-PASS — nightly.yml not yet on base ref. Gate activates after this PR merges."
+            exit 0
+          fi
           # Query the most recent nightly.yml run on the default branch.
           payload="$(gh api \
             'repos/${{ github.repository }}/actions/workflows/nightly.yml/runs?per_page=1&branch=main' \

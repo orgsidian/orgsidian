@@ -40,6 +40,7 @@ jobs:
   # install step.
   hosted:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       # fail-fast: false — we need ALL platforms' status for triage. PR-side
       # uses fail-fast: true (different posture).
@@ -51,6 +52,23 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: false
+
+      # Linux native deps for Tauri 2.x. GitHub-hosted ubuntu-24.04 does
+      # NOT pre-install GTK/WebKit/libsoup development headers; glib-sys
+      # build script fails otherwise. See pr.yml step 1.5 for rationale.
+      - name: Install Linux native deps (Tauri 2.x)
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            build-essential \
+            libssl-dev \
+            pkg-config
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -98,30 +116,13 @@ jobs:
       - name: cargo deny
         run: cargo deny --locked check all
 
-      # cargo-audit `--ignore` list kept in lockstep with
-      # docs/security/advisory-exceptions.md (Cargo advisories table) per
-      # LD-37. See pr.yml comment for rationale.
+      # cargo-audit `--ignore` set externalized to .cargo/audit-ignore.txt —
+      # single source of truth shared with pr.yml + arch-linux cell. Lockstep
+      # with docs/security/advisory-exceptions.md "Cargo advisories" table.
       - name: cargo audit
         run: |
-          cargo audit --deny warnings \
-            --ignore RUSTSEC-2024-0429 \
-            --ignore RUSTSEC-2024-0411 \
-            --ignore RUSTSEC-2024-0412 \
-            --ignore RUSTSEC-2024-0413 \
-            --ignore RUSTSEC-2024-0414 \
-            --ignore RUSTSEC-2024-0415 \
-            --ignore RUSTSEC-2024-0416 \
-            --ignore RUSTSEC-2024-0417 \
-            --ignore RUSTSEC-2024-0418 \
-            --ignore RUSTSEC-2024-0419 \
-            --ignore RUSTSEC-2024-0420 \
-            --ignore RUSTSEC-2024-0436 \
-            --ignore RUSTSEC-2024-0370 \
-            --ignore RUSTSEC-2025-0075 \
-            --ignore RUSTSEC-2025-0080 \
-            --ignore RUSTSEC-2025-0081 \
-            --ignore RUSTSEC-2025-0098 \
-            --ignore RUSTSEC-2025-0100
+          IGNORES="$(awk '/^RUSTSEC-/ {printf "--ignore %s ", $1}' .cargo/audit-ignore.txt)"
+          cargo audit --deny warnings $IGNORES
 
       - name: pnpm audit
         run: pnpm audit --audit-level=moderate --prod
@@ -152,24 +153,38 @@ jobs:
   # Arch Linux nightly cell — rolling-release canary per LD-32. No
   # GitHub-hosted Arch image exists; we run inside an `archlinux:base-devel`
   # container on an Ubuntu-LTS runner. dtolnay/rust-toolchain does not work
-  # inside a non-Ubuntu container; we install via pacman + rustup directly.
+  # inside a non-Ubuntu container; we install rustup via pacman and run
+  # `rustup default stable` explicitly so `rust-toolchain.toml` is honored
+  # the same way `dtolnay/rust-toolchain@stable` honors it on hosted cells.
   arch-linux:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     container:
       image: archlinux:base-devel
     steps:
-      - name: Install Arch toolchain (rust + node + pnpm + Tauri 2.x Linux deps)
+      - name: Install Arch toolchain (rustup + node + pnpm + Tauri 2.x Linux deps)
         # Tauri 2.x Linux backend needs gtk3, webkit2gtk-4.1 (NOT 4.0 — Tauri
-        # 2.x bumped), libsoup3, librsvg. base-devel covers the rest.
+        # 2.x bumped), libsoup3, librsvg. base-devel covers the rest. We
+        # install `rustup` (not `rust`) so `rust-toolchain.toml` is honored
+        # identically to the hosted cells.
         run: |
           set -euo pipefail
-          pacman -Syu --noconfirm rust nodejs gtk3 webkit2gtk-4.1 libsoup3 librsvg base-devel git jq python
+          pacman -Syu --noconfirm rustup nodejs gtk3 webkit2gtk-4.1 libsoup3 librsvg base-devel git jq python
+          rustup default stable
+          rustup component add rustfmt clippy
           npm install -g pnpm@11.1.1
 
       - name: Checkout
         uses: actions/checkout@v5
         with:
           submodules: false
+
+      # Swatinem/rust-cache@v2 — caches cargo registry + target dir for the
+      # Arch cell too. Without this, every nightly cold-builds the workspace.
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: nightly-arch-linux
 
       - name: Install JS deps
         run: pnpm install --frozen-lockfile
@@ -194,30 +209,12 @@ jobs:
       - name: cargo deny
         run: cargo deny --locked check all
 
-      # cargo-audit `--ignore` list kept in lockstep with
-      # docs/security/advisory-exceptions.md (Cargo advisories table) per
-      # LD-37. See pr.yml comment for rationale.
+      # cargo-audit `--ignore` set externalized to .cargo/audit-ignore.txt
+      # — single source of truth (see pr.yml + nightly.yml hosted cell).
       - name: cargo audit
         run: |
-          cargo audit --deny warnings \
-            --ignore RUSTSEC-2024-0429 \
-            --ignore RUSTSEC-2024-0411 \
-            --ignore RUSTSEC-2024-0412 \
-            --ignore RUSTSEC-2024-0413 \
-            --ignore RUSTSEC-2024-0414 \
-            --ignore RUSTSEC-2024-0415 \
-            --ignore RUSTSEC-2024-0416 \
-            --ignore RUSTSEC-2024-0417 \
-            --ignore RUSTSEC-2024-0418 \
-            --ignore RUSTSEC-2024-0419 \
-            --ignore RUSTSEC-2024-0420 \
-            --ignore RUSTSEC-2024-0436 \
-            --ignore RUSTSEC-2024-0370 \
-            --ignore RUSTSEC-2025-0075 \
-            --ignore RUSTSEC-2025-0080 \
-            --ignore RUSTSEC-2025-0081 \
-            --ignore RUSTSEC-2025-0098 \
-            --ignore RUSTSEC-2025-0100
+          IGNORES="$(awk '/^RUSTSEC-/ {printf "--ignore %s ", $1}' .cargo/audit-ignore.txt)"
+          cargo audit --deny warnings $IGNORES
 
       - name: pnpm audit
         run: pnpm audit --audit-level=moderate --prod
