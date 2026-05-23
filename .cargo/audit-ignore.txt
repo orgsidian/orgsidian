@@ -1,0 +1,35 @@
+# .cargo/audit-ignore.txt — canonical cargo-audit ignore list (Story 1.8
+# follow-up). Single source of truth referenced by pr.yml + nightly.yml
+# (hosted + arch cells). Each workflow expands the list inline:
+#
+#   IGNORES="$(awk '/^RUSTSEC-/ {printf "--ignore %s ", $1}' .cargo/audit-ignore.txt)"
+#   cargo audit --deny warnings $IGNORES
+#
+# cargo-audit 0.21/0.22 lacks a `--config` flag and only reads
+# ~/.cargo/audit.toml (user-level), so we expand the list at CI step time.
+# Kept in lockstep with the "Cargo advisories" table in
+# docs/security/advisory-exceptions.md per LD-37.
+
+# glib 0.18.5 transitive unsoundness (Linux runners only).
+RUSTSEC-2024-0429
+# gtk-rs GTK3 family — unmaintained (transitives via Tauri 2.x Linux backend).
+RUSTSEC-2024-0411
+RUSTSEC-2024-0412
+RUSTSEC-2024-0413
+RUSTSEC-2024-0414
+RUSTSEC-2024-0415
+RUSTSEC-2024-0416
+RUSTSEC-2024-0417
+RUSTSEC-2024-0418
+RUSTSEC-2024-0419
+RUSTSEC-2024-0420
+# paste — unmaintained; transitive via several crates.
+RUSTSEC-2024-0436
+# proc-macro-error — unmaintained; transitive via specta-macros 2.0-rc.
+RUSTSEC-2024-0370
+# unic-* family — unmaintained; transitive via idna/url crates.
+RUSTSEC-2025-0075
+RUSTSEC-2025-0080
+RUSTSEC-2025-0081
+RUSTSEC-2025-0098
+RUSTSEC-2025-0100

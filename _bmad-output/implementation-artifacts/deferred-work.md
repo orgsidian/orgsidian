@@ -47,3 +47,7 @@
 - **`deny-sources` alias missing from `.cargo/config.toml`** [`.cargo/config.toml:13-17`] [LOW] — AC8 binds the 4-alias set; `cargo deny check sources` is rare enough to hand-type. Owner: future hardening pass.
 - **`[bans].skip` entries lack drift signal** [`deny.toml:133-165`] [LOW] — cargo-deny does NOT support `expiration` on `[bans].skip` (only on advisories). Quarterly review must come via Story 1.8 CI scheduled re-eval or human-only ledger discipline. Owner: Story 1.8 (CI scheduled job) or Story 1.13 (when GitHub repo lands).
 - **`orgsidian-core` workspace dep hard-codes `version = "0.0.0"`** [`Cargo.toml:39`] [MED] — Will collide on the first `workspace.package.version` bump (e.g. → `0.1.0-alpha.1`). Disclosed deviation #7 acknowledges the pin; the future two-place edit is left as a `# Keep in sync with workspace.package.version` reminder. Owner: v0.1 Alpha version-bump story.
+
+## Deferred from: code review of story-1.8 (2026-05-23)
+
+- **`invoke_plugin_hook!` macro is sync-only — cannot host `await`/`?`/early `return`** [`crates/orgsidian-core/src/registry.rs:99-122`] [LOW] — `catch_unwind(AssertUnwindSafe(|| $call))` wraps the call in a non-async closure. Document the constraint in the macro doc-comment now; ship a sibling `invoke_plugin_hook_async!` (using `FutureExt::catch_unwind`) when async hooks land. Owner: Epic 4+ when WASM v1.5 async plugin hooks materialize.

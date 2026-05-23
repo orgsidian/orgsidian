@@ -38,7 +38,10 @@ pub fn run() -> tauri::Result<()> {
     specta_builder
         .export(
             Typescript::default(),
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../shell-ui/src/lib/tauri.ts"),
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../shell-ui/src/lib/tauri.ts"
+            ),
         )
         .expect("tauri-specta TS client export failed");
 

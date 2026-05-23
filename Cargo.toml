@@ -40,6 +40,10 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 specta-typescript = "=0.0.12"
 thiserror = "1"
+# Story 1.8 (LD-38): structured-logging facade for the `invoke_plugin_hook!`
+# panic-isolation macro. The leaf crate consumes the facade only; the binary
+# wires the subscriber later (Story 1.13 / Epic 2.x) per LD-35.
+tracing = "0.1"
 # Explicit `version` paired with `path` keeps `cargo deny check bans` happy
 # (otherwise a path-only dep is interpreted as a `*` wildcard for a public
 # crate). Version stays in lockstep with workspace.package.version.
@@ -50,3 +54,14 @@ orgsidian-core = { path = "crates/orgsidian-core", version = "0.0.0" }
 # future contributor sees the convention.
 [workspace.metadata.cargo-deny]
 
+# [profile.release] panic = "unwind" per LD-38 (plugin panic isolation under
+# static linking). The Rust default for release profile is `panic = "abort"`
+# (smaller binaries, no unwinding tables). LD-38 OVERRIDES this because the
+# `invoke_plugin_hook!` macro in `crates/orgsidian-core/src/registry.rs` relies
+# on `std::panic::catch_unwind` to keep the host process alive when a (bundled
+# v1.0 or WASM v1.5+) plugin panics inside a hook. `catch_unwind` is a no-op
+# under `panic = "abort"` — the process dies before the handler runs.
+# Trade-off: ~1-3% larger release binary + slightly slower compile + unwinding
+# tables in the binary. Accepted per LD-38 (plugin reliability > binary size).
+[profile.release]
+panic = "unwind"
