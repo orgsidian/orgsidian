@@ -96,10 +96,12 @@ jobs:
       # Step 5 — cargo-deny + cargo-audit (pre-built binaries via
       # taiki-e/install-action — saves ~3 min/cell vs. `cargo install`).
       # Pinned to current 2026-05 minors per [[feedback_version_policy]].
+      # cargo-audit MUST be >=0.22 — earlier minors lack CVSS v4.0 parser
+      # support and fail loading the advisory DB (RUSTSEC-2026-0073+ use 4.0).
       - name: Install cargo-deny + cargo-audit
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny@0.18,cargo-audit@0.21
+          tool: cargo-deny@0.18,cargo-audit@0.22
 
       # Step 6 — Rust format.
       - name: cargo fmt

@@ -95,7 +95,7 @@ jobs:
       - name: Install cargo-deny + cargo-audit
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny@0.18,cargo-audit@0.21
+          tool: cargo-deny@0.18,cargo-audit@0.22
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
@@ -192,7 +192,7 @@ jobs:
       - name: Install cargo-deny + cargo-audit
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny@0.18,cargo-audit@0.21
+          tool: cargo-deny@0.18,cargo-audit@0.22
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
