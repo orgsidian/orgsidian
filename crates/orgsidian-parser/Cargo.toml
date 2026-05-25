@@ -8,4 +8,6 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Real deps (tree-sitter, etc.) added in Story 2.x.
+# Story 1.9: `thiserror` for the `ParseError` enum used by the anchor stub.
+# tree-sitter / tree-sitter-org land in Story 2.1+ per the epic-2 sequence.
+thiserror = { workspace = true }

@@ -85,6 +85,7 @@ the binding rule from AC2 holds. Re-evaluate at each Tauri-ecosystem bump.
 | `hashbrown@0.12.3`, `hashbrown@0.15.5` (indexmap 1.x, schemars 0.8)                                                                     | accept   | 2026-05-22     | 2026-08-20  |
 | `heck@0.4.1` (older proc-macros)                                                                                                        | accept   | 2026-05-22     | 2026-08-20  |
 | `indexmap@1.9.3` (schemars 0.8 + Tauri build chain)                                                                                     | accept   | 2026-05-22     | 2026-08-20  |
+| `nix@0.30.1` (atomic-write-file 0.3; tauri-plugin-os pins nix 0.31)                                                                     | accept   | 2026-05-23     | 2026-08-21  |
 | `png@0.17.16` (ico → tauri-codegen)                                                                                                     | accept   | 2026-05-22     | 2026-08-20  |
 | `proc-macro-crate@1.3.1`, `proc-macro-crate@2.0.2`                                                                                      | accept   | 2026-05-22     | 2026-08-20  |
 | `serde_spanned@0.6.9` (toml 0.8)                                                                                                        | accept   | 2026-05-22     | 2026-08-20  |
