@@ -169,7 +169,9 @@ jobs:
         # identically to the hosted cells.
         run: |
           set -euo pipefail
-          pacman -Syu --noconfirm rustup nodejs gtk3 webkit2gtk-4.1 libsoup3 librsvg base-devel git jq python
+          # NB: Arch's `nodejs` package does NOT include `npm` (separate package);
+          # without it, the `npm install -g pnpm@...` line below exits 127.
+          pacman -Syu --noconfirm rustup nodejs npm gtk3 webkit2gtk-4.1 libsoup3 librsvg base-devel git jq python
           rustup default stable
           rustup component add rustfmt clippy
           npm install -g pnpm@11.1.1
