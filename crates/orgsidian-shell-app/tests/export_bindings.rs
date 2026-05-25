@@ -15,6 +15,17 @@ use std::path::PathBuf;
 use orgsidian_shell_app_lib::build_specta;
 use specta_typescript::Typescript;
 
+// Windows nightly skip (see issue #120). The test exe links transitively against
+// `webview2-com-sys 0.38.2` via `Builder<tauri::Wry>`; on `windows-2022` the OS
+// loader fails resolving a webview2 import at process startup with
+// `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139), before `main()` runs. macOS + Ubuntu
+// are unaffected (different webview backend). Proper fix is to extract
+// `build_specta()` into an IPC-contract crate that doesn't depend on `tauri::Wry`;
+// tracked at https://github.com/orgsidian/orgsidian/issues/120.
+#[cfg_attr(
+    windows,
+    ignore = "STATUS_ENTRYPOINT_NOT_FOUND on windows-2022, tracked in #120"
+)]
 #[test]
 fn export_bindings() {
     let out: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
