@@ -14,23 +14,17 @@ use std::time::{Duration, SystemTime};
 
 use thiserror::Error;
 
-/// Trait re-export so consumers reach `Clock` through the watcher's surface
-/// once notify-rs lands. Until then, this is the only public producer of the
-/// abstraction's consumers (the watcher's tests still import from core directly
-/// via the gated `test_support` feature — re-exporting in `pub use` form would
-/// leak the trait into release builds via the watcher's public API).
-pub use orgsidian_core_clock_facade::Clock;
-
-mod orgsidian_core_clock_facade {
-    /// Local trait facade. Anchored Send + Sync + 'static to match the
-    /// `orgsidian_core::test_support::clock::Clock` shape exactly — the test
-    /// (which dev-depends on `orgsidian-core` with `test-support`) imports the
-    /// core trait directly; this facade is the production-time bound used by
-    /// `detect_first_write_event` and is implemented by anything implementing
-    /// the core trait via the blanket below.
-    pub trait Clock: Send + Sync + 'static {
-        fn now(&self) -> std::time::Instant;
-    }
+/// Production-visible `Clock` facade.
+///
+/// Declared independently of `orgsidian_core::test_support::clock::Clock`
+/// because the core trait is gated behind `cfg(any(test, feature = "test-support"))`
+/// and is therefore unavailable in release builds. Shape (`Send + Sync + 'static` +
+/// `fn now(&self) -> Instant`) matches the LD-9 trait exactly; consumers that already
+/// implement the core trait bridge into this one via a tiny newtype adapter
+/// (see `tests/anchor.rs` for the pattern). Story 5.1 revisits the duplication when
+/// notify-rs lands and the watcher needs a stable timeout discipline beyond tests.
+pub trait Clock: Send + Sync + 'static {
+    fn now(&self) -> std::time::Instant;
 }
 
 #[derive(Debug)]
@@ -68,7 +62,7 @@ pub fn detect_first_write_event(
         if mtime != initial_mtime {
             return Ok(DetectedEvent { mtime });
         }
-        if clock.now().duration_since(start) > deadline {
+        if clock.now().saturating_duration_since(start) > deadline {
             return Err(DetectError::Timeout(deadline));
         }
         std::thread::sleep(Duration::from_millis(10));

@@ -1,6 +1,6 @@
 # Story 1.9: Add anchor smoke tests (anti-placebo-green per Party Mode P2)
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -151,6 +151,34 @@ The following are NOT modified by Story 1.9 (out of scope; flag any drift as a r
   - [x] 6.1 `git status` confirms the "in scope" file set per AC7. Additional defensible touches: `deny.toml` + `docs/security/advisory-exceptions.md` (Story 1.7 ledger discipline for the `nix@0.30` transitive surprise, explicitly anticipated by AC2 + AC6); `_bmad-output/implementation-artifacts/sprint-status.yaml` + the story file itself (workflow-required artifacts).
   - [x] 6.2 Out-of-scope deviations: NONE beyond the explicitly anticipated ledger pair. No additions to `deferred-work.md`.
   - [x] 6.3 Confirmed: no `.github/workflows/*` files are touched — the anchors run via the existing Story 1.8 step 9 by Cargo's `tests/*.rs` discovery convention.
+
+### Review Findings
+
+Code review (2026-05-25) — three parallel adversarial layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). 0 decision-needed, 3 patches applied silently per `[[feedback_batch_fixes_terse]]`, 4 deferred to downstream stories, 8 dismissed as noise / spec-aligned.
+
+**Patches applied**
+
+- [x] [Review][Patch] Add explicit UTF-8 contract witness in `parse()` body per AC4 [crates/orgsidian-parser/src/lib.rs:30-37] — AC4 calls for a *structural* UTF-8 validation step in the body (not just the doc-comment). Added `let _utf8_source: &str = source;` binding with a reference to the Story 2.2 swap contract.
+- [x] [Review][Patch] Collapse misleading `orgsidian_core_clock_facade` private module + remove docstring claim of a non-existent blanket impl [crates/orgsidian-watcher/src/lib.rs:17-26] — the prior comment promised "implemented by anything implementing the core trait via the blanket below" but no blanket existed; the test bridges via `ClockAdapter` newtype, which is what the docstring now states. Trait lifted to crate root; module name no longer suggests a re-export.
+- [x] [Review][Patch] Use `saturating_duration_since` in `detect_first_write_event` timeout check [crates/orgsidian-watcher/src/lib.rs:65] — defensive against non-monotonic `Clock` impls; `duration_since` panics in debug if `now < start`. `FakeClock` is monotonic by construction so the existing test path is unaffected; future Story 5.x failure-path tests get a safe-by-default deadline check.
+
+**Deferred to downstream stories** (recorded in `_bmad-output/implementation-artifacts/deferred-work.md` under "code review of story-1.9 (2026-05-25)")
+
+- [x] [Review][Defer] Watcher anchor hang risk on writer panic + mtime-resolution flake on coarse filesystems [crates/orgsidian-watcher/tests/anchor.rs] — deferred, Dev Notes §9 anticipates the mtime-resolution Windows-FAT path; owner: Story 5.1 (notify-rs swap eliminates the polling + FakeClock-frozen hang surface entirely).
+- [x] [Review][Defer] `metadata().modified()` race vs. `renameat` from `atomic-write-file` in the polling detector [crates/orgsidian-watcher/src/lib.rs:60] — deferred, anchor uses `std::fs::write` (truncate, not rename) so the race is latent; owner: Story 5.1 (notify-rs event subscription replaces the polling body and the rename race in one stroke).
+- [x] [Review][Defer] Temp-file leak on `write_all` error path in `atomic_write` [crates/orgsidian-vault/src/lib.rs:18-22] — deferred, Story 3.1 owns the AV-aware retry wrapper + error-path semantics; the anchor's one-shot happy path doesn't exercise the leak window.
+- [x] [Review][Defer] `atomic_write` returns bare `io::Error` for `EISDIR` / `ENOENT` (no context wrapping) [crates/orgsidian-vault/src/lib.rs:18] — deferred, Story 3.1 owns production-grade error context wrapping; AC2 explicitly bounds the anchor to a single delegation chain.
+
+**Dismissed (spec-aligned or false-positive)** — for the record, not actionable:
+
+- Vault anchor "doesn't test atomicity" — AC2 explicitly bounds the anchor to byte-identity, not crash-injection atomicity.
+- Wall-clock 10ms sleep distorts Clock deadline — AC3 explicitly authorises the OS-cadence / Clock-deadline split.
+- `initial_mtime` captured inside `detect_first_write_event` not at caller checkpoint — within the AC3 API contract.
+- `fake.advance(Duration::from_secs(0))` dead code — AC3 explicitly requires this no-op as an API-wiring witness.
+- `ParseError::Empty` unreachable through test path — AC1 only mandates the happy-path anchor.
+- FakeClock mutex poison panic / `Duration::MAX` overflow — degenerate inputs; fake-fixture convention.
+- Parser stub is "the placebo it claims to defend against" — Blind Hunter's deepest critique, but the anchor sentinel discipline (per Dev Notes §1 + test-design §6.1) protects against *future regressions* that render `parse()` inert; it doesn't claim to validate parsing correctness in Story 1.9. Story 2.3 introduces semantic-layer per-construct fixtures.
+- Module doc-comment minor wording variation vs AC4 — within latitude.
 
 ## Dev Notes
 
@@ -353,3 +381,4 @@ claude-opus-4-7 (1M context) via `bmad-dev-story`.
 | ---------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | 2026-05-23 | Story 1.9 implemented: 3 anchor smoke tests (parser/vault/watcher) + Clock/FakeClock in core + parser/vault API stubs. | Amelia (`bmad-dev-story`) for Tiziano |
 | 2026-05-23 | Story 1.7 ledger updated: `nix@0.30.1` duplicate-version skip added (transitive via atomic-write-file 0.3).             | Amelia (`bmad-dev-story`) for Tiziano |
+| 2026-05-25 | Code review (3 parallel adversarial layers). 3 patches applied silently, 4 deferred, 8 dismissed. Story → done.         | Murat (`bmad-code-review`) for Tiziano |

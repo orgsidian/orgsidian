@@ -28,6 +28,10 @@ pub enum ParseError {
 /// the tree-sitter-org input contract is UTF-8). Returns `Err(ParseError::Empty)`
 /// for empty input, `Ok(ParseTree)` otherwise.
 pub fn parse(source: &str) -> Result<ParseTree, ParseError> {
+    // UTF-8 contract witness (AC4): the `&str` bound already guarantees UTF-8;
+    // this binding makes the contract visible in the body so a future
+    // tree-sitter-org swap (Story 2.2) keeps the same input invariant.
+    let _utf8_source: &str = source;
     if source.is_empty() {
         return Err(ParseError::Empty);
     }
