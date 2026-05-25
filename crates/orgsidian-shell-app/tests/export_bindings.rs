@@ -8,6 +8,17 @@
 //! Story 1.8 (AC7, closes Story 1.4 deferred-work): the test now asserts on
 //! generated content. A regression dropping `OrgError`, the `kind`
 //! discriminator, or the `ping` command from the bindings will fail loudly.
+//!
+//! Windows skip (see issue #120). The test exe links transitively against
+//! `webview2-com-sys 0.38.2` via `Builder<tauri::Wry>` from `build_specta()`;
+//! on `windows-2022` the OS loader fails resolving a webview2 import at process
+//! startup with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139), BEFORE `main()` runs.
+//! `#[ignore]` filters test execution but cannot bypass load-time failure — the
+//! whole module is conditionally compiled out on Windows so Cargo produces an
+//! inert test binary with no `tauri::Wry` linkage. macOS + Ubuntu are unaffected
+//! (different webview backend). Proper fix is to extract `build_specta()` into
+//! an IPC-contract crate that doesn't depend on `tauri::Wry`; tracked at #120.
+#![cfg(not(target_os = "windows"))]
 
 use std::fs;
 use std::path::PathBuf;
