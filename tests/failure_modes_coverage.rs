@@ -7,11 +7,19 @@
 
 const HARNESS_SRC: &str = include_str!("./failure_modes.rs");
 
-/// Expected LD-41 category count (architecture.md L1196-L1209 catalog).
-/// Pinned here so a future contributor cannot remove a category from the
-/// harness without breaking the coverage gate — forces a coordinated update of
-/// architecture.md + harness + this constant + docs/failure-modes/coverage-matrix.md.
-const EXPECTED_LD_41_CATEGORIES: usize = 10;
+/// Expected remaining `#[ignore]` placeholder count in `tests/failure_modes.rs`.
+///
+/// Starts at the LD-41 catalog size (10 rows — architecture.md L1196-L1209) and
+/// MUST be decremented by 1 in each downstream LD-41 implementation story as it
+/// removes the matching `#[ignore = "implemented in Epic N"]` attribute from a
+/// placeholder fn. Reaches 0 at the v0.5-Beta release-prep cutoff alongside the
+/// strict-mode gate flip.
+///
+/// Coordinated-update touchpoints: this constant + the matching `#[ignore]`
+/// removal in `tests/failure_modes.rs` + regen of `docs/failure-modes/coverage-matrix.md`.
+/// A catalog growth (new LD-41 row) instead INCREMENTS this AND requires
+/// adding a placeholder fn AND updating architecture.md L1196-L1209.
+const EXPECTED_REMAINING_PLACEHOLDERS: usize = 10;
 
 /// Returns `(unimplemented_categories, total_categories)` parsed from the
 /// `#[ignore = "implemented in Epic N"]` annotations in HARNESS_SRC.
@@ -81,12 +89,16 @@ fn ld_41_categories_have_real_implementations() {
 
 #[test]
 fn failure_mode_count_matches_ld_41_catalog() {
-    let (_unimplemented, total) = scan_categories();
+    let (placeholders, _) = scan_categories();
     assert_eq!(
-        total, EXPECTED_LD_41_CATEGORIES,
-        "LD-41 catalog drift: tests/failure_modes.rs has {} categories, \
-         architecture.md L1196-L1209 has {}. Update both in lockstep + \
-         the EXPECTED_LD_41_CATEGORIES constant + docs/failure-modes/coverage-matrix.md.",
-        total, EXPECTED_LD_41_CATEGORIES,
+        placeholders.len(),
+        EXPECTED_REMAINING_PLACEHOLDERS,
+        "LD-41 placeholder drift: tests/failure_modes.rs has {} remaining \
+         #[ignore] placeholders, EXPECTED_REMAINING_PLACEHOLDERS is {}. \
+         If you removed an #[ignore] (implementing a real test), decrement \
+         the constant. If you added a new LD-41 category, increment it AND \
+         update architecture.md L1196-L1209 + docs/failure-modes/coverage-matrix.md.",
+        placeholders.len(),
+        EXPECTED_REMAINING_PLACEHOLDERS,
     );
 }

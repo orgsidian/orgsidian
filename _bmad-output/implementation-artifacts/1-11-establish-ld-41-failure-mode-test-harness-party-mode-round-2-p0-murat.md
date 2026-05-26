@@ -1,6 +1,6 @@
 # Story 1.11: Establish LD-41 failure-mode test harness (Party Mode round 2 P0 — Murat)
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -281,6 +281,23 @@ If any cell fails on the dev box, the story MUST NOT move to `review`. The most 
 - [x] **Task 9 — GitHub Issue sync (pre-flight)** (AC8)
   - [x] 9.1 Issue #11 label transition: `status:backlog` → `status:in-progress` at dev-story start; → `status:in-review` post-implementation (NOT `status:review` per [[project_orgsidian_github_label_scheme]]).
   - [x] 9.2 Verify no other label changes needed (`epic:1`, `milestone:v0.1`, `type:story` already correct per `gh issue view 11 --json labels` output captured 2026-05-25).
+
+### Review Findings
+
+_Code review 2026-05-26 (bmad-code-review, PR #126). 3 layers run in parallel: Blind Hunter (17 raw findings, 5 major+), Edge Case Hunter (14 raw findings across 10 categories, 5 major+), Acceptance Auditor (51 checks, 0 violations, 3 drifts). Post-dedupe + triage: 2 decision-needed, 1 patch, 5 deferred, ~10 dismissed as noise._
+
+- [x] [Review][Patch] **`scan_categories` conflates "unimplemented" with "total" — `failure_mode_count_matches_ld_41_catalog` breaks on first LD-41 implementation** [`tests/failure_modes_coverage.rs:22-92`] — _Applied 2026-05-26: renamed `EXPECTED_LD_41_CATEGORIES` → `EXPECTED_REMAINING_PLACEHOLDERS = 10` with comment requiring per-impl-story decrement; rewrote assertion message + doc-comment. Gate verde: 2 passed; fmt + clippy clean._
+- [x] [Review][Patch] **PR #126 body lacks literal `Closes #11`** — _Applied 2026-05-26: `gh pr edit 126` added `Closes #11` to body + reflected constant rename in summary._
+
+- [x] [Review][Defer] **`disk_full_atomic_write` exemplar teaches wrong `fail::cfg` pattern** [`tests/failure_modes.rs:43-50` commented exemplar] — Spec AC1 dictates verbatim `fail::cfg("atomic-write::after-tmp-rename", "panic")` + `assert!(result.is_err())`; the `"panic"` action unwinds (assert unreachable). Defer rationale: spec AC1 dictates the exemplar verbatim; Story 3.1 will rewrite the body when implementing real fault injection — patching now would deviate from literal AC1. Owner: Story 3.1.
+
+- [x] [Review][Defer] **Anti-placebo gap: gate does not tie `unimplemented!()` body presence to `#[ignore]` marker** [`tests/failure_modes_coverage.rs:22-52`] — If a future contributor removes BOTH `#[ignore]` AND `unimplemented!()` (replacing with empty body), the test silently passes with zero assertions; the "loud failure" contract holds only for half-removal. Strengthening would be `assert!(unimplemented_count == ignore_count)` inside scan. Defer rationale: real LD-41 implementation stories replace bodies with real assertions anyway; this guards a hypothetical sloppy/malicious refactor not anticipated by Story 1.11 scope. Owner: first LD-41 implementation story (likely Story 3.1).
+- [x] [Review][Defer] **Strict-mode env-var advisory `eprintln!` is suppressed by default in `cargo test`; no CI step runs strict mode** [`tests/failure_modes_coverage.rs:72-78` + `.github/workflows/*`] — Cargo captures stderr from passing tests unless `--nocapture`. No workflow step runs `ORGSIDIAN_FAILURE_MODE_STRICT=1` or `--show-output`. Gate signal is effectively silent today. Spec AC6 explicitly anti-creeps workflows and defers strict-mode flip to v0.5-Beta release-prep story. Owner: future v0.5-Beta release-prep story (per AC3 + AC6).
+- [x] [Review][Defer] **Cross-platform idempotency of `pnpm gen:failure-modes-matrix` not asserted in CI; Windows PowerShell `>` redirect may emit CRLF/UTF-16** [`scripts/gen-failure-modes-matrix.mjs:803-805` + nightly.yml absent step] — Script itself emits pure LF and the committed file is LF, but a Windows contributor regenerating locally could produce noise; nightly Windows job doesn't run `pnpm gen` so undetected. Defer rationale: AC6 forbids workflow edits in this story; a `--check` mode + CI gate is the right shape for a future Windows hardening story. Owner: future CI-hardening story (post-Story 1.13 GitHub work or v0.5-Beta release-prep).
+- [x] [Review][Defer] **`required-features = ["test-support"]` is decorative; `cargo test -p orgsidian-core` silently skips harness** [`crates/orgsidian-core/Cargo.toml:32-35`] — Harness file does not actually reference `test_support` module; the gate exists only for forward-looking compile semantics (per Dev Notes §4). Workspace-test invocation works only via `orgsidian-watcher`'s incidental dev-dep on `orgsidian-core/test-support`. If that chain breaks, harness disappears silently from `cargo test --workspace`. Defer rationale: explicitly documented in Dev Notes §4 + Completion Notes as forward-looking trade-off; first LD-41 impl story will introduce a real `test_support` consumer that makes the gate non-decorative. Owner: first LD-41 implementation story.
+- [x] [Review][Defer] **Stale placeholder comment in `nightly.yml` promises LD-41 nightly step that doesn't exist** [`.github/workflows/nightly.yml:~112`] — Pre-existing comment ("failure-mode test harness (LD-41) lands here as a nightly-only gate") with no actual step. Story 1.11 AC6 explicitly anti-creeps workflows. Owner: future v0.5-Beta release-prep story (alongside strict-mode flip).
+
+_Dismissed as noise (~10): parser strictness against rustfmt-canonical `#[ignore]` whitespace (CI fmt gate enforces canonical form); strict-mode branch lacks dedicated automated test (subprocess unit-testing anti-pattern; manually verified per Dev Agent Record); various nit-level parser brittleness (`r#` raw idents, `Number()` epic unbounded, duplicate fn-name detection, `process.stdout.write` flush, empty-harness degenerate Markdown, `include_str!` path refactor risk, weird `fn` paren parsing); meta-smell "overconfident story doc" + "low active-assertion ratio" (not actionable)._
 
 ## Dev Notes
 
