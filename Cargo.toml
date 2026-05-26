@@ -46,6 +46,11 @@ thiserror = "1"
 tracing = "0.1"
 # Story 1.9: atomic file writes (LD-8) — anchor smoke + future Story 3.1 retry wrapper.
 atomic-write-file = "0.3"
+# Story 1.11 (LD-41): fault-injection helpers consumed by tests/failure_modes.rs
+# via crates/orgsidian-core dev-dependencies. The `failpoints` feature is
+# enabled at the consumer-crate level (NOT here) so production builds compile
+# `fail` to no-ops by default. Confirmed latest stable 0.5.1 (2026-05).
+fail = "0.5"
 # Explicit `version` paired with `path` keeps `cargo deny check bans` happy
 # (otherwise a path-only dep is interpreted as a `*` wildcard for a public
 # crate). Version stays in lockstep with workspace.package.version.
