@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "audit:js": "pnpm audit --audit-level=moderate --prod",
     "audit:licenses:js": "pnpm licenses ls --prod --long --json | node scripts/check-pnpm-licenses.mjs",
-    "supply-chain": "pnpm run audit:js && pnpm run audit:licenses:js"
+    "supply-chain": "pnpm run audit:js && pnpm run audit:licenses:js",
+    "gen:failure-modes-matrix": "node scripts/gen-failure-modes-matrix.mjs > docs/failure-modes/coverage-matrix.md"
   },
   "devDependencies": {
     "@commitlint/cli": "21.0.1",

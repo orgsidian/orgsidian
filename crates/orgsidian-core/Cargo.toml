@@ -24,3 +24,24 @@ specta = { workspace = true }
 # `invoke_plugin_hook!` panic-isolation macro in `registry.rs`. Subscriber
 # wiring is the binary's job (LD-35); the leaf crate consumes the facade only.
 tracing = { workspace = true }
+
+[dev-dependencies]
+# Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
+# harness. `failpoints` feature is non-negotiable — without it `fail::cfg` /
+# `fail_point!` compile to no-ops and downstream tests silently bypass.
+fail = { workspace = true, features = ["failpoints"] }
+
+# Story 1.11 (LD-41): workspace-root failure-mode harness + coverage gate live
+# physically at `tests/` (see test-design.md §5.1 — discoverability of the
+# cross-cutting failure-mode catalog at top level). The workspace root Cargo.toml
+# is virtual (`[workspace]` only) so `tests/*.rs` is NOT auto-discovered by
+# Cargo. `orgsidian-core` is the natural host crate (cross-crate integrator);
+# the `[[test]]` declarations below point Cargo at the workspace-root files.
+[[test]]
+name = "failure_modes"
+path = "../../tests/failure_modes.rs"
+required-features = ["test-support"]
+
+[[test]]
+name = "failure_modes_coverage"
+path = "../../tests/failure_modes_coverage.rs"
