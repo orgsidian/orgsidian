@@ -11,7 +11,10 @@ repository.workspace = true
 # Story 1.9 (LD-9): opt-in surface for the `test_support` module. Consumer crates
 # enable it via `[dev-dependencies] orgsidian-core = { features = ["test-support"] }`
 # so `FakeClock` (and Story 1.12's perf helpers) stay out of release builds.
-test-support = []
+# Story 1.12 (LD-32 / NFR-20): perf baseline JSON I/O is gated under the same
+# test-support feature so production builds exclude serde_json from the leaf
+# crate's transitive set.
+test-support = ["dep:serde_json"]
 
 [dependencies]
 # Cross-crate edges wired incrementally per first-use story (see Dev Notes §1).
@@ -24,12 +27,20 @@ specta = { workspace = true }
 # `invoke_plugin_hook!` panic-isolation macro in `registry.rs`. Subscriber
 # wiring is the binary's job (LD-35); the leaf crate consumes the facade only.
 tracing = { workspace = true }
+# Story 1.12 (LD-32 / NFR-20): JSON I/O for perf baselines under tests/perf-baselines/.
+# `optional = true` + the `dep:serde_json` activator on the `test-support` feature
+# (above) keep this OUT of production binary builds. Pin floats on 1.x (workspace dep).
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
 # harness. `failpoints` feature is non-negotiable — without it `fail::cfg` /
 # `fail_point!` compile to no-ops and downstream tests silently bypass.
 fail = { workspace = true, features = ["failpoints"] }
+# Story 1.12: self-tests for the perf macro use tempdir-scoped baselines so
+# parallel test runs do not collide on shared baseline files. Hoisted to the
+# workspace per Story 1.12 review P7 / [[feedback_version_policy]].
+tempfile = { workspace = true }
 
 # Story 1.11 (LD-41): workspace-root failure-mode harness + coverage gate live
 # physically at `tests/` (see test-design.md §5.1 — discoverability of the
@@ -45,3 +56,14 @@ required-features = ["test-support"]
 [[test]]
 name = "failure_modes_coverage"
 path = "../../tests/failure_modes_coverage.rs"
+
+# Story 1.12 review P2: `tests/perf_canary.rs` references `serde_json` which is
+# gated behind the `test-support` feature. Without this `[[test]]` block the
+# file is auto-discovered and `cargo test -p orgsidian-core` (no feature flag)
+# fails to compile with E0433 — the workspace-wide `cargo test --workspace`
+# only happens to work because `orgsidian-watcher` activates `test-support` via
+# its dev-dep. Declare the binding explicitly + require `test-support`.
+[[test]]
+name = "perf_canary"
+path = "tests/perf_canary.rs"
+required-features = ["test-support"]

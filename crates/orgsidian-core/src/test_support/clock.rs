@@ -1,7 +1,7 @@
 //! Deterministic clock abstraction (LD-9).
 //!
 //! `Clock` is the time-reading surface consumed by the watcher's timeout discipline
-//! and (Story 1.12) the perf-snapshot macros. `FakeClock` is the test-only fake that
+//! and the perf-snapshot macros (Story 1.12). `FakeClock` is the test-only fake that
 //! lets consumers advance time without wall-clock sleeps.
 
 use std::sync::{Arc, Mutex};

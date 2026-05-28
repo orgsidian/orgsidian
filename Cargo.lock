@@ -2783,7 +2783,9 @@ version = "0.0.0"
 dependencies = [
  "fail",
  "serde",
+ "serde_json",
  "specta",
+ "tempfile",
  "thiserror 1.0.69",
  "tracing",
 ]

@@ -167,7 +167,7 @@ jobs:
       # Slot reservations (filled by later stories — do NOT pre-implement
       # the bodies here; the supporting deps + scaffolding don't exist yet):
       # Story 1.17: pnpm a11y hard gate (contrast + axe-core + keyboard scenarios) lands here
-      # Story 1.12: perf snapshot regression macro lands here
+      # Story 1.12 perf snapshot regression macro: now wired via assert_no_perf_regression! in crates/orgsidian-core/src/test_support/perf.rs and consumed by perf-AC stories.
       # Story 2.6: L0 round-trip subset gate (~100 files, <60s) lands here
 
   # Standalone merge-gate job. MUST be a top-level job (not a matrix step) so
