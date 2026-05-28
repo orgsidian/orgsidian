@@ -164,15 +164,7 @@ ISSUES_INDEX="$TMPDIR/issues.tsv"
 log "==> Priming labels cache"
 gh label list --repo "$REPO" --limit 200 --json name --jq '.[].name' > "$LABELS_CACHE" 2>/dev/null || : > "$LABELS_CACHE"
 
-log "==> Ensuring base label set"
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
-  ensure_label "epic:$n" "0e8a16" "Epic $n"
-done
-ensure_label "milestone:v0.1"  "1d76db" "Milestone v0.1 Alpha"
-ensure_label "milestone:v0.5"  "5319e7" "Milestone v0.5 Beta"
-ensure_label "milestone:v1.0"  "b60205" "Milestone v1.0"
-ensure_label "type:story"      "c5def5" "Story (epic decomposition)"
-ensure_label "status:backlog"  "ededed" "Status: backlog (default for synced stories)"
+# Labels are managed by .github/labels.yml (Story 1.13) + .github/workflows/labels-sync.yml. The bootstrap label-ensure block was removed; running this script no longer drifts the label scheme.
 
 log "==> Priming milestones cache"
 gh api "repos/$REPO/milestones?state=all&per_page=100" --paginate > "$MILESTONES_CACHE" 2>/dev/null || echo '[]' > "$MILESTONES_CACHE"

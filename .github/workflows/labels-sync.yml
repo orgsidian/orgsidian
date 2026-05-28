@@ -1,0 +1,38 @@
+# labels-sync.yml — Story 1.13 LD-55 label-scheme convergence.
+#
+# Applies .github/labels.yml as the canonical label set for the repo on every
+# push to main that touches the file (plus on-demand via workflow_dispatch).
+# Action: crazy-max/ghaction-github-labeler@v5 — semver-major-pinned per
+#   [[feedback_version_policy]]; runner pinned to ubuntu-24.04 per the
+#   .github/workflows/pr.yml convention.
+# skip-delete: false → the action DELETES labels not declared in labels.yml.
+#   This is intentional: the GitHub default labels (bug, documentation, etc.)
+#   need to be cleaned up because they clash with type:bug / type:docs.
+# permissions: issues:write only — the action touches
+#   /repos/{owner}/{repo}/labels and nothing else.
+# NOT a PR gate — labels-sync runs post-merge; pr.yml is not affected.
+# Reference: _bmad-output/planning-artifacts/architecture.md#L617-L631
+
+name: labels-sync
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/labels.yml']
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: crazy-max/ghaction-github-labeler@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          yaml-file: .github/labels.yml
+          skip-delete: false
+          dry-run: ${{ github.event_name == 'pull_request' }}
