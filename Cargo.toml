@@ -51,6 +51,11 @@ atomic-write-file = "0.3"
 # enabled at the consumer-crate level (NOT here) so production builds compile
 # `fail` to no-ops by default. Confirmed latest stable 0.5.1 (2026-05).
 fail = "0.5"
+# Story 1.12 review P7: dev-only tempdir helper used by perf-canary self-tests
+# (orgsidian-core) and the watcher's debounce tests (orgsidian-watcher). Hoisted
+# here per [[feedback_version_policy]] single-source-of-truth — replaces the
+# bare `tempfile = "3"` previously declared at the crate level.
+tempfile = "3"
 # Explicit `version` paired with `path` keeps `cargo deny check bans` happy
 # (otherwise a path-only dep is interpreted as a `*` wildcard for a public
 # crate). Version stays in lockstep with workspace.package.version.

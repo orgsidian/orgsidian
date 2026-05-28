@@ -1,0 +1,8 @@
+# Story 1.12 review P11 / D3: enforce LF line endings on committed perf
+# baseline JSON files. `serde_json::to_string_pretty` emits `\n`; without this
+# rule, Windows checkouts with `core.autocrlf=true` convert to `\r\n` and the
+# next test run re-writes with `\n` — every Windows run dirties the file.
+# Scoping kept narrow on purpose (no global `* text=auto`) to avoid changing
+# behavior for the rest of the repo until a dedicated repo-hygiene story
+# tackles end-of-line policy holistically.
+tests/perf-baselines/*.json text eol=lf
