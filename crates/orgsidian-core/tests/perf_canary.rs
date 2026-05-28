@@ -126,7 +126,11 @@ fn perf_impl_flags_schema_mismatch_on_disk_drift() {
     );
 
     match report.outcome {
-        PerfOutcome::SchemaMismatch { field, on_disk, in_source } => {
+        PerfOutcome::SchemaMismatch {
+            field,
+            on_disk,
+            in_source,
+        } => {
             assert_eq!(field, "story_id");
             assert_eq!(on_disk, "story-completely-different-id");
             assert_eq!(in_source, "story-1.12-self-test-canary");
