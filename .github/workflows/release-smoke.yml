@@ -1,0 +1,61 @@
+# release-smoke.yml — Story 1.15 LD-54 CHANGELOG-generation contract.
+#
+# Runs scripts/smoke-git-cliff.sh on every PR + post-merge to main. The smoke
+# exercises cliff.toml + git-cliff against a self-contained 5-commit fixture
+# repo and asserts the LD-54 CC → Keep-a-Changelog mapping holds (Added /
+# Fixed / Changed buckets, ⚠ BREAKING: prefix, empty-headings invariant for
+# maintainer-fill Deprecated / Security sections, --include-path scoping for
+# the plugin-api CHANGELOG, --prepend preservation of manual blocks).
+#
+# Dedicated workflow file (vs. folding into pr.yml) — same rationale as the
+# Story 1.14 commitlint.yml decision:
+#   1. Trigger surface: needs `push: main` for post-merge re-assert; pr.yml's
+#      30-min matrix should not re-run for a 30-second cliff smoke.
+#   2. Tool-install isolation: `git-cliff` install via taiki-e/install-action
+#      (~5-10s) doesn't bloat every PR's longest cell.
+#   3. LD-33 surface visibility: future release-runbook stories add to this
+#      same file (e.g. a `release-dry-run` job once cargo-release is installed).
+#   4. Failure-mode isolation: a cliff.toml refactor bug fails only here;
+#      pr.yml stays green.
+#
+# Advisory under GitHub Free (branch protection unenforceable per LD-5 + the
+# project's GH Free plan); merge discipline is maintained by the maintainer's
+# pre-merge check.
+#
+# Version policy: action versions semver-major-pinned (`@v5`, `@v2`); runner
+# pinned (`ubuntu-24.04`); git-cliff semver-minor pinned (`@2.13`). Never
+# `*-latest` per [[feedback_version_policy]].
+#
+# Reference: _bmad-output/planning-artifacts/architecture.md (LD-33, LD-54);
+# CONTRIBUTING.md §2.4; scripts/smoke-git-cliff.sh.
+
+name: release-smoke
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: release-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff@2.13
+
+      - name: Smoke (AC5 — 9 assertions)
+        run: bash scripts/smoke-git-cliff.sh

@@ -1,0 +1,52 @@
+# release.toml — Story 1.15 (LD-33 release automation entry point).
+#
+# Workspace-level `cargo release` configuration. Story 1.15 ships the CONFIG
+# only — no `release.yml` workflow lands in this story; the end-to-end release
+# runbook (`cargo install cargo-release` + actually firing `cargo release`)
+# is deferred to a future release-runbook story (likely tied to Story 6.10
+# v0.1 Alpha publish). The CONFIG is validated here by:
+#   1. TOML parse: `python3 -c "import tomllib; tomllib.load(open('release.toml','rb'))"`
+#   2. cliff.toml smoke: `scripts/smoke-git-cliff.sh` exercises the same
+#      `git-cliff --unreleased --tag <v> --prepend ...` command line that
+#      the pre-release-hook below will invoke at release time.
+#
+# Reproducibility / version pin (AC3): git-cliff is NOT pinned in this file
+# because cargo-release reads release.toml at release-time only. The real pin
+# lives in `.github/workflows/release-smoke.yml` via
+# `taiki-e/install-action@v2 with: tool: git-cliff@2.13` (semver-minor pin
+# per [[feedback_version_policy]]) and is documented in CONTRIBUTING.md for
+# local installs.
+#
+# The pre-release-hook runs at workspace level (one invocation per `cargo
+# release` run, not one-per-crate) because of `shared-version = true`.
+
+# Workspace shares a single version across all crates (LD-33: Rust crates
+# share the app version with tag scheme `v*` during v0.1 → v1.4; the
+# orgsidian-plugin-api crate diverges from v1.5+).
+shared-version = true
+
+# Single release commit for the whole workspace (avoid 9× redundant commits).
+consolidate-commits = true
+
+# pre-release-hook regenerates both CHANGELOGs in one shot:
+#   1. Root CHANGELOG.md   — workspace-wide changes (all crates + repo root).
+#   2. Plugin-api CHANGELOG.md — scoped to `crates/orgsidian-plugin-api/**`
+#                                 (LD-33 separate-CHANGELOG discipline).
+# cargo-release substitutes `{{version}}` with the about-to-be-released
+# version (same templating token used by `pre-release-replacements`).
+pre-release-hook = [
+  "bash", "-c",
+  "git-cliff --unreleased --tag {{version}} --prepend CHANGELOG.md && git-cliff --include-path 'crates/orgsidian-plugin-api/**' --unreleased --tag {{version}} --prepend crates/orgsidian-plugin-api/CHANGELOG.md",
+]
+
+# Commit signing (`sign-tag` / `sign-commit`) is intentionally UNSET — no
+# project GPG / SSH signing infrastructure exists; enabling here would fail
+# every release. Defer to a release-runbook story.
+#
+# `pre-release-replacements` is intentionally UNSET — git-cliff's `--prepend`
+# is the authoritative CHANGELOG rewrite mechanism. A string-replace fallback
+# would double-rewrite the Unreleased heading and corrupt the file.
+#
+# `publish` is left at cargo's default (per-crate `publish = false` or absent
+# in `Cargo.toml`). orgsidian-plugin-api does NOT publish to crates.io until
+# v1.5+; other crates are bin / internal.
