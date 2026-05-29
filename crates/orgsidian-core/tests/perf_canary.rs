@@ -169,13 +169,23 @@ fn perf_macro_smoke_writes_initial_baseline() {
 
     // Story 1.12 review P6: a `|| {}` empty closure can have `as_nanos() == 0`
     // on systems where Instant's resolution rounds sub-tick elapsed to zero,
-    // which the impl now correctly rejects (zero-median lock-in guard). Do a
-    // small black-box op so the measured median is reliably > 0 ns.
+    // which the impl now correctly rejects (zero-median lock-in guard). The
+    // closure must do enough work to clear the coarsest Instant resolution
+    // observed on supported platforms — Windows QueryPerformanceCounter is
+    // ~100 ns; the nightly Windows runner regularly returns 0 ns for a single
+    // `wrapping_mul` even with `black_box`. A 10k-iteration loop puts the
+    // closure at ~5–50 µs on any modern runner (well above QPC tick + below
+    // the perf-noise floor) and remains immune to LLVM dead-code elimination
+    // via the per-iteration `black_box`.
     assert_no_perf_regression!(
         "story-1.12-self-test-canary-macro",
         baseline_path_str,
         || {
-            std::hint::black_box(42u64.wrapping_mul(7));
+            let mut acc: u64 = 1;
+            for i in 0..10_000u64 {
+                acc = std::hint::black_box(acc.wrapping_mul(i.wrapping_add(7)));
+            }
+            std::hint::black_box(acc);
         }
     );
 
