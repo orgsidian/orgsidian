@@ -80,7 +80,7 @@ chore: bump Cargo.lock via Dependabot
 
 - **Local:** [`commitlint.config.cjs`](./commitlint.config.cjs) + `husky` `commit-msg` hook (already configured) — every commit is validated as you type.
 - **CI:** [`.github/workflows/commitlint.yml`](./.github/workflows/commitlint.yml) runs `pnpm commitlint --from origin/main --to HEAD` on every PR (commit-range gate) + [`amannn/action-semantic-pull-request@v5`](https://github.com/amannn/action-semantic-pull-request) on `pull_request_target` (PR-title gate). Both gates are advisory under GitHub Free (no enforceable branch protection); merge discipline is maintained by the maintainer's pre-merge check.
-- **CHANGELOG generation:** `cliff.toml` + `git-cliff` (invoked by `cargo release` pre-tag hook) lands in **Story 1.15** (not yet created). Until then, the root [`CHANGELOG.md`](./CHANGELOG.md) carries an empty `[Unreleased]` heading by intent.
+- **CHANGELOG generation:** [`cliff.toml`](./cliff.toml) + [`git-cliff`](https://git-cliff.org/) regenerates [`CHANGELOG.md`](./CHANGELOG.md) and [`crates/orgsidian-plugin-api/CHANGELOG.md`](./crates/orgsidian-plugin-api/CHANGELOG.md) from Conventional Commits on every `cargo release` (configured via [`release.toml`](./release.toml) `pre-release-hook`). Manual `### Deprecated` / `### Security` entries are inserted into `CHANGELOG.md` before tagging per LD-54. The mapping is smoke-tested by [`.github/workflows/release-smoke.yml`](./.github/workflows/release-smoke.yml) against a 5-commit fixture on every PR.
 
 ## 3. FR traceability discipline
 

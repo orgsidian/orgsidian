@@ -9,6 +9,7 @@
     "commitlint": "commitlint",
     "smoke:commitlint": "bash scripts/smoke-commitlint.sh",
     "smoke:commitlint-title": "bash scripts/smoke-commitlint-title.sh",
+    "smoke:git-cliff": "bash scripts/smoke-git-cliff.sh",
     "dev": "pnpm --filter shell-ui dev",
     "build": "pnpm --filter shell-ui build",
     "tauri": "tauri",
