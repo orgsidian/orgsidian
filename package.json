@@ -7,6 +7,8 @@
   "scripts": {
     "prepare": "husky",
     "commitlint": "commitlint",
+    "smoke:commitlint": "bash scripts/smoke-commitlint.sh",
+    "smoke:commitlint-title": "bash scripts/smoke-commitlint-title.sh",
     "dev": "pnpm --filter shell-ui dev",
     "build": "pnpm --filter shell-ui build",
     "tauri": "tauri",
