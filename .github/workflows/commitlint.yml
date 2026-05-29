@@ -1,0 +1,70 @@
+# commitlint.yml — Story 1.14 LD-54 enforcement chain.
+#
+# Two-job split:
+#   commitlint-range:    runs on pull_request, lints the commit range
+#                        with `pnpm commitlint --from origin/main --to HEAD`
+#                        plus the two AC6/AC7 smoke scripts.
+#   commitlint-pr-title: runs on pull_request_target (needed because the
+#                        action posts a status check from outside the PR's
+#                        own token scope). Permissions narrowed to
+#                        pull-requests:read + statuses:write — no checkout.
+#
+# Both gates are advisory under GitHub Free (branch protection unenforceable
+# per LD-5 + the project's GH Free plan); merge discipline is maintained by
+# the maintainer's pre-merge check. See LD-54 in architecture.md and
+# CONTRIBUTING.md §2.
+#
+# Version policy: action versions semver-major-pinned (`@v5`); runner pinned
+# (`ubuntu-24.04`). Never `*-latest`.
+
+name: commitlint
+
+on:
+  pull_request:
+    branches: [main]
+  pull_request_target:
+    types: [opened, edited, synchronize]
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: commitlint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint-range:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11.1.1
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Lint commit range
+        run: pnpm commitlint --from origin/main --to HEAD --verbose
+      - name: Smoke (AC6)
+        run: pnpm smoke:commitlint
+      - name: Smoke title (AC7)
+        run: pnpm smoke:commitlint-title
+
+  commitlint-pr-title:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      pull-requests: read
+      statuses: write
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

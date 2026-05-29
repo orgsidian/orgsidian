@@ -79,7 +79,7 @@ chore: bump Cargo.lock via Dependabot
 ### Enforcement chain
 
 - **Local:** [`commitlint.config.cjs`](./commitlint.config.cjs) + `husky` `commit-msg` hook (already configured) — every commit is validated as you type.
-- **CI:** `.github/workflows/pr.yml` `commitlint --from origin/main --to HEAD` step + PR-title semantic-PR action land in **Story 1.14** (not yet wired).
+- **CI:** [`.github/workflows/commitlint.yml`](./.github/workflows/commitlint.yml) runs `pnpm commitlint --from origin/main --to HEAD` on every PR (commit-range gate) + [`amannn/action-semantic-pull-request@v5`](https://github.com/amannn/action-semantic-pull-request) on `pull_request_target` (PR-title gate). Both gates are advisory under GitHub Free (no enforceable branch protection); merge discipline is maintained by the maintainer's pre-merge check.
 - **CHANGELOG generation:** `cliff.toml` + `git-cliff` (invoked by `cargo release` pre-tag hook) lands in **Story 1.15** (not yet created). Until then, the root [`CHANGELOG.md`](./CHANGELOG.md) carries an empty `[Unreleased]` heading by intent.
 
 ## 3. FR traceability discipline
