@@ -1,6 +1,6 @@
 # Story 1.14: Configure commitlint + husky commit-msg hook + CI gate
 
-Status: in-progress
+Status: review
 
 ## Metadata
 
@@ -231,12 +231,12 @@ All 13 cells must pass on the merged main commit. Cells 10–11 require network 
   - [x] 4.1 Edit [CONTRIBUTING.md:82](CONTRIBUTING.md#L82) per AC8 verbatim replacement. Leave [line 83](CONTRIBUTING.md#L83) (the `cliff.toml` / Story 1.15 pointer) UNTOUCHED.
   - [x] 4.2 Visual check: `grep -A 5 "Enforcement chain" CONTRIBUTING.md` — output must show the NEW prose (not the stale "Story 1.14 (not yet wired)" line).
 
-- [ ] **Task 5: PR-time smoke (open the story PR with a known-good title; verify both gates green)** (workflow gate)
-  - [ ] 5.1 Open the story PR with title prefixed `feat(ci):` (e.g., `feat(ci): wire commitlint commit-range + PR-title gates (Story 1.14, closes #14)`). PR body must contain `Closes #14`. **§10 Q1 decision (user)**: `feat(ci):` selected (rationale: surfaces in CHANGELOG under Added; LD-54 enforcement-chain is contributor-visible feature).
-  - [ ] 5.2 Watch both new jobs (`commitlint-range` + `commitlint-pr-title`) appear in the PR's checks list. Both must conclude `success` on the known-good title + commit set.
-  - [ ] 5.3 Record the PR URL + the workflow run IDs in Dev Agent Record.
+- [x] **Task 5: PR-time smoke (open the story PR with a known-good title; verify both gates green)** (workflow gate)
+  - [x] 5.1 Opened [PR #130](https://github.com/orgsidian/orgsidian/pull/130) with title `feat(ci): wire commitlint commit-range + PR-title gates (Story 1.14, closes #14)`. PR body contains `Closes #14`. **§10 Q1 decision (user)**: `feat(ci):` selected.
+  - [x] 5.2 `commitlint-range` ✅ pass (14s); `commitlint-pr-title` skipped on this PR — see Task 6 carry-over note. `pr (macos-14)` + `pr (ubuntu-24.04)` from existing pr.yml: pass (no regression).
+  - [x] 5.3 PR URL + run IDs recorded in Dev Agent Record / Debug Log References.
 
-- [ ] **Task 6: Manual smoke verification of AC7 (malformed PR title rejection)** (AC: 7)
+- [ ] **Task 6: Manual smoke verification of AC7 (malformed PR title rejection)** (AC: 7) — **DEFERRED to next PR** (see carry-over note in Debug Log References)
   - [ ] 6.1 With the PR open and green, temporarily edit the PR title via `gh pr edit <pr-number> --title "Add commitlint CI"` (no `type:` prefix → malformed per CC v1.0.0).
   - [ ] 6.2 Wait for the `commitlint-pr-title` status check to re-run (triggered by the `pull_request_target: types: [edited]` filter). Record the FAILED conclusion + the literal action output ("Available types: feat, fix, perf, …" or similar).
   - [ ] 6.3 Revert the title to its conventional form via `gh pr edit <pr-number> --title "feat(ci): …"`.
@@ -250,8 +250,8 @@ All 13 cells must pass on the merged main commit. Cells 10–11 require network 
 
 - [x] **Task 8: Sprint status + issue #14 status transitions** (workflow boilerplate)
   - [x] 8.1 At story start: update [`_bmad-output/implementation-artifacts/sprint-status.yaml`](_bmad-output/implementation-artifacts/sprint-status.yaml) `1-14-configure-commitlint-husky-commit-msg-hook-ci-gate` from `ready-for-dev` → `in-progress`. Update issue #14 label `status:backlog` → `status:in-progress` via `gh issue edit 14 -R orgsidian/orgsidian --remove-label status:backlog --add-label status:in-progress`.
-  - [ ] 8.2 At PR-open: update sprint-status `in-progress` → `review`. Update issue #14 label `status:in-progress` → `status:in-review`. (Per [[project_orgsidian_github_label_scheme]] the GH label is `status:in-review`, NOT `status:review` from the epics text.)
-  - [ ] 8.3 At PR-merge: update sprint-status `review` → `done`. Update issue #14 label → `status:done` AND close the issue (the `Closes #14` PR-body footer auto-closes; the label still needs the manual flip).
+  - [x] 8.2 At PR-open: update sprint-status `in-progress` → `review`. Update issue #14 label `status:in-progress` → `status:in-review`.
+  - [ ] 8.3 At PR-merge: update sprint-status `review` → `done`. Update issue #14 label → `status:done` AND close the issue (the `Closes #14` PR-body footer auto-closes; the label still needs the manual flip). — handled by `bmad-code-review`
 
 ## Dev Notes
 
@@ -500,7 +500,36 @@ $ grep -c "amannn/action-semantic-pull-request" CONTRIBUTING.md
 1
 ```
 
-**Task 5 / 6 / 7 outputs**: recorded in a follow-up commit on the open PR (PR URL, workflow run IDs, manual title-flip evidence, post-merge AC9 matrix).
+**Task 5 outputs (PR #130, 2026-05-29):**
+
+```text
+PR URL:         https://github.com/orgsidian/orgsidian/pull/130
+PR title:       feat(ci): wire commitlint commit-range + PR-title gates (Story 1.14, closes #14)
+PR body grep:   "Closes #14" ✓
+commitlint workflow run: 26627967049
+  commitlint-range:    success (14s)
+  commitlint-pr-title: skipped (see Task 6 carry-over)
+pr.yml workflow run:    26627967003 (pre-existing; non-Story-1.14 regression gate)
+  pr (macos-14):       success (1m28s)
+  pr (ubuntu-24.04):   success
+  merge-gate-nightly-fresh: fail — pre-existing, OUT-OF-SCOPE for Story 1.14
+                              (latest scheduled nightly.yml run on main concluded
+                              failure at 2026-05-29T08:47:22Z, ~6 min before this
+                              PR opened; the LD-32 gate is correctly enforcing
+                              "most-recent nightly green within 24h"; resolution
+                              requires fixing the nightly failure on main —
+                              tracked as a follow-up, not within Story 1.14 scope)
+```
+
+**Task 6 carry-over (AC7 manual end-to-end smoke) — DEFERRED to next PR:**
+
+GitHub semantics: `pull_request_target` workflows execute against the workflow definition at the **base ref** (`main`), not the PR head. Because `.github/workflows/commitlint.yml` is brand-new on this PR and not yet present on `main`, the `commitlint-pr-title` job cannot fire on PR #130 itself — the `pull_request_target` trigger has nothing to load. This is the standard `pull_request_target` first-introduction limitation (documented in the action README and the GitHub docs).
+
+Resolution: the manual title-flip smoke runs on the **next** PR after this one merges (the workflow is then present on `main`, so `pull_request_target` fires correctly). Documented in the PR body and surfaced to the user during the dev-story workflow.
+
+Engine-level smoke for AC7 already passed both locally (`pnpm smoke:commitlint-title` PASS) and in CI (`commitlint-range` job step "Smoke title (AC7)" PASS in run 26627967049). The end-to-end action integration is what defers — not the engine.
+
+**Task 7 carry-over (AC9 verification matrix, 13 cells) — handled by `bmad-code-review`** on the merged commit. Cells 1–9 + 12–13 are already verified locally on the branch HEAD (literal output above for cells 1–3, 6–7, 12–13; cells 4–5 + 8–9 verified by file presence + `bash -n` syntax-check during Task 2.5). Cells 10–11 require post-merge state.
 
 ### Completion Notes List
 
@@ -508,7 +537,9 @@ $ grep -c "amannn/action-semantic-pull-request" CONTRIBUTING.md
 - AC4 / AC5: ✅ new `.github/workflows/commitlint.yml` with two top-level jobs split by `if: github.event_name`. `commitlint-range` gated on `pull_request`; `commitlint-pr-title` gated on `pull_request_target`. Permissions narrowed per AC5 (`pull-requests: read` + `statuses: write` on the title job; `contents: read` on the range job). Action versions semver-major-pinned (`@v5`) matching the [pr.yml](.github/workflows/pr.yml) + [nightly.yml](.github/workflows/nightly.yml) convention.
 - AC6 / AC7: ✅ `scripts/smoke-commitlint.sh` + `scripts/smoke-commitlint-title.sh` author the engine smoke; wired via `pnpm smoke:commitlint` + `pnpm smoke:commitlint-title` (alphabetical insertion in `package.json` "scripts"); both pass locally + are invoked from the `commitlint-range` job after the commit-range lint step.
 - AC8: ✅ `CONTRIBUTING.md §2 "Enforcement chain"` rewritten to reference the new workflow file + amannn action + GH Free advisory caveat. Story 1.15 pointer at L83 untouched.
-- AC9 cells 1–9, 12–13: verified locally pre-PR (see Debug Log References above). Cells 10–11 + remaining post-merge cells deferred to Task 7 (filled by follow-up commit on the PR or by `bmad-code-review`).
+- AC9 cells 1–9, 12–13: verified locally + in CI pre-PR (see Debug Log References above). Cells 10–11 + remaining post-merge cells deferred to Task 7 (handled by `bmad-code-review` on the merged commit).
+- **Task 6 deferred to NEXT PR**: `pull_request_target` reads workflow from base ref; `commitlint.yml` lands with this PR so the title job cannot fire on PR #130 itself. Manual title-flip smoke runs on the next post-merge PR.
+- **Out-of-scope blocker for merge**: `merge-gate-nightly-fresh` is RED because the latest scheduled `nightly.yml` run on `main` (2026-05-29T08:47:22Z) failed. This is a pre-existing condition, NOT introduced by Story 1.14. Story 1.14's own gates (`commitlint-range`) + the existing `pr.yml` matrix all pass.
 - §10 decision-grade questions: **Q1** `feat(ci):` selected by user (CHANGELOG-visible); **Q2** BOTH (Dev Agent Record + PR body); **Q3** `fetch-depth: 0` (default, deterministic).
 - No `Co-Authored-By` trailers or AI footers on commits/PR/issue per [[feedback_no_co_author_credit]].
 
@@ -533,3 +564,4 @@ $ grep -c "amannn/action-semantic-pull-request" CONTRIBUTING.md
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | 2026-05-29 | Story 1.14 contextualized via `bmad-create-story` (ready-for-dev).                                                                | Bob (`bmad-create-story`) for Tiziano |
 | 2026-05-29 | Implementation: `.github/workflows/commitlint.yml` + 2 smoke scripts + pnpm wiring + CONTRIBUTING.md §2 update. Tasks 1–4 + 8.1.  | Amelia (`bmad-dev-story`) for Tiziano |
+| 2026-05-29 | PR #130 opened. `commitlint-range` ✅, `pr (macos-14)` ✅. Story → review. Tasks 5 + 8.2 done; Task 6 deferred to next PR. | Amelia (`bmad-dev-story`) for Tiziano |
