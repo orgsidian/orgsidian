@@ -41,6 +41,18 @@ ignore = [
     # Linux-only impact (macOS/Windows targets are unaffected). Re-evaluate
     # on next Tauri-ecosystem milestone bump per [[feedback_version_policy]].
     { id = "RUSTSEC-2024-0429", reason = "transitive via Tauri 2.x Linux gtk/glib stack; upstream fix needs glib >=0.20 (not yet vendored by Tauri). Linux-only. Review next Tauri bump." },
+    # RUSTSEC-2023-0071 — RSA Marvin Attack (timing sidechannel). Transitive
+    # via tools/issues-sync/ → octocrab 0.51 → jsonwebtoken 10.4 → rsa 0.9.
+    # Octocrab pulls jsonwebtoken at compile time even when only personal-
+    # token auth is used (no JWT signing happens at runtime in our usage).
+    # Attack profile (network-observable timing on key operations) does NOT
+    # apply: tools/issues-sync is an outbound HTTPS client running in CI
+    # against GitHub; no key material is exposed to remote timing observation.
+    # No safe upgrade available (upstream rsa migrating to constant-time
+    # implementation; tracked at github.com/RustCrypto/RSA/issues/626).
+    # Re-evaluate on rsa 1.x release or octocrab dropping jsonwebtoken.
+    # Story 1.16 / LD-55 surface.
+    { id = "RUSTSEC-2023-0071", reason = "transitive via octocrab 0.51 → jsonwebtoken 10.4 → rsa 0.9 (tools/issues-sync only). Marvin Attack requires network-observable timing on key operations; our usage is outbound HTTPS with no key material exposed. No upstream patch. Re-evaluate on rsa 1.x." },
 ]
 # Unmaintained crates: only fail if they are our *direct* deps. Transitive
 # unmaintained crates surface but don't fail until they're our problem to fix.

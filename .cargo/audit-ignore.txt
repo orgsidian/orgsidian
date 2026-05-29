@@ -33,3 +33,8 @@ RUSTSEC-2025-0080
 RUSTSEC-2025-0081
 RUSTSEC-2025-0098
 RUSTSEC-2025-0100
+# rsa 0.9 Marvin Attack — transitive via tools/issues-sync/ →
+# octocrab 0.51 → jsonwebtoken → rsa. Attack profile (network-observable
+# timing on key operations) not applicable to outbound-HTTPS-only CI usage.
+# No upstream patch yet (Story 1.16 / LD-55).
+RUSTSEC-2023-0071

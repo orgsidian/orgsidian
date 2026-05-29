@@ -119,6 +119,13 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --locked
 
+      # Step 9.1 — tools/issues-sync test suite. Story 1.16 LD-55 binary +
+      # wiremock-backed integration smoke. Crate is OUTSIDE [workspace.members]
+      # (LD-5), so --workspace doesn't pick it up. Runs ~5s; folded into the
+      # matrix per Story 1.16 §10 Q6 default (vs. dedicated workflow).
+      - name: cargo test (tools/issues-sync)
+        run: cargo test --manifest-path tools/issues-sync/Cargo.toml --locked
+
       # Step 10 — cargo-deny (uses deny.toml from Story 1.7).
       - name: cargo deny
         run: cargo deny --locked check all
