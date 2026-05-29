@@ -212,10 +212,10 @@ All 12 cells must pass on the merged main commit. Cells 9–10 require network +
   - [x] 6.1 Edit [CONTRIBUTING.md:83](CONTRIBUTING.md#L83) per AC8 verbatim replacement (single-line swap).
   - [x] 6.2 `grep -A 5 "Enforcement chain" CONTRIBUTING.md` — output must show the NEW prose with both new file references (`cliff.toml`, `release.toml`, `release-smoke.yml`).
 
-- [ ] **Task 7: PR-time smoke (open PR; verify gates green)** (workflow gate)
-  - [ ] 7.1 Open PR with title decided per §10 Q1 (default: `feat(ci):`).
-  - [ ] 7.2 PR body contains `Closes #15`. PR body MUST include the §10 decision summary (Q1–Q3 answers) for audit.
-  - [ ] 7.3 Verify on PR: `release-smoke` ✅; `commitlint-range` ✅ (Story 1.14 chain on this PR's own commits); `pr (macos-14)` ✅ + `pr (ubuntu-24.04)` ✅ (no regression). Record run IDs + URLs in Dev Agent Record.
+- [x] **Task 7: PR-time smoke (open PR; verify gates green)** (workflow gate)
+  - [x] 7.1 Open PR with title decided per §10 Q1 (default: `feat(ci):`). → PR #132 (https://github.com/orgsidian/orgsidian/pull/132)
+  - [x] 7.2 PR body contains `Closes #15`. PR body MUST include the §10 decision summary (Q1–Q3 answers) for audit. → present in PR #132 body.
+  - [x] 7.3 Verify on PR: `release-smoke` ✅ (8s); `commitlint-range` ✅ (19s) + `commitlint-pr-title` ✅ (4s); `pr (macos-14)` ✅ (1m37s) + `pr (ubuntu-24.04)` ✅ (2m3s); `merge-gate-nightly-fresh` ✅ (6s). All check run-IDs under workflow run 26638784805 / 26638784781 / 26638784763 / 26638784827.
 
 - [ ] **Task 8: Post-merge convergence + verification matrix** (AC: 9)
   - [ ] 8.1 After PR merge, the `release-smoke.yml` workflow re-runs on `push: branches: [main]`. Run cells 1–8, 11–12 locally on the merged main HEAD; cells 9–10 via `gh`.
