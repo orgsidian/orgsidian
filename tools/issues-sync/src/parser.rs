@@ -250,33 +250,42 @@ impl PendingStory {
 fn extract_ac_block(body: &str) -> String {
     // Lookup `**Acceptance Criteria:**` marker; capture verbatim everything
     // until the next `**Traces:**`, the next `### `/`## ` heading, or EOF.
+    //
+    // Boundary detection tracks the running byte offset across the
+    // `split_inclusive('\n')` walk (each chunk carries its trailing `\n`).
+    // The previous implementation used `after.match_indices(line).next()`
+    // which finds the FIRST occurrence of the line's substring in `after`,
+    // not the offset of the current iteration — wrong when the same line
+    // text appears earlier in the body (e.g. fenced-code examples that
+    // quote `**Traces:**` or `### Story` literally).
     let needle = "**Acceptance Criteria:**";
     let Some(start) = body.find(needle) else {
         return String::new();
     };
     let after = &body[start + needle.len()..];
     let mut end = after.len();
+    let mut cursor: usize = 0;
     for (i, line) in after.split_inclusive('\n').enumerate() {
-        if i == 0 {
-            continue;
-        }
-        if line.starts_with("**Traces:**") || line.starts_with("### ") || line.starts_with("## ") {
-            // Byte offset of the start of this line within `after`.
-            let off = after
-                .match_indices(line)
-                .next()
-                .map(|(b, _)| b)
-                .unwrap_or(after.len());
-            end = off;
+        if i > 0
+            && (line.starts_with("**Traces:**")
+                || line.starts_with("### ")
+                || line.starts_with("## "))
+        {
+            end = cursor;
             break;
         }
+        cursor += line.len();
     }
     after[..end].trim_start_matches('\n').trim_end().to_string()
 }
 
 fn extract_traces(body: &str) -> Option<String> {
+    // Column-0 match only — `trim_start().starts_with(...)` would let an
+    // indented in-fence quote (`  **Traces:** LD-99`) win over the real
+    // body-column **Traces:** line. Surfaced by
+    // `extract_ac_block_ignores_earlier_lookalike_terminator`.
     body.lines()
-        .find(|l| l.trim_start().starts_with("**Traces:**"))
+        .find(|l| l.starts_with("**Traces:**"))
         .map(|l| l.trim().to_string())
 }
 
@@ -402,6 +411,49 @@ so that Y.
             stories[0].acceptance_criteria
         );
         assert!(stories[0].acceptance_criteria.contains("fn foo()"));
+    }
+
+    /// Regression: a docs-style story whose AC block contains a code-fenced
+    /// example with the literal `**Traces:** LD-NN` text earlier than the
+    /// real `**Traces:**` line. The pre-fix [`extract_ac_block`] used
+    /// `match_indices(line).next()` which would lock onto the FIRST byte
+    /// occurrence in `after`, truncating the AC block at the in-fence quote.
+    /// The cumulative-cursor walk picks the second (real) occurrence.
+    #[test]
+    fn extract_ac_block_ignores_earlier_lookalike_terminator() {
+        let fixture = r#"
+## Epic 1: Foundation
+
+### Story 1.1: AC contains code fence quoting Traces line
+
+As a **user**,
+I want X,
+so that Y.
+
+**Acceptance Criteria:**
+
+- Item one — example body of a typical story:
+  ```markdown
+  **Traces:** LD-99 (fake traces inside code fence)
+  ```
+- Item two — must survive the false terminator.
+
+**Traces:** LD-1, LD-2
+
+## Epic 2: Next
+"#;
+        let stories = parse_epics(fixture).unwrap();
+        assert_eq!(stories.len(), 1);
+        let ac = &stories[0].acceptance_criteria;
+        assert!(
+            ac.contains("Item two"),
+            "AC truncated at fenced lookalike terminator; got {ac:?}"
+        );
+        assert!(
+            ac.contains("LD-99"),
+            "in-fence Traces quote must be preserved; got {ac:?}"
+        );
+        assert_eq!(stories[0].traces.as_deref(), Some("**Traces:** LD-1, LD-2"));
     }
 
     #[test]

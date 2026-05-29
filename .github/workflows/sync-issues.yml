@@ -48,8 +48,6 @@ on:
     branches: [main]
     paths:
       - '_bmad-output/planning-artifacts/epics.md'
-      - '.github/workflows/sync-issues.yml'
-      - 'tools/issues-sync/**'
   workflow_dispatch: {}
 
 permissions:
@@ -81,6 +79,18 @@ jobs:
 
       - name: Build issues-sync
         run: cargo build --manifest-path tools/issues-sync/Cargo.toml --release --locked
+
+      # PAT preflight — `secrets.PROJECTS_PAT` evaluates to "" when unset, so
+      # `${{ secrets.PROJECTS_PAT }}` would silently produce an empty token and
+      # waste ~5 min on 401s mid-run. Fast-fail here.
+      - name: Preflight PAT
+        env:
+          PROJECTS_PAT: ${{ secrets.PROJECTS_PAT }}
+        run: |
+          if [ -z "${PROJECTS_PAT:-}" ]; then
+            echo "::error::secrets.PROJECTS_PAT is unset. Create a fine-grained PAT (org-level Projects R/W) and persist via 'gh secret set PROJECTS_PAT -R orgsidian/orgsidian'."
+            exit 1
+          fi
 
       - name: Run issues-sync
         env:

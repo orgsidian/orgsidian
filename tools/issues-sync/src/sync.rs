@@ -99,33 +99,29 @@ pub async fn sync_with_client(
         );
     }
 
-    // Step 0 — milestones.
-    let milestones = if opts.dry_run {
-        eprintln!("[dry-run] would ensure milestones v0.1 / v0.5 / v1.0");
-        std::collections::HashMap::new()
+    // Step 0 — milestones. Dry-run READS live milestones to produce an accurate
+    // diff plan, but the helper itself short-circuits the CREATE half via
+    // `opts.dry_run`. `ensure_milestones` now returns `(map, created_count)`
+    // so the report counter reflects actual creates, not `m.len()`.
+    let (milestones, milestones_created) = if opts.dry_run {
+        let (m, would_create) =
+            crate::github::ensure_milestones_dry_run(client, &opts.owner, &opts.repo).await?;
+        if would_create > 0 {
+            eprintln!(
+                "[dry-run] would create {would_create} missing milestone(s) among v0.1 / v0.5 / v1.0"
+            );
+        }
+        (m, would_create)
     } else {
-        let before = std::collections::HashMap::<String, u64>::new();
-        let m = crate::github::ensure_milestones(client, &opts.owner, &opts.repo).await?;
-        report.milestones_created = (m.len() as i64 - before.len() as i64).max(0) as u32;
-        m
+        crate::github::ensure_milestones(client, &opts.owner, &opts.repo).await?
     };
+    report.milestones_created = milestones_created;
 
-    // Step 1 — pre-fetch issue index + project items.
-    let issue_index = if opts.dry_run {
-        eprintln!("[dry-run] would list all issues");
-        std::collections::HashMap::new()
-    } else {
-        crate::github::list_all_issues(client, &opts.owner, &opts.repo).await?
-    };
-    let on_board = if opts.dry_run {
-        eprintln!(
-            "[dry-run] would enumerate project items for {}",
-            opts.project_node_id
-        );
-        HashSet::new()
-    } else {
-        crate::github::project_existing_issue_numbers(client, &opts.project_node_id).await?
-    };
+    // Step 1 — pre-fetch issue index + project items. Dry-run READS both so
+    // the plan distinguishes "would create" from "would reconcile".
+    let issue_index = crate::github::list_all_issues(client, &opts.owner, &opts.repo).await?;
+    let on_board =
+        crate::github::project_existing_issue_numbers(client, &opts.project_node_id).await?;
 
     let epics_rel = opts
         .epics_path

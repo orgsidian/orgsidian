@@ -18,6 +18,7 @@
 //! the cost.
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use octocrab::Octocrab;
 use orgsidian_issues_sync::parser::parse_epics;
@@ -25,6 +26,17 @@ use orgsidian_issues_sync::{github, sync, SyncOpts};
 use serde_json::json;
 use wiremock::matchers::{body_string_contains, method, path, path_regex, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+/// Process-wide GITHUB_TOKEN init for wiremock tests. `#[tokio::test]` fns
+/// run in parallel by default; without serialization, three concurrent
+/// `std::env::set_var("GITHUB_TOKEN", …)` calls race the global env table.
+/// `OnceLock` guarantees the env var is set exactly once across all tests.
+fn ensure_test_env() {
+    static INIT: OnceLock<()> = OnceLock::new();
+    INIT.get_or_init(|| {
+        std::env::set_var("GITHUB_TOKEN", "wiremock-test-token");
+    });
+}
 
 fn fixture_text() -> &'static str {
     include_str!("fixtures/epics-fixture.md")
@@ -44,10 +56,8 @@ fn make_opts(_server_uri: &str) -> SyncOpts {
 
 fn make_client(server_uri: &str) -> Octocrab {
     // The wiremock MockServer URI is set as the octocrab base_uri so REST +
-    // GraphQL calls hit the mock instead of api.github.com. The GITHUB_TOKEN
-    // env var must be set for build_client_with_base_uri() — any non-empty
-    // string works against wiremock.
-    std::env::set_var("GITHUB_TOKEN", "wiremock-test-token");
+    // GraphQL calls hit the mock instead of api.github.com.
+    ensure_test_env();
     github::build_client_with_base_uri(Some(server_uri)).expect("build wiremock client")
 }
 
@@ -188,10 +198,17 @@ async fn first_run_creates_two_issues_and_adds_to_project() {
         .mount(&server)
         .await;
 
-    // Step 2 — create issues (×2). Match each by title substring.
+    // Step 2 — create issues (×2). Per AC6 §3: assert label-set IS in the
+    // outgoing POST /issues body (not just the title) — the wire-level
+    // contract is what catches a regression where someone changes the
+    // expected-labels set without noticing.
     Mock::given(method("POST"))
         .and(path("/repos/orgsidian/orgsidian/issues"))
         .and(body_string_contains("Story 3.91"))
+        .and(body_string_contains("\"epic:3\""))
+        .and(body_string_contains("\"milestone:v0.1\""))
+        .and(body_string_contains("\"type:story\""))
+        .and(body_string_contains("\"status:backlog\""))
         .respond_with(ResponseTemplate::new(201).set_body_json(issue_json(
             101,
             "[Story 3.91] First smoke story",
@@ -204,6 +221,10 @@ async fn first_run_creates_two_issues_and_adds_to_project() {
     Mock::given(method("POST"))
         .and(path("/repos/orgsidian/orgsidian/issues"))
         .and(body_string_contains("Story 3.92"))
+        .and(body_string_contains("\"epic:3\""))
+        .and(body_string_contains("\"milestone:v0.1\""))
+        .and(body_string_contains("\"type:story\""))
+        .and(body_string_contains("\"status:backlog\""))
         .respond_with(ResponseTemplate::new(201).set_body_json(issue_json(
             102,
             "[Story 3.92] Second smoke story",

@@ -1,6 +1,6 @@
 # Story 1.16: GitHub Issues sync — one issue per story
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -12,7 +12,7 @@ github_issue: 16
 
 As the **author / contributor**,
 I want a Rust binary at [`tools/issues-sync/`](tools/issues-sync/) that performs a one-way idempotent sync from [`_bmad-output/planning-artifacts/epics.md`](_bmad-output/planning-artifacts/epics.md) to GitHub Issues in [`orgsidian/orgsidian`](https://github.com/orgsidian/orgsidian) (one Issue per `### Story N.M`, preserving `status:*` label drift, placing newly-created Issues into the [LD-55 Project v2 board](_bmad-output/planning-artifacts/architecture.md#L617-L631) Backlog column), wired into a [`.github/workflows/sync-issues.yml`](.github/workflows/sync-issues.yml) workflow triggered on push-to-main when `epics.md` changes,
-So that the Project board (anchored by [Story 1.13](_bmad-output/implementation-artifacts/1-13-bootstrap-github-organization-private-repo-label-scheme-project-board.md)) and Issue search become navigable surfaces over the 104-story roadmap without manual re-typing — and the ad-hoc bootstrap shell script at [`scripts/sync-epics-to-github.sh`](scripts/sync-epics-to-github.sh) (created during the 2026-05-19 correct-course step explicitly to be replaced here per its own line 7-8 comment) is retired in favor of a typed, testable, CI-runnable Rust artifact that lives inside the workspace's project-tree slot reserved at [architecture.md:1427](_bmad-output/planning-artifacts/architecture.md#L1427).
+So that the Project board (anchored by [Story 1.13](_bmad-output/implementation-artifacts/1-13-bootstrap-github-organization-private-repo-label-scheme-project-board.md)) and Issue search become navigable surfaces over the 117-story roadmap (live count on 2026-05-29; the original spec text "104-story roadmap" was an authoring-snapshot estimate — the parser regression test in `parser.rs` locks the current floor at 117 per the AC2 escape-hatch, recalibrate when stories are added/removed) without manual re-typing — and the ad-hoc bootstrap shell script at [`scripts/sync-epics-to-github.sh`](scripts/sync-epics-to-github.sh) (created during the 2026-05-19 correct-course step explicitly to be replaced here per its own line 7-8 comment) is retired in favor of a typed, testable, CI-runnable Rust artifact that lives inside the workspace's project-tree slot reserved at [architecture.md:1427](_bmad-output/planning-artifacts/architecture.md#L1427).
 
 ## Acceptance Criteria
 
@@ -52,7 +52,7 @@ So that the Project board (anchored by [Story 1.13](_bmad-output/implementation-
   3. Epic List overview is skipped (a `### Epic 1: …` line inside Epic List doesn't yield a story; a `### Story 1.1: …` line inside Epic List would but doesn't appear there in practice — guard against future drift).
   4. Multi-paragraph body with a code block in the AC list preserves the code block verbatim.
   5. Story with no `Traces:` line parses (`traces == None`).
-  6. Real `_bmad-output/planning-artifacts/epics.md` parses to **exactly 104 stories** (the spec text "104-story roadmap"; this is a regression net — if a future epic-edit drops or duplicates a story heading, this test fails loud). The test loads the file via `include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../_bmad-output/planning-artifacts/epics.md"))`. **Note**: 104 is the count today (2026-05-29 — verify via `gh issue list --limit 200 --json number --jq 'length'` + missing-stories audit at implementation start). If the count has drifted by then, set the assertion to the current count and note the new floor in the Dev Agent Record.
+  6. Real `_bmad-output/planning-artifacts/epics.md` parses to **exactly 117 stories** (the current floor on 2026-05-29 — the original spec text "104-story roadmap" was an authoring-snapshot; the actual `### Story N.M[a-z]?:` count drifted to 117 by implementation time and the escape-hatch in this AC was invoked per Dev Agent Record §C). The test name is `real_epics_md_parses_to_117_stories` in `parser.rs`. This is a regression net — if a future epic-edit drops or duplicates a story heading, this test fails loud. The test loads the file via `include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../_bmad-output/planning-artifacts/epics.md"))`. **Future maintainer**: if the count drifts again, update the test name + literal AND note the new floor in the Dev Agent Record (do not lower the floor silently).
 
 **AC3 — Body renderer produces an Issue body matching the [`.github/ISSUE_TEMPLATE/story.md`](.github/ISSUE_TEMPLATE/story.md) layout, with a stable header sentinel for idempotent matching.**
 
@@ -289,7 +289,7 @@ All 14 cells must pass on the merged main commit. Cells 7–11 require network +
 - [x] **Task 2: Implement parser** (AC: 2)
   - [x] 2.1 Author `tools/issues-sync/src/parser.rs` per AC2.
   - [x] 2.2 Author the 6 `#[cfg(test)] mod tests` test cases per AC2.
-  - [x] 2.3 The 104-stories regression test (test #6) MUST load the real `epics.md` via `include_str!`. Verify it passes BEFORE any other module is written — a parser-count regression here is a debug-first concern.
+  - [x] 2.3 The 117-stories regression test (test #6) MUST load the real `epics.md` via `include_str!`. Verify it passes BEFORE any other module is written — a parser-count regression here is a debug-first concern. (Updated from the spec's authoring-time "104" estimate via the AC2 escape-hatch.)
 
 - [x] **Task 3: Implement body renderer** (AC: 3)
   - [x] 3.1 Author `tools/issues-sync/src/render.rs` per AC3.
@@ -375,7 +375,7 @@ Net-new files: 9 (`tools/issues-sync/Cargo.toml`, `src/{main,lib,parser,render,g
 | 2 | Epic AC: "places each newly-created Issue into the GitHub Project v2 Backlog column (using Projects v2 GraphQL `addProjectV2ItemById`)" | The built-in `secrets.GITHUB_TOKEN` cannot access org-level Projects v2 (verified via GitHub docs); a fine-grained PAT is required | Document `secrets.PROJECTS_PAT` as the workflow token. Surface PAT-creation as a maintainer-prerequisite in §10 Q3 | **HIGH** — the entire Project v2 placement contract hinges on this token |
 | 3 | Epic AC: "re-running the binary on the same `epics.md` is idempotent — no duplicate issues created, no label thrash, no Project board re-shuffle" | The bash bootstrap script already implements no-duplicate-create + no-label-thrash (except for status:* — it preserves drift correctly). Project board re-shuffle is NEW behavior because the bash never touched the project board | Replicate the bash semantics + add Project v2 idempotency (lookup-existing-items-before-adding) | **HIGH** — direct AC requirement |
 | 4 | Epic AC: "a deliberate `status:` label drift (e.g., manually changing an issue to `status:in-progress`) is NOT reset by the sync — manual is authoritative once an issue is open" | The bash script implements this by partitioning labels in `gh issue edit --add-label ...` (only adds, never removes; status:* never appears in the add list for existing issues). Reproduce identically in Rust | Codify as a `#[test]` invariant (AC8); partition labels in two sets before diffing | **HIGH** — the highest-blast-radius regression surface |
-| 5 | Epic AC: "104-story roadmap" | Live count is 108 issues; expected count from `epics.md` parsing is 104 (the 4 extras are: meta-issues #120 windows-nightly bug, #128 project saved-views follow-up, and possibly others). Plus there are gaps in the live set (1.17, 1.18, 8.10–8.12, 11.7–11.9 = 8 missing) | Parse the real `epics.md` at implementation time and assert the count is whatever the spec actually has (~104, recalibrate). The 104 is an *expected* count, not a contract — the contract is "1 issue per `### Story N.M` in epics.md" | **MEDIUM** — the 104 literal is decorative; the per-story invariant is the real spec |
+| 5 | Epic AC: "104-story roadmap" | **Recalibrated 2026-05-29**: live `epics.md` parses to 117 stories (not 104 — the original spec figure was an authoring-time snapshot). Live GitHub issue count was ~108–110 at PR-open time; the delta (117 epics − ~108 live = 9 backfill candidates: 1.17, 1.18, 8.10, 8.11, 8.12, 11.7, 11.8, 11.9, 12.0) is created on first real run. The 117 floor is locked in `parser.rs::real_epics_md_parses_to_117_stories`. | Parse the real `epics.md` at implementation time and assert the *actual* count (117 today). The literal is recalibratable; the per-story invariant is the contract. | **CLOSED** — recalibration documented in Dev Agent Record §C |
 | 6 | LD-55: "use the GitHub REST/GraphQL API (`octocrab` or `gh api` via `std::process::Command`)" | Same as #1 | Same as #1 | **HIGH** |
 | 7 | Architecture LD-55 status-label scheme uses `status:review` | Repo uses `status:in-review` per [[project_orgsidian_github_label_scheme]]. The bash script labels at line 116 read `status_label="status:backlog"` (status:backlog is correct on creation; the in-review/done flips happen separately during the dev workflow per `bmad-dev-story` task 9.2) | The Rust binary never emits `status:in-review` or `status:done` — those are dev-workflow-only. Only emit `status:backlog` at issue-creation time. Drift to `status:in-review`/`status:in-progress`/`status:done` is manual + preserved | **HIGH** |
 | 8 | Architecture LD-55: "Project board (Story 1.13): … Columns: Backlog / In Progress / Review / Done." | Story 1.13 created the project + renamed Status field option `Todo` → `Backlog`, inserted `Review` between `In Progress` and `Done`. Project node ID: `PVT_kwDOEQxtTc4BZBHy`. Saved views deferred to follow-up #128 (UI-only, no GraphQL API). Existing items on the board: 0 (Story 1.13 didn't add any) | The binary's first real run backfills all 108+ issues to the Backlog column | **HIGH** |
@@ -723,3 +723,57 @@ The bash script's heredoc inserts an extra `\n` on both sides of the body block 
 | ---------- | ------------------------------------------------------------------ | ------------------------------------- |
 | 2026-05-29 | Story 1.16 contextualized via `bmad-create-story` (ready-for-dev). | Bob (`bmad-create-story`) for Tiziano |
 | 2026-05-29 | Implementation landed: `tools/issues-sync` Rust binary (parser/render/github/sync + 22 unit tests) + 3-scenario wiremock smoke (AC6+AC8) + `.github/workflows/sync-issues.yml` (AC7, PAT-injected) + CONTRIBUTING.md §3 (AC9, sections renumbered to 1..7) + `pr.yml` Step 9.1 (cargo test on the new crate per Q6) + retired the 238-line bash bootstrap (AC10 cell 14 = 0 refs in `.github/` + `tools/`) + RUSTSEC-2023-0071 transitive-advisory exception added to all three Story-1.7 policy files. Local AC10 cells 1–6 + 13–14 verified green. Status → review. | Amelia (`bmad-dev-story`, Opus 4.7) for Tiziano |
+
+## Review Findings
+
+_Code review on 2026-05-29 — 3 parallel layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) against PR #133. Initial triage: 3 decision-needed, 9 patch, 16 defer, ~12 dismissed. All 3 decisions resolved → 12 patches applied (incl. a bonus `extract_traces` column-0 fix surfaced by the new regression test). Final: 0 unresolved must-fix, **29 tests green** (26 unit + 3 wiremock; up from 25), clippy clean, fmt clean._
+
+### Decision-needed (all resolved → patch)
+
+- [x] [Review][Decision→Patch] **AC4 retry/backoff loop missing despite Task 4.3 `[x]`** — Resolved: implemented `retry_on_throttle<F, T>` helper in `github.rs` (3 attempts, `[10s, 30s]` back-off, throttle detection via string-match on `403`/`429`/`rate limit`/`secondary rate`) + wrapped EVERY mutating call site (`create_issue`, `update_body`, `set_milestone`, `add_labels`, `remove_label`, `add_issue_to_project`, `list_all_issues` × 2, `ensure_milestones` × N, `ensure_milestones_dry_run`, `project_existing_issue_numbers`). Added 3 unit tests for the helper.
+- [x] [Review][Decision→Patch] **AC7 `sync-issues.yml` path-filter scope creep** — Resolved: reverted `[.github/workflows/sync-issues.yml](.github/workflows/sync-issues.yml)` `paths:` to `epics.md`-only per spec §AC7. Binary/workflow changes now require `workflow_dispatch` for validation, not auto-production-sync.
+- [x] [Review][Decision→Patch] **Story-count prose drift across spec / PR / Dev Agent Record** — Resolved: updated most-visible references (Story body line 15, AC2 #6, Task 2.3, Dev Notes table row 5) to the 117 floor + cited the escape-hatch + Dev Agent Record §C. Authoring-time "108 existing issues" references in pre-implementation prose preserved as historical record (the binary reconciles with whatever live count exists at run time).
+
+### Patch (all applied)
+
+- [x] [Review][Patch] **Empty `GITHUB_TOKEN` silently accepted → 401 after 3-5min cold build** — Added `.trim().is_empty()` guard in `build_client_with_base_uri` ([tools/issues-sync/src/github.rs:43-48](tools/issues-sync/src/github.rs#L43-L48)) + `Preflight PAT` step in [.github/workflows/sync-issues.yml](.github/workflows/sync-issues.yml).
+- [x] [Review][Patch] **`list_all_issues` includes pull requests** — Added `if issue.pull_request.is_some() { continue; }` filter in [tools/issues-sync/src/github.rs:110-112](tools/issues-sync/src/github.rs#L110-L112).
+- [x] [Review][Patch] **`extract_ac_block` byte-offset bug** — Replaced `match_indices(line).next()` with cumulative-cursor walk in [tools/issues-sync/src/parser.rs:250-281](tools/issues-sync/src/parser.rs#L250-L281). Added regression test `extract_ac_block_ignores_earlier_lookalike_terminator`. **Bonus**: the new test also surfaced an `extract_traces` column-0 bug (same `trim_start` class — was on the defer list as F11); fixed inline since the new test caught it.
+- [x] [Review][Patch] **`--dry-run` skips index/board read → reports "would create" for everything** — Dry-run now READS issues + project items + milestones via new `ensure_milestones_dry_run` helper; only MUTATIONS are skipped ([tools/issues-sync/src/sync.rs:102-119](tools/issues-sync/src/sync.rs#L102-L119)).
+- [x] [Review][Patch] **`report.milestones_created` always equals `m.len()`** — `ensure_milestones` now returns `(map, created_count)`; idempotent runs correctly report 0.
+- [x] [Review][Patch] **GraphQL 200-with-errors silently treated as success** — `add_issue_to_project` now inspects the response `Value` for an `errors` array and bails ([tools/issues-sync/src/github.rs](tools/issues-sync/src/github.rs)).
+- [x] [Review][Patch] **Cross-test env-var race in `sync_smoke.rs`** — Introduced `ensure_test_env()` with `OnceLock<()>`-guarded init ([tools/issues-sync/tests/sync_smoke.rs:15-22](tools/issues-sync/tests/sync_smoke.rs#L15-L22)).
+- [x] [Review][Patch] **AC6 first-run wiremock test doesn't assert labels on POST `/issues` body** — Added `body_string_contains` matchers for `"epic:3"`, `"milestone:v0.1"`, `"type:story"`, `"status:backlog"` on both first-run create mocks.
+- [x] [Review][Patch] **"104-story roadmap" prose drift in story file** — See decision-needed #3 above (resolved via same patch).
+
+### Defer (pre-existing / spec-compliant / low-impact)
+
+- [x] [Review][Defer] **Renderer hardcodes `https://github.com/orgsidian/orgsidian/...` in `**Source:**` URL** [tools/issues-sync/src/render.rs:25-43] — deferred, spec didn't mandate parameterization; current invocation always uses orgsidian/orgsidian.
+- [x] [Review][Defer] **Golden file is renderer self-snapshot, not live-issue snapshot** [tools/issues-sync/tests/golden/story-1-1-body.md] — deferred, documented in Dev Agent Record §B + Debug Log row 6; spec-compliant via AC10 cell 6 post-first-run caveat.
+- [x] [Review][Defer] **`expected_labels_for_story` removes any non-status manual label** [tools/issues-sync/src/sync.rs `expected_labels_for_story`] — deferred, spec-compliant ("status preserved" is the explicit invariant); footgun for maintainers using `pinned`/`area:*` is documented behavior.
+- [x] [Review][Defer] **No CODEOWNERS entry for `tools/issues-sync/`** [governance] — deferred, separate governance scope; supply-chain concern given PAT-bearing workflow + GitHub Free unenforceable branch protection.
+- [x] [Review][Defer] **`workflow_dispatch` has no `dry_run` input** [.github/workflows/sync-issues.yml:53] — deferred, nice-to-have; dry-run is local-only today.
+- [x] [Review][Defer] **`dtolnay/rust-toolchain@stable` floating branch reference** [.github/workflows/sync-issues.yml:72] — deferred, matches the existing pattern in `pr.yml`; version-pin discipline drift is pre-existing.
+- [x] [Review][Defer] **CRLF line-ending normalization missing** [tools/issues-sync/src/parser.rs] — deferred, repo files are LF; only fires if a contributor commits CRLF (`.gitattributes` already enforces).
+- [x] [Review][Defer] **Code-fenced `### Story` headings match parser regex** [tools/issues-sync/src/parser.rs:140-148] — deferred, no docs story currently exists; would fire for a meta-story that demonstrates story format.
+- [x] [Review][Defer] **Mis-nested story takes heading's epic, not section's** [tools/issues-sync/src/parser.rs:145] — deferred, data-entry error class; add a `debug_assert!` later if a defensive lane is desired.
+- [x] [Review][Defer] **`epic: u8` overflow for Epic 256+** [tools/issues-sync/src/parser.rs:118] — deferred, won't happen in the spec horizon (max planned epic ≤ 13).
+- [x] [Review][Defer] **Trailing post-Epic-13 content swallowed into last story body** [tools/issues-sync/src/parser.rs flush-at-EOF] — deferred, file currently ends cleanly; defensive fix would add an end-of-document sentinel check.
+- [x] [Review][Defer] **Sentinel-line migration: ~117 body PATCHes on first real run** [tools/issues-sync/src/render.rs:25] — deferred, known one-time churn documented in Dev Agent Record §C (Caveats).
+- [x] [Review][Defer] **Crash mid-run leaves inconsistent state, no resume token** [tools/issues-sync/src/sync.rs:137-173] — deferred, ties to the retry/backoff decision above; convergence-on-next-run is the documented contract.
+- [x] [Review][Defer→Patch] **`extract_traces` `trim_start().starts_with("**Traces:**")` matches indented bullets** [tools/issues-sync/src/parser.rs:277-281] — **promoted to patch** because the `extract_ac_block_ignores_earlier_lookalike_terminator` regression test surfaced it; fixed to column-0-only match.
+- [x] [Review][Defer] **`expected_milestone_num: None` silently drops milestone on create + reconcile** [tools/issues-sync/src/sync.rs:142] — deferred, defensive case (would require partial-fail in `ensure_milestones`); the abort-on-error path is fine for the steady state.
+- [x] [Review][Defer] **`partition_labels` accepts the literal `"status:"` (no suffix) into the preserved set** [tools/issues-sync/src/sync.rs `partition_labels`] — deferred, narrow trigger (someone manually creates a bare `status:` label); cosmetic.
+
+### Dismissed (verified safe / out of scope / nit)
+
+- Pagination via `get_page::<Issue>(&p.next)` — loop is well-formed; `Page<T>.next: Option<Url>` propagates correctly to `Option<None>` exit.
+- Cargo.lock missing → `--locked` would fail — verified `tools/issues-sync/Cargo.lock` IS committed and tracked.
+- `pr.yml` doesn't exercise the new crate — verified Step 9.1 runs `cargo test --manifest-path tools/issues-sync/Cargo.toml --locked`.
+- `update().body()` PATCH semantics (Blind Hunter explicitly skipped — cannot verify from diff alone; octocrab's typed builder sends only set fields per public API contract).
+- `octocrab.graphql` envelope shape (Blind Hunter explicitly skipped — wiremock body-string assertions don't disambiguate, but the crate's documented signature accepts `serde_json::Value` wrappers).
+- Concurrency group `cancel-in-progress: false` — verified safe; queued runs converge to final state.
+- F32 (no `Link: rel="next"` in wiremock responses) — same dismiss as pagination.
+- F38 (fork PRs cannot run this workflow) — verified safe; `push: main` + `workflow_dispatch` are maintainer-only.
+- F34 (`Story.num` as `String` allows duplicates) — verified safe; `[Story 4.3a] X` and `[Story 4.3] Y` produce distinct titles.
+- Several nits (lossy path conversion, dead-end match arms, `report.skipped_no_change` counter semantics) — informational only.
