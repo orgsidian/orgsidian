@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-05-28 (story 1.13 → review via bmad-dev-story)
+# last_updated: 2026-05-29 (story 1.13 → done via bmad-code-review)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-05-28 (story 1.13 → review via bmad-dev-story)
+last_updated: 2026-05-29 (story 1.13 → done via bmad-code-review)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -56,7 +56,7 @@ development_status:
   1-10-add-security-md-architecture-md-changelog-md-contributing-md: review
   1-11-establish-ld-41-failure-mode-test-harness-party-mode-round-2-p0-murat: done
   1-12-establish-perf-snapshot-regression-infrastructure-party-mode-round-2-p0-murat: done
-  1-13-bootstrap-github-organization-private-repo-label-scheme-project-board: review
+  1-13-bootstrap-github-organization-private-repo-label-scheme-project-board: done
   1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: backlog
   1-15-configure-git-cliff-for-cc-changelog-generation: backlog
   1-16-github-issues-sync-one-issue-per-story: backlog

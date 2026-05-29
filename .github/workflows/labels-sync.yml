@@ -8,9 +8,15 @@
 # skip-delete: false → the action DELETES labels not declared in labels.yml.
 #   This is intentional: the GitHub default labels (bug, documentation, etc.)
 #   need to be cleaned up because they clash with type:bug / type:docs.
-# permissions: issues:write only — the action touches
-#   /repos/{owner}/{repo}/labels and nothing else.
+# permissions: contents:read (required by actions/checkout) + issues:write
+#   (the action touches /repos/{owner}/{repo}/labels). Explicit `permissions:`
+#   replaces defaults, so contents:read MUST be listed even though the repo
+#   default is read-only — otherwise checkout fails on a public/private repo
+#   with a restrictive default workflow permission.
 # NOT a PR gate — labels-sync runs post-merge; pr.yml is not affected.
+# concurrency: single-flight on rapid pushes to main (e.g. a fixup commit
+#   touching labels.yml after the original) — racing label create/delete API
+#   calls would otherwise produce inconsistent intermediate states.
 # Reference: _bmad-output/planning-artifacts/architecture.md#L617-L631
 
 name: labels-sync
@@ -18,11 +24,18 @@ name: labels-sync
 on:
   push:
     branches: [main]
-    paths: ['.github/labels.yml']
+    paths:
+      - '.github/labels.yml'
+      - '.github/workflows/labels-sync.yml'
   workflow_dispatch: {}
 
 permissions:
+  contents: read
   issues: write
+
+concurrency:
+  group: labels-sync
+  cancel-in-progress: false
 
 jobs:
   sync:

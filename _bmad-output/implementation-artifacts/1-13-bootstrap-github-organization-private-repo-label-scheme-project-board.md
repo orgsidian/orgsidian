@@ -1,6 +1,6 @@
 # Story 1.13: Bootstrap GitHub organization + private repo + label scheme + Project board
 
-Status: review
+Status: done
 
 ## Metadata
 
@@ -155,14 +155,14 @@ This is the hard-truth gate. Each cell below MUST be re-run on the merged commit
 | # | Verification | Pass condition |
 |---|---|---|
 | 1 | `gh api orgs/orgsidian --jq '.plan.name'` | exit 0, output `"free"` |
-| 2 | `gh api repos/orgsidian/orgsidian --jq '{visibility,default_branch}'` | exit 0, output `{"visibility":"PUBLIC","default_branch":"main"}` (memory: stays public; do not flip) |
+| 2 | `gh api repos/orgsidian/orgsidian --jq '{visibility,default_branch}'` | exit 0, output `{"visibility":"public","default_branch":"main"}` — note: GitHub REST returns lowercase `"public"` (verified 2026-05-28); memory: stays public, do not flip |
 | 3 | `ls .github/labels.yml .github/workflows/labels-sync.yml .github/ISSUE_TEMPLATE/story.md` | exit 0, 3 files present |
-| 4 | `gh label list -R orgsidian/orgsidian --limit 200 \| wc -l` | output ≥ 29 (13 epic + 3 milestone + 5 status + 6 type + 2 priority = 29; possibly +1 if labels-sync hasn't run yet pre-merge) |
+| 4 | `gh label list -R orgsidian/orgsidian --limit 200 --json name -q '.[].name' \| wc -l` | output ≥ 29 (13 epic + 3 milestone + 5 status + 6 type + 2 priority = 29) — `--json name -q '.[].name'` makes the count deterministic vs TTY-formatted output |
 | 5 | `gh label list -R orgsidian/orgsidian --search "priority:" --json name -q '.[].name'` | output contains both `priority:p0` and `priority:p1` |
 | 6 | `gh label list -R orgsidian/orgsidian --search "type:" --json name -q '.[].name'` | output contains all of `type:story`, `type:bug`, `type:spike`, `type:chore`, `type:docs`, `type:security` |
 | 7 | `gh label list -R orgsidian/orgsidian --search "status:blocked" --json name -q '.[].name'` | output `status:blocked` |
-| 8 | `gh label list -R orgsidian/orgsidian --search "bug" --json name -q '.[].name' \| grep -v "type:bug"` | output empty (the unprefixed `bug` label is deleted) |
-| 9 | `gh issue view 120 -R orgsidian/orgsidian --json labels -q '.labels[].name' \| grep -c "type:bug"` | output `1` (post-AC7 migration) |
+| 8 | `gh label list -R orgsidian/orgsidian --search "bug" --json name -q '.[].name' \| awk '!/^type:bug$/{n++}END{print n+0}'` | output `0` (no labels match `bug` other than `type:bug`; unprefixed `bug` is deleted). `awk` form avoids the `grep -v` exit-code-1-on-no-match brittleness under `set -e` |
+| 9 | `gh issue view 120 -R orgsidian/orgsidian --json labels -q '.labels[].name' \| awk '/^type:bug$/{n++}END{print n+0}'` | output `1` (post-AC7 migration). `awk` form avoids the `grep -c` exit-code-1-on-no-match brittleness |
 | 10 | `gh api graphql -f query='query{organization(login:"orgsidian"){projectsV2(query:"Orgsidian Roadmap",first:1){nodes{number title url}}}}'` | exit 0, returns the project node with title `"Orgsidian Roadmap"` |
 | 11 | `gh issue view 13 -R orgsidian/orgsidian --json state -q '.state'` | output `"OPEN"` pre-PR, `"CLOSED"` post-PR-merge (`Closes #13` in PR body) |
 | 12 | `head -3 .github/ISSUE_TEMPLATE/story.md` | output starts with `---` then `name: Story` then `about: ...` |
@@ -214,6 +214,33 @@ All 14 cells must pass on the merged main commit. Cells 1, 2, 10, 11 require net
   - [x] 9.1 At story start: update `_bmad-output/implementation-artifacts/sprint-status.yaml` `1-13-bootstrap-…` from `ready-for-dev` → `in-progress`. Update issue #13 label `status:backlog` → `status:in-progress`.
   - [ ] 9.2 At PR-open: update sprint-status `in-progress` → `review`. Update issue #13 label `status:in-progress` → `status:in-review`.
   - [ ] 9.3 At PR-merge: update sprint-status `review` → `done`. Update issue #13 label → `status:done` AND close the issue (the `Closes #13` PR body footer auto-closes; the label still needs the manual flip).
+
+## Review Findings (bmad-code-review, 2026-05-28)
+
+Layers: Blind Hunter ✓ · Edge Case Hunter ✓ · Acceptance Auditor ✓ (no AC violations). Counts: 6 patch, 6 defer, 29 dismissed (incl. 2 decision-needed resolved as keep-as-is).
+
+### Decision-needed (resolved 2026-05-28)
+
+- [x] [Review][Decision] `dry-run` conditional is dead code — resolved: keep as-is (faithful to AC3 literal; dead-but-harmless; future-proof if `pull_request` trigger is ever added).
+- [x] [Review][Decision] No `from:` rename for `bug` → `type:bug` migration — resolved: keep current AC7 manual flow (explicit two-step post-merge; AC7 stays).
+
+### Patch (applied 2026-05-29)
+
+- [x] [Review][Patch] Missing `contents: read` in workflow permissions [[.github/workflows/labels-sync.yml](.github/workflows/labels-sync.yml)] — added `contents: read` alongside `issues: write`. Header comment updated to explain why explicit permissions must list contents:read.
+- [x] [Review][Patch] No `concurrency:` guard on labels-sync workflow [[.github/workflows/labels-sync.yml](.github/workflows/labels-sync.yml)] — added `concurrency: { group: labels-sync, cancel-in-progress: false }`.
+- [x] [Review][Patch] `paths:` filter excludes the workflow file itself [[.github/workflows/labels-sync.yml](.github/workflows/labels-sync.yml)] — added `.github/workflows/labels-sync.yml` to the `paths:` list (now multi-line form).
+- [x] [Review][Patch] AC9 cell 2 expects uppercase `"PUBLIC"` but API returns lowercase `"public"` — updated AC9 row 2 to lowercase canonical form.
+- [x] [Review][Patch] AC9 cell 4 brittle `wc -l` on TTY-formatted output — updated AC9 row 4 to `--json name -q '.[].name' \| wc -l`.
+- [x] [Review][Patch] AC9 cells 8 & 9 use `grep -v` / `grep -c` exit-code-fragile under `set -e` — updated AC9 rows 8 & 9 to `awk` form.
+
+### Deferred (logged in deferred-work.md)
+
+- [x] [Review][Defer] Issue template label drift if `labels.yml` renames `status:backlog`/`type:story` without updating template frontmatter [[.github/ISSUE_TEMPLATE/story.md:5](.github/ISSUE_TEMPLATE/story.md#L5)] — legacy `.md` template has no drift-detection mechanism.
+- [x] [Review][Defer] Label-state inconsistency on PR-close (Task 9.3 requires manual flip; `Closes #N` auto-close keeps stale `status:in-progress`) — process gap; revisit in Story 1.16 (Rust sync binary).
+- [x] [Review][Defer] Project v2 board state not reproducible from repo — Board #1 lives in GitHub state only; no Makefile/script encapsulates it. Acceptable solo-dev posture per LD-55 "no automation rules".
+- [x] [Review][Defer] No `status:*` mutual-exclusion enforcement — issues can carry multiple status labels. Process discipline issue; out of LD-55 scope.
+- [x] [Review][Defer] `scripts/sync-epics-to-github.sh` lacks preflight check that required labels exist [[scripts/sync-epics-to-github.sh:163](scripts/sync-epics-to-github.sh#L163)] — fresh-clone runs before `labels-sync` would 422 per issue; mitigated because Story 1.16 retires the script.
+- [x] [Review][Defer] No `priority:p2`/`priority:p3` fallback label — LD-55 "used sparingly" design choice; not in this story's scope.
 
 ## Dev Notes
 
