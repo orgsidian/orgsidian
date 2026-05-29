@@ -1,0 +1,103 @@
+# sync-issues.yml — Story 1.16 LD-55 GitHub Issues sync contract.
+#
+# Runs tools/issues-sync (Rust binary) on push-to-main when
+# _bmad-output/planning-artifacts/epics.md changes, plus on-demand via
+# workflow_dispatch. The binary is one-way idempotent: epics.md → Issues +
+# Project v2 board. Manual `status:*` label drift is preserved (LD-55 +
+# AC8 invariant). Closed issues never reopen; bodies do get re-rendered if
+# the underlying spec changes.
+#
+# Dedicated workflow file (vs. folding into pr.yml) — same rationale as
+# Story 1.14 commitlint.yml + Story 1.15 release-smoke.yml:
+#   1. Trigger surface: needs `push: main` + epics.md path filter; pr.yml
+#      runs on every PR (wrong surface).
+#   2. Token isolation: needs `secrets.PROJECTS_PAT` (fine-grained PAT with
+#      org-level Projects R/W). PRs from contributors should never see the
+#      PAT — leaving it scoped to this push-only workflow is the right
+#      minimum-exposure posture.
+#   3. LD-55 grep-discoverability: dedicated file mirrors labels-sync.yml.
+#   4. Concurrency semantics: mutating run must not be canceled mid-flight
+#      (cancel-in-progress: false). pr.yml is idempotent-cancel (true).
+#   5. Failure-mode isolation: PAT-expired / Projects v2 API change fails
+#      only here; pr.yml + labels-sync.yml stay green.
+#
+# WHY secrets.PROJECTS_PAT not secrets.GITHUB_TOKEN: the built-in token is
+# scoped to the workflow's repo and CANNOT access org-level Projects v2
+# (GitHub docs are explicit about this). A maintainer-provisioned
+# fine-grained PAT with:
+#   - repository access: orgsidian/orgsidian
+#   - repository permissions: Issues R/W, Pull-requests R
+#   - organization permissions: orgsidian Projects R/W
+# is required. Stored as `gh secret set PROJECTS_PAT -R orgsidian/orgsidian`.
+#
+# Advisory under GitHub Free (branch protection unenforceable per
+# [[project_orgsidian_github_plan]]); merge discipline is maintained by the
+# maintainer's pre-merge check, not by GitHub-side gate enforcement.
+#
+# Version policy: action versions semver-major-pinned (`@v5`, `@v4`);
+# runner image pinned (`ubuntu-24.04`). Never `*-latest` per
+# [[feedback_version_policy]].
+#
+# Reference: _bmad-output/planning-artifacts/architecture.md#LD-55;
+# CONTRIBUTING.md §3 (added by Story 1.16); tools/issues-sync/.
+
+name: sync-issues
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '_bmad-output/planning-artifacts/epics.md'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: sync-issues
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo (issues-sync)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            tools/issues-sync/target
+          key: ${{ runner.os }}-cargo-issues-sync-${{ hashFiles('tools/issues-sync/Cargo.lock', 'tools/issues-sync/Cargo.toml') }}
+
+      - name: Build issues-sync
+        run: cargo build --manifest-path tools/issues-sync/Cargo.toml --release --locked
+
+      # PAT preflight — `secrets.PROJECTS_PAT` evaluates to "" when unset, so
+      # `${{ secrets.PROJECTS_PAT }}` would silently produce an empty token and
+      # waste ~5 min on 401s mid-run. Fast-fail here.
+      - name: Preflight PAT
+        env:
+          PROJECTS_PAT: ${{ secrets.PROJECTS_PAT }}
+        run: |
+          if [ -z "${PROJECTS_PAT:-}" ]; then
+            echo "::error::secrets.PROJECTS_PAT is unset. Create a fine-grained PAT (org-level Projects R/W) and persist via 'gh secret set PROJECTS_PAT -R orgsidian/orgsidian'."
+            exit 1
+          fi
+
+      - name: Run issues-sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.PROJECTS_PAT }}
+        run: |
+          ./tools/issues-sync/target/release/orgsidian-issues-sync \
+            --owner orgsidian \
+            --repo orgsidian \
+            --epics-path _bmad-output/planning-artifacts/epics.md \
+            --project-node-id PVT_kwDOEQxtTc4BZBHy

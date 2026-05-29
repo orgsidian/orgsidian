@@ -82,7 +82,31 @@ chore: bump Cargo.lock via Dependabot
 - **CI:** [`.github/workflows/commitlint.yml`](./.github/workflows/commitlint.yml) runs `pnpm commitlint --from origin/main --to HEAD` on every PR (commit-range gate) + [`amannn/action-semantic-pull-request@v5`](https://github.com/amannn/action-semantic-pull-request) on `pull_request_target` (PR-title gate). Both gates are advisory under GitHub Free (no enforceable branch protection); merge discipline is maintained by the maintainer's pre-merge check.
 - **CHANGELOG generation:** [`cliff.toml`](./cliff.toml) + [`git-cliff`](https://git-cliff.org/) regenerates [`CHANGELOG.md`](./CHANGELOG.md) and [`crates/orgsidian-plugin-api/CHANGELOG.md`](./crates/orgsidian-plugin-api/CHANGELOG.md) from Conventional Commits on every `cargo release` (configured via [`release.toml`](./release.toml) `pre-release-hook`). Manual `### Deprecated` / `### Security` entries are inserted into `CHANGELOG.md` before tagging per LD-54. The mapping is smoke-tested by [`.github/workflows/release-smoke.yml`](./.github/workflows/release-smoke.yml) against a 5-commit fixture on every PR.
 
-## 3. FR traceability discipline
+## 3. GitHub Issues sync (LD-55)
+
+The canonical work-tracking surface is the [Orgsidian Roadmap GitHub Project board](https://github.com/orgs/orgsidian/projects/1) + per-story Issues in [`orgsidian/orgsidian`](https://github.com/orgsidian/orgsidian/issues). Both surfaces are one-way-synced from [`_bmad-output/planning-artifacts/epics.md`](./_bmad-output/planning-artifacts/epics.md) — the epics.md file is authoritative; manual Issue body edits are overwritten on next sync (status-label drift is preserved).
+
+### Tooling
+
+- **Binary:** [`tools/issues-sync/`](./tools/issues-sync/) — Rust binary using `octocrab` for the REST issues API + raw GraphQL for Projects v2 placement. Build with `cargo build --manifest-path tools/issues-sync/Cargo.toml --release --locked`. The crate is OUTSIDE `[workspace.members]` (LD-5 leaf-isolation, mirroring `tools/corpus-extractor/`).
+- **Workflow:** [`.github/workflows/sync-issues.yml`](./.github/workflows/sync-issues.yml) runs the binary on push-to-main when `epics.md` changes. The workflow token is `secrets.PROJECTS_PAT` (a fine-grained PAT with `repo:issues:write` + `org:projects:write` — built-in `GITHUB_TOKEN` cannot access org-level Projects v2).
+- **Local dry-run:** `GITHUB_TOKEN=$(gh auth token) ./tools/issues-sync/target/release/orgsidian-issues-sync --owner orgsidian --repo orgsidian --epics-path _bmad-output/planning-artifacts/epics.md --project-node-id PVT_kwDOEQxtTc4BZBHy --dry-run` prints a diff plan without mutating state.
+
+### Idempotency contract
+
+- Issues are looked up by exact title `[Story N.M] <title>`; matching issues are updated, missing ones are created with labels `epic:N, milestone:vX.X, type:story, status:backlog` + assigned to the milestone. Closed issues have their bodies updated (faithfulness to the spec) but never re-opened.
+- `status:*` labels are NEVER touched on existing issues. Manual moves through `status:backlog → status:in-progress → status:in-review → status:done` are authoritative.
+- Newly-created Issues are placed into the Project board's Backlog column via `addProjectV2ItemById`. Existing Issues missing from the board are also placed there on next sync — but Issues already on the board are not re-shuffled.
+
+### When you edit `epics.md`
+
+- Push to `main` (via PR merge); the workflow fires automatically.
+- Or run the binary locally first to preview the diff: pass `--dry-run`.
+- Or trigger a manual sync via `gh workflow run sync-issues.yml -R orgsidian/orgsidian`.
+
+See [LD-55 in architecture.md](./_bmad-output/planning-artifacts/architecture.md#L617-L631) for the full label scheme + Project board configuration.
+
+## 4. FR traceability discipline
 
 Every module that implements a functional requirement (FR-NN, defined in the PRD) carries a doc-comment header naming the FR it implements. Concrete example using FR-12 (full-text search via SQLite FTS5):
 
@@ -98,7 +122,7 @@ grep -r "Implements FR-" crates/ shell-ui/src/
 
 **CI gate.** `tests/traceability.rs` at workspace root will (post-Story 2.x, once any FR-bearing module exists) parse the PRD's FR-NN enumeration and fail if any FR has no `Implements FR-NN` match in the codebase. The doc-comment is **not** aspirational documentation — when an FR-bearing story lands, the header is non-negotiable.
 
-## 4. Fixture placement rule
+## 5. Fixture placement rule
 
 **Default: co-located per crate.** Test fixtures live alongside the consuming crate, e.g., `crates/orgsidian-parser/tests/fixtures/anchor.org` (the Story 1.9 anchor fixture). One crate consumes → fixture is per-crate.
 
@@ -106,7 +130,7 @@ grep -r "Implements FR-" crates/ shell-ui/src/
 
 Solo fixtures stay per-crate; cross-crate fixtures only at root.
 
-## 5. MSRV policy
+## 6. MSRV policy
 
 **Toolchain pin.** Orgsidian uses **stable Rust**, pinned via [`rust-toolchain.toml`](./rust-toolchain.toml). The workspace does **not** declare a `rust-version` field in [`Cargo.toml`](./Cargo.toml) because Orgsidian is a binary application (not a library published to crates.io) — the `rust-toolchain.toml` channel pin is the operational MSRV.
 
@@ -114,7 +138,7 @@ Solo fixtures stay per-crate; cross-crate fixtures only at root.
 
 **`orgsidian-plugin-api` divergence (v1.5+).** When `orgsidian-plugin-api` publishes to crates.io (post v1.5 per LD-33), that crate **will** carry a `rust-version` field — at that point it becomes a library and MSRV becomes a public contract. The workspace MSRV otherwise tracks `rust-toolchain.toml`.
 
-## 6. Testing strategy
+## 7. Testing strategy
 
 The system-level testing strategy is owned by [`_bmad-output/test-artifacts/test-design.md`](./_bmad-output/test-artifacts/test-design.md) (TEA workflow, 2026-05-19).
 
