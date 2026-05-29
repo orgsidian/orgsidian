@@ -32,11 +32,25 @@ consolidate-commits = true
 #   1. Root CHANGELOG.md   — workspace-wide changes (all crates + repo root).
 #   2. Plugin-api CHANGELOG.md — scoped to `crates/orgsidian-plugin-api/**`
 #                                 (LD-33 separate-CHANGELOG discipline).
-# cargo-release substitutes `{{version}}` with the about-to-be-released
-# version (same templating token used by `pre-release-replacements`).
+# cargo-release exposes the about-to-be-released version to the hook via the
+# `NEW_VERSION` env var (bare semver, e.g. `0.1.0`, no `v` prefix). We
+# explicitly prepend `v` to match the `tag_pattern` regex in cliff.toml
+# (`v[0-9]+\\.[0-9]+\\.[0-9]+(-.*)?`) and the LD-33 `v*` tag scheme. The
+# Handlebars `{{version}}` substitution is honored only in
+# `pre-release-replacements`, NOT in `pre-release-hook` argv (see
+# `cargo-release` docs); use `$NEW_VERSION` here instead.
+#
+# Partial-failure recovery: the hook chains two `git-cliff` invocations with
+# `&&`. If the second fails, root `CHANGELOG.md` is already mutated on disk
+# but the plugin-api file is not. `cargo release` aborts on hook non-zero
+# exit but does NOT roll back the prepend. Recover with:
+#   git checkout -- CHANGELOG.md crates/orgsidian-plugin-api/CHANGELOG.md
+# then re-run `cargo release` after fixing the root cause. A future
+# release-runbook story may replace this with a wrapper script that writes
+# to temp files + atomic `mv` only if both invocations succeed.
 pre-release-hook = [
   "bash", "-c",
-  "git-cliff --unreleased --tag {{version}} --prepend CHANGELOG.md && git-cliff --include-path 'crates/orgsidian-plugin-api/**' --unreleased --tag {{version}} --prepend crates/orgsidian-plugin-api/CHANGELOG.md",
+  "git-cliff --unreleased --tag \"v$NEW_VERSION\" --prepend CHANGELOG.md && git-cliff --include-path 'crates/orgsidian-plugin-api/**' --unreleased --tag \"v$NEW_VERSION\" --prepend crates/orgsidian-plugin-api/CHANGELOG.md",
 ]
 
 # Commit signing (`sign-tag` / `sign-commit`) is intentionally UNSET — no

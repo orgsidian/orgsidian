@@ -59,6 +59,7 @@ under `Deprecated` and `Security` are inserted before each `cargo release` tag.
 # route them to `Changed`; the template branches on `commit.breaking` for
 # the prefix, regardless of which parser caught them).
 body = """
+{% if commits | length > 0 -%}
 ## [{% if version %}{{ version | trim_start_matches(pat="v") }}{% else %}Unreleased{% endif %}]{% if timestamp %} - {{ timestamp | date(format="%Y-%m-%d") }}{% endif %}
 
 ### Added
@@ -81,6 +82,7 @@ body = """
 {% endfor %}
 ### Security
 
+{% endif -%}
 """
 
 trim = true
@@ -98,12 +100,14 @@ tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+(-.*)?"
 
 # Parser ORDER matters — first match wins. Breaking-marker parsers (`!` or
 # BREAKING CHANGE footer) must come BEFORE the non-breaking equivalents so
-# that `feat!:` is routed to `Changed`, not `Added`.
+# that `feat!:` is routed to `Changed`, not `Added`. The scope-capturing
+# group `(\(.+\))?` is required to match CC v1.0.0 scoped breaking forms
+# (`feat(parser)!:`, `fix(vault)!:`, `refactor(api)!:`).
 commit_parsers = [
   # Breaking commits → Changed (template adds `⚠ BREAKING:` prefix).
-  { message = "^feat!", group = "Changed" },
-  { message = "^fix!", group = "Changed" },
-  { message = "^refactor!", group = "Changed" },
+  { message = "^feat(\\(.+\\))?!", group = "Changed" },
+  { message = "^fix(\\(.+\\))?!", group = "Changed" },
+  { message = "^refactor(\\(.+\\))?!", group = "Changed" },
   { footer = "^BREAKING CHANGE", group = "Changed" },
   # User-visible refactors are signalled via `refactor!`; non-breaking
   # `refactor` is excluded per LD-54.

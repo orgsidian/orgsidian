@@ -40,7 +40,10 @@ on:
 
 concurrency:
   group: release-smoke-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel only on PR-update churn; never on push:main so post-merge
+  # re-asserts are guaranteed to run even when two PRs merge rapidly
+  # back-to-back (sharing the `refs/heads/main` group key).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   release-smoke:
