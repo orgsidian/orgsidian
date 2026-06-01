@@ -1,9 +1,9 @@
 /**
  * Contrast-matrix test — LD-58 gate #1 (Story 1.17).
  *
- * Extracts every (--org-*-fg, --org-*-bg) pair from tokens.css per the
- * `@pair-role:` comment convention; computes the WCAG 2.1 relative-luminance
- * contrast ratio `(L1 + 0.05) / (L2 + 0.05)` per pair; asserts:
+ * Extracts every (--org-*-fg, --org-*-bg) pair from tokens.css via the explicit
+ * `@pair-role:` + `@pair-bg:` annotation convention; computes the WCAG 2.1
+ * relative-luminance contrast ratio `(L1 + 0.05) / (L2 + 0.05)` per pair; asserts:
  *   - body-text  pairs >= 4.5:1 (WCAG 2.1 SC 1.4.3 AA)
  *   - large-text pairs >= 3.0:1 (WCAG 2.1 SC 1.4.3 AA)
  *   - ui-chrome  pairs >= 3.0:1 (WCAG 2.1 SC 1.4.11 AA non-text contrast)
@@ -29,6 +29,7 @@ interface Pair {
 interface SelectorBlock {
   selector: string;
   pairs: Pair[];
+  unpaired: { name: string; reason: 'missing-role' | 'missing-bg' | 'unknown-bg' }[];
 }
 
 const ROLE_THRESHOLDS: Record<Role, number> = {
@@ -36,6 +37,10 @@ const ROLE_THRESHOLDS: Record<Role, number> = {
   'large-text': 3.0,
   'ui-chrome': 3.0,
 };
+
+// Minimum pair count per selector block; protects against parser regressions
+// that would silently yield a vacuous green gate. Bump when palette grows.
+const MIN_PAIRS_PER_BLOCK = 5;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TOKENS_CSS = readFileSync(resolve(__dirname, 'tokens.css'), 'utf-8');
@@ -47,18 +52,20 @@ export function parseTokens(css: string): SelectorBlock[] {
     { selector: '.dark', pattern: /\.dark\s*\{([^}]*)\}/ },
   ];
 
+  const roleRegex = /^\s*\/\*\s*@pair-role:\s*(body-text|large-text|ui-chrome)\s*\*\/\s*$/;
+  const pairBgRegex = /^\s*\/\*\s*@pair-bg:\s*(--org-bg-[a-z0-9-]+)\s*\*\/\s*$/;
+  const declRegex = /^\s*(--org-[a-z0-9-]+)\s*:\s*([^;]+?)\s*;/;
+
   for (const { selector, pattern } of selectors) {
     const match = css.match(pattern);
     if (!match) continue;
     const body = match[1];
     const lines = body.split('\n');
     const pairs: Pair[] = [];
+    const unpaired: SelectorBlock['unpaired'] = [];
+    const bgValues = new Map<string, string>();
     let pendingRole: Role | null = null;
-    let lastBgName: string | null = null;
-    let lastBgValue: string | null = null;
-
-    const roleRegex = /^\s*\/\*\s*@pair-role:\s*(body-text|large-text|ui-chrome)\s*\*\/\s*$/;
-    const declRegex = /^\s*(--org-[a-z0-9-]+)\s*:\s*([^;]+?)\s*;/;
+    let pendingBgName: string | null = null;
 
     for (const line of lines) {
       const roleMatch = line.match(roleRegex);
@@ -66,35 +73,52 @@ export function parseTokens(css: string): SelectorBlock[] {
         pendingRole = roleMatch[1] as Role;
         continue;
       }
+      const pairBgMatch = line.match(pairBgRegex);
+      if (pairBgMatch) {
+        pendingBgName = pairBgMatch[1];
+        continue;
+      }
       const declMatch = line.match(declRegex);
       if (!declMatch) continue;
       const name = declMatch[1];
       const value = declMatch[2];
       if (name.startsWith('--org-bg-')) {
-        lastBgName = name;
-        lastBgValue = value;
-        // backgrounds should not carry a pending role; drop it.
+        bgValues.set(name, value);
+        // backgrounds carry no pair metadata; drop any pending annotations
+        // (defensive — stacked stray @pair-* before a bg would otherwise leak).
+        pendingRole = null;
+        pendingBgName = null;
+        continue;
+      }
+      // Any non-bg --org-* token MUST carry both @pair-role and @pair-bg.
+      if (pendingRole === null) {
+        unpaired.push({ name, reason: 'missing-role' });
+        pendingBgName = null;
+        continue;
+      }
+      if (pendingBgName === null) {
+        unpaired.push({ name, reason: 'missing-bg' });
         pendingRole = null;
         continue;
       }
-      // Any non-bg --org-* token consumes a pending @pair-role if present.
-      if (pendingRole !== null) {
-        if (lastBgValue === null || lastBgName === null) {
-          throw new Error(
-            `[contrast.test] foreground token ${name} declared before any --org-bg-* token in ${selector}`,
-          );
-        }
-        pairs.push({
-          fg: value,
-          bg: lastBgValue,
-          role: pendingRole,
-          fgName: name,
-          bgName: lastBgName,
-        });
+      const bgValue = bgValues.get(pendingBgName);
+      if (bgValue === undefined) {
+        unpaired.push({ name, reason: 'unknown-bg' });
         pendingRole = null;
+        pendingBgName = null;
+        continue;
       }
+      pairs.push({
+        fg: value,
+        bg: bgValue,
+        role: pendingRole,
+        fgName: name,
+        bgName: pendingBgName,
+      });
+      pendingRole = null;
+      pendingBgName = null;
     }
-    blocks.push({ selector, pairs });
+    blocks.push({ selector, pairs, unpaired });
   }
   return blocks;
 }
@@ -142,45 +166,6 @@ export function contrastRatio(fg: string, bg: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function findUnpaired(css: string): string[] {
-  const unpaired: string[] = [];
-  const selectors = [
-    { selector: ':root', pattern: /:root\s*\{([^}]*)\}/ },
-    { selector: '.dark', pattern: /\.dark\s*\{([^}]*)\}/ },
-  ];
-  const roleRegex = /^\s*\/\*\s*@pair-role:\s*(body-text|large-text|ui-chrome)\s*\*\/\s*$/;
-  const declRegex = /^\s*(--org-[a-z0-9-]+)\s*:/;
-  const fgRegex = /--org-fg-|--org-.*-fg($|:)/;
-
-  for (const { selector, pattern } of selectors) {
-    const match = css.match(pattern);
-    if (!match) continue;
-    const lines = match[1].split('\n');
-    let pendingRole: Role | null = null;
-    for (const line of lines) {
-      if (roleRegex.test(line)) {
-        pendingRole = (line.match(roleRegex) as RegExpMatchArray)[1] as Role;
-        continue;
-      }
-      const dMatch = line.match(declRegex);
-      if (!dMatch) continue;
-      const name = dMatch[1];
-      if (name.startsWith('--org-bg-')) {
-        pendingRole = null;
-        continue;
-      }
-      // foreground-like tokens require a pending role
-      if (fgRegex.test(name)) {
-        if (pendingRole === null) {
-          unpaired.push(`${selector} ${name}`);
-        }
-        pendingRole = null;
-      }
-    }
-  }
-  return unpaired;
-}
-
 describe('LD-58 contrast gate — tokens.css', () => {
   const blocks = parseTokens(TOKENS_CSS);
 
@@ -189,9 +174,17 @@ describe('LD-58 contrast gate — tokens.css', () => {
     expect(blocks).toHaveLength(2);
   });
 
-  it('every foreground token has a @pair-role annotation', () => {
-    const unpaired = findUnpaired(TOKENS_CSS);
+  it('every non-bg --org-* token carries @pair-role + @pair-bg (no unpaired)', () => {
+    const unpaired = blocks.flatMap((b) =>
+      b.unpaired.map((u) => `${b.selector} ${u.name} [${u.reason}]`),
+    );
     expect(unpaired).toEqual([]);
+  });
+
+  it(`each block has >= ${MIN_PAIRS_PER_BLOCK} fg pairs (vacuous-gate floor)`, () => {
+    for (const b of blocks) {
+      expect(b.pairs.length).toBeGreaterThanOrEqual(MIN_PAIRS_PER_BLOCK);
+    }
   });
 
   for (const block of blocks) {

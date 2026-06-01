@@ -25,8 +25,17 @@ test.describe('@a11y Quick Capture', () => {
     // the Quick Capture surface, perform a representative action via
     // page.keyboard only (NO mouse.click), and assert the persisted
     // side-effect.
-
-    await page.goto('/quick-capture');
+    //
+    // NOTE: the route literal here is intentionally NOT pre-bound. Quick
+    // Capture is a separate Tauri window and the AC4 mapping table left
+    // the placeholder TBD. When un-fixme-ing this test, Story 8.1 must
+    // choose either a Tauri-shell harness or a web-fallback route, then
+    // add a surface-discriminator assertion (e.g.,
+    //   await expect(page.getByRole('heading', { name: /quick capture/i })).toBeVisible();
+    // ) BEFORE the axe scan so the gate cannot pass green against a 404
+    // / placeholder.
+    //
+    // await page.goto('<route-or-tauri-window-pending — Story 8.1>');
 
     // LD-58 gate #3 — keyboard-only navigation.
     // Example: await page.keyboard.press('Tab'); await page.keyboard.press('Enter');

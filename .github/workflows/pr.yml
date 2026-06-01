@@ -183,11 +183,23 @@ jobs:
       #       (currently scaffolds via test.fixme; downstream stories awaken them)
       # Budget: ≤2-3 min combined per LD-58 line 1371; well within the LD-32
       # <90s/<10min per-PR soft target on warm Playwright browser cache.
+      # Inventory guard: LD-58 prescribes exactly 6 @a11y surfaces. Catches
+      # accidental spec-file deletion before the gate atrophies silently.
+      - name: Verify 6 @a11y spec files (LD-58 inventory)
+        run: |
+          count=$(grep -lr "@a11y" shell-ui/e2e/a11y/ | wc -l | tr -d ' ')
+          if [ "$count" != "6" ]; then
+            echo "::error::Expected 6 @a11y spec files in shell-ui/e2e/a11y/, found $count (LD-58 inventory drift)"
+            exit 1
+          fi
+
+      # Cache key hashes both package.json AND pnpm-lock.yaml so a lockfile-only
+      # Playwright bump (e.g., transitive resolution change) busts the cache.
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('shell-ui/package.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('shell-ui/package.json', 'pnpm-lock.yaml') }}
           restore-keys: |
             playwright-${{ runner.os }}-
 
