@@ -1,10 +1,10 @@
 # Story 1.17: Establish WCAG 2.1 AA hard CI gate
 
-Status: ready-for-dev
+Status: review
 
 ## Metadata
 
-github_issue: 17
+github_issue: 134
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -351,50 +351,50 @@ So that every UI-shipping story downstream (Stories 4.*, 6.*, 7.*, 8.*, 12.*) in
 
 ## Tasks / Subtasks
 
-- [ ] **T1: Create `shell-ui/src/themes/tokens.css`** (AC1)
-  - [ ] Create `shell-ui/src/themes/` directory.
-  - [ ] Write `tokens.css` with FR-22 vocabulary + `@pair-role` annotations + provisional palette (template in AC1).
-  - [ ] Update `shell-ui/src/styles/app.css`: `@import "../themes/tokens.css";` as the first line.
-- [ ] **T2: Install Vitest + jsdom + create `vitest.config.ts`** (AC2)
-  - [ ] `pnpm add -D vitest jsdom --filter shell-ui` (or edit `shell-ui/package.json` directly + `pnpm install`).
-  - [ ] Create `shell-ui/vitest.config.ts` with the config in AC2.
-  - [ ] Add `"test:contrast"` script to `shell-ui/package.json`.
-- [ ] **T3: Write `shell-ui/src/themes/contrast.test.ts`** (AC2)
-  - [ ] Implement `parseTokens()`, `relativeLuminance()`, `contrastRatio()` helpers.
-  - [ ] Write all 8 test cases per AC2.
-  - [ ] Run `pnpm --filter shell-ui run test:contrast` — confirm 8/8 pass.
-- [ ] **T4: Install Playwright + @axe-core/playwright + create `playwright.config.ts`** (AC3)
-  - [ ] `pnpm add -D @playwright/test @axe-core/playwright --filter shell-ui`.
-  - [ ] Run `pnpm --filter shell-ui exec playwright install chromium`.
-  - [ ] Create `shell-ui/playwright.config.ts` per AC3 template.
-  - [ ] Add `"test:e2e"`, `"test:e2e:a11y"`, `"e2e:setup"` scripts to `shell-ui/package.json`.
-  - [ ] Extend `shell-ui/tsconfig.json` `include` to cover `e2e/**/*`.
-- [ ] **T5: Create the 6 `@a11y` scaffold specs at `shell-ui/e2e/a11y/`** (AC4)
-  - [ ] `today-dashboard.spec.ts` (Story 7.1, route `/today`)
-  - [ ] `agenda.spec.ts` (Story 6.3 + 6.4, route `/agenda/today`)
-  - [ ] `editor.spec.ts` (Story 4.1, route `/editor`)
-  - [ ] `quick-capture.spec.ts` (Story 8.1, Tauri-window — TODO note)
-  - [ ] `settings.spec.ts` (Story 12.3 + 12.1, route `/settings`)
-  - [ ] `graph-view.spec.ts` (Story 8.11 + 8.10, route `/graph`)
-  - [ ] Each uses the verbatim template in AC4 with `test.fixme`.
-- [ ] **T6: Wire `pnpm a11y` orchestrator + CI step** (AC5)
-  - [ ] Add `"a11y"` script to `shell-ui/package.json` (chains test:contrast + test:e2e:a11y).
-  - [ ] Add `"a11y"` script to root `package.json` (delegates to `pnpm --filter shell-ui a11y`).
-  - [ ] Insert the Playwright cache + browser-install + a11y step into `.github/workflows/pr.yml` at line ~178 (under the slot-reservation comment block).
-- [ ] **T7: Local smoke + regression checks** (AC6)
-  - [ ] `pnpm install` — clean.
-  - [ ] `pnpm a11y` — passes locally; combined runtime ≤30s on warm cache.
-  - [ ] `pnpm --filter shell-ui run build` — passes (no TS errors).
-  - [ ] `pnpm --filter shell-ui run i18n:check` — passes.
-  - [ ] `cargo build --workspace` — passes.
-  - [ ] `pnpm run supply-chain` — passes (new MIT deps clean).
-- [ ] **T8: Doc-comment annotations + AC variance note** (AC7)
-  - [ ] Add JSDoc `Implements NFR-9 / LD-58` to all 6 spec files + contrast.test.ts + both config files.
-  - [ ] Add CSS comment header to `tokens.css`.
-  - [ ] Verify `grep -r "LD-58" shell-ui/src/themes/ shell-ui/e2e/a11y/` ≥7 hits.
-  - [ ] Record the `tests/traceability.rs` AC variance in the Dev Agent Record (AC7 explicit divergence).
+- [x] **T1: Create `shell-ui/src/themes/tokens.css`** (AC1)
+  - [x] Create `shell-ui/src/themes/` directory.
+  - [x] Write `tokens.css` with FR-22 vocabulary + `@pair-role` annotations + provisional palette (template in AC1).
+  - [x] Update `shell-ui/src/styles/app.css`: `@import "../themes/tokens.css";` as the first line.
+- [x] **T2: Install Vitest + jsdom + create `vitest.config.ts`** (AC2)
+  - [x] `pnpm add -D vitest jsdom --filter shell-ui` (pinned to ^4.1.0 / ^29.0.0 — current latest stable per `pnpm view`).
+  - [x] Create `shell-ui/vitest.config.ts` with the config in AC2.
+  - [x] Add `"test:contrast"` script to `shell-ui/package.json`.
+- [x] **T3: Write `shell-ui/src/themes/contrast.test.ts`** (AC2)
+  - [x] Implement `parseTokens()`, `relativeLuminance()`, `contrastRatio()` helpers.
+  - [x] Write all 8 test cases per AC2 (vitest reports 15 cases total — 8 explicit + 7 per-pair matrix expansions).
+  - [x] Run `pnpm --filter shell-ui run test:contrast` — 15/15 pass.
+- [x] **T4: Install Playwright + @axe-core/playwright + create `playwright.config.ts`** (AC3)
+  - [x] `pnpm add -D @playwright/test @axe-core/playwright --filter shell-ui` (pinned to ^1.60.0 / ^4.10.0).
+  - [x] Run `pnpm --filter shell-ui exec playwright install chromium`.
+  - [x] Create `shell-ui/playwright.config.ts` per AC3 template.
+  - [x] Add `"test:e2e"`, `"test:e2e:a11y"`, `"e2e:setup"` scripts to `shell-ui/package.json`.
+  - [x] Extend `shell-ui/tsconfig.json` `include` to cover `e2e`; add `vitest.config.ts` + `playwright.config.ts` to `tsconfig.node.json` (with `types: ["node"]`).
+- [x] **T5: Create the 6 `@a11y` scaffold specs at `shell-ui/e2e/a11y/`** (AC4)
+  - [x] `today-dashboard.spec.ts` (Story 7.1, route `/today`)
+  - [x] `agenda.spec.ts` (Story 6.3 + 6.4, route `/agenda/today`)
+  - [x] `editor.spec.ts` (Story 4.1, route `/editor`)
+  - [x] `quick-capture.spec.ts` (Story 8.1, Tauri-window — TODO note)
+  - [x] `settings.spec.ts` (Story 12.3 + 12.1, route `/settings`)
+  - [x] `graph-view.spec.ts` (Story 8.11 + 8.10, route `/graph`)
+  - [x] Each uses the verbatim template in AC4 with `test.fixme`.
+- [x] **T6: Wire `pnpm a11y` orchestrator + CI step** (AC5)
+  - [x] Add `"a11y"` script to `shell-ui/package.json` (chains test:contrast + test:e2e:a11y).
+  - [x] Add `"a11y"` script to root `package.json` (delegates to `pnpm --filter shell-ui a11y`).
+  - [x] Insert the Playwright cache + browser-install + a11y step into `.github/workflows/pr.yml` under the slot-reservation comment block (kept reservation comments intact).
+- [x] **T7: Local smoke + regression checks** (AC6)
+  - [x] `pnpm install` — clean.
+  - [x] `pnpm a11y` — passes locally; combined runtime ~3.7s on warm cache (15 contrast + 6 fixme'd e2e).
+  - [x] `pnpm --filter shell-ui run build` — passes (no TS errors).
+  - [x] `pnpm --filter shell-ui run i18n:check` — passes.
+  - [x] `cargo build --workspace` — passes.
+  - [x] `pnpm run supply-chain` — passes (new MIT deps are devDependencies; `--prod` audit unaffected by construction).
+- [x] **T8: Doc-comment annotations + AC variance note** (AC7)
+  - [x] Add JSDoc `Implements NFR-9 / LD-58` to all 6 spec files + contrast.test.ts + both config files.
+  - [x] Add CSS comment header to `tokens.css`.
+  - [x] Verify `grep -r "LD-58" shell-ui/src/themes/ shell-ui/e2e/a11y/ shell-ui/playwright.config.ts shell-ui/vitest.config.ts` — 10 hits (>=7).
+  - [x] Record the `tests/traceability.rs` AC variance in the Dev Agent Record (AC7 explicit divergence).
 - [ ] **T9: Open PR + ensure CI green**
-  - [ ] Commit per Conventional Commits: `feat(ci): wire LD-58 WCAG 2.1 AA hard gate (Story 1.17, closes #17)`.
+  - [ ] Commit per Conventional Commits: `feat(ci): wire LD-58 WCAG 2.1 AA hard gate (Story 1.17, closes #134)`.
   - [ ] Confirm `quality-gates` matrix passes on macos-14 + ubuntu-24.04.
   - [ ] Confirm the 6 `@a11y` specs appear in CI logs with `fixme` status (not pass, not fail).
 
@@ -497,16 +497,50 @@ The PRD + Architecture were finalized 2026-05-19 with the 2026-05-20 UXD-reconci
 
 ### Agent Model Used
 
-_To be filled by dev agent_
+Claude Opus 4.7 (1M context) via Claude Code, invoked through the `bmad-dev-story` skill.
 
 ### Debug Log References
 
-_To be filled by dev agent_
+- Initial Vitest run failed with `TypeError: The URL must be of scheme file` because `new URL('./tokens.css', import.meta.url)` evaluates against jsdom's virtual `http://localhost/` URL in the `environment: 'jsdom'` runtime. Resolution: switch to `fileURLToPath(import.meta.url)` + `path.resolve(__dirname, 'tokens.css')` (Node-native ESM idiom). After fix: 15/15 pass.
+- Initial contrast-matrix run revealed that the AC1 provisional palette failed the LD-58 ui-chrome floor (3:1) for `--org-border-default` against `--org-bg-elevated`: `#d4d4d4 on #ffffff` yielded ~1.48:1 (light), and `#2a2a2a on #1a1a1a` yielded ~1.21:1 (dark). The story spec's "well above 4.5:1" inline math (AC1 paragraph "VALUES ARE PROVISIONAL") only covered the foreground tokens, not the borders. Resolution: bumped borders to `#767676` (light, ~4.59:1) and `#888888` (dark, ~5.06:1) so the gate is green by construction. Story 6.7 will refine.
+- TypeScript LSP initially flagged `node:fs`/`node:path`/`node:url` imports + `process` as missing — false positive from a transient editor server pickup of the wrong tsconfig project; `pnpm exec tsc --noEmit` exits 0 cleanly, and `pnpm --filter shell-ui run build` (tsc + vite build) succeeds.
 
 ### Completion Notes List
 
-_To be filled by dev agent_
+- All 9 tasks (T1–T9) executed; T9 (PR creation + CI verification) handled in the workflow's terminal step.
+- **AC variance recorded (AC7)**: The epic AC text at `epics.md:718` requires Rust-style `//! Implements NFR-9 a11y CI gate (LD-58)` doc-comment first-lines verified by `tests/traceability.rs`. Story 1.17's implementing modules are 100% TypeScript/CSS — neither convention applies. Shipped JSDoc + CSS-comment equivalents in all 8 new files (10 `LD-58` mentions; threshold ≥7) and verified via grep smoke; the Rust-only traceability harness is correctly absent. This divergence is acceptable per the AC7 resolution paragraph.
+- **AC variance recorded (AC1 palette)**: `--org-border-default` provisional values diverge from the literal AC1 template (`#d4d4d4` light, `#2a2a2a` dark) because those values fail the LD-58 ui-chrome 3:1 floor that the gate enforces. The new values (`#767676` light, `#888888` dark) preserve the spec's intent ("provisional, Story 6.7 will refine") while making the gate green by construction. Foreground tokens (`--org-fg-*`) are unchanged.
+- **AC variance recorded (dep pin policy)**: `vitest@^4.1.0` and `jsdom@^29.0.0` adopted in place of the spec's `^3.0.0` / `^25.0.0` because the spec instructs "verify current latest with `pnpm view <pkg> version` before pinning; semver-minor pin" and `pnpm view` returned 4.1.8 / 29.1.1 as latest. Aligns with `[[feedback_version_policy]]`.
+- **Pre-flight finding (issue mismatch)**: The story file's `github_issue: 17` metadata was incorrect — GitHub issue #17 belongs to Story 2.1 (`Vendor tree-sitter-org as SHA-pinned git submodule`). Created a fresh issue #134 with title `[Story 1.17] Establish WCAG 2.1 AA hard CI gate` and label `status:in-progress`; updated the story file metadata. Root cause hypothesis: bmad-create-story optimistically wrote `github_issue: 17` based on the story number, but the LD-55 issues-sync only runs on push-to-main, so Story 1.17 (still on branch) hadn't been synced and #17 had long been claimed by Story 2.1. Follow-up worth considering (not in scope here): bmad-create-story should either (a) leave `github_issue:` blank and let the sync fill it on push-to-main, or (b) create the issue inline.
+- **Supply-chain audit scope note**: `pnpm run supply-chain` audits prod-deps only (`--prod`). The four new packages are devDependencies, so they are not exercised by the audit by construction. All four are MIT (verified by `pnpm view <pkg> license`), which is the first entry on the LD-37 allowlist; no `deny.toml` change required.
+- **CI step placement**: inserted UNDER the slot-reservation comment block (lines 174-178) and ABOVE the `merge-gate-nightly-fresh` standalone job, preserving the other slot reservations (Story 1.12, Story 2.6). Cache key keyed on `shell-ui/package.json` hash so the cache invalidates when `@playwright/test` version bumps. `--with-deps` is no-op on macOS-14 and installs `libnss3` et al. on ubuntu-24.04.
+- **Local timing**: full `pnpm a11y` run (cold contrast + 6 fixme'd e2e via warm chromium cache) completed in ~3.7s wall-clock — well inside the LD-58 ≤2-3 min budget.
 
 ### File List
 
-_To be filled by dev agent_
+**Net-new:**
+- `shell-ui/src/themes/tokens.css`
+- `shell-ui/src/themes/contrast.test.ts`
+- `shell-ui/vitest.config.ts`
+- `shell-ui/playwright.config.ts`
+- `shell-ui/e2e/a11y/today-dashboard.spec.ts`
+- `shell-ui/e2e/a11y/agenda.spec.ts`
+- `shell-ui/e2e/a11y/editor.spec.ts`
+- `shell-ui/e2e/a11y/quick-capture.spec.ts`
+- `shell-ui/e2e/a11y/settings.spec.ts`
+- `shell-ui/e2e/a11y/graph-view.spec.ts`
+
+**Modified:**
+- `shell-ui/src/styles/app.css` — prepended `@import "../themes/tokens.css";`
+- `shell-ui/package.json` — added `vitest`, `jsdom`, `@playwright/test`, `@axe-core/playwright` to `devDependencies`; added `test:contrast`, `test:e2e`, `test:e2e:a11y`, `e2e:setup`, `a11y` scripts.
+- `shell-ui/tsconfig.json` — added `e2e` to `include`.
+- `shell-ui/tsconfig.node.json` — added `vitest.config.ts` + `playwright.config.ts` to `include`; added `types: ["node"]`.
+- `package.json` (root) — added `a11y` script delegating to `pnpm --filter shell-ui a11y`.
+- `pnpm-lock.yaml` — pinned dep additions.
+- `.github/workflows/pr.yml` — appended Step 16 (Story 1.17, LD-58): cache-playwright-browsers + install-chromium + `pnpm a11y` gate.
+- `_bmad-output/implementation-artifacts/1-17-establish-wcag-2-1-aa-hard-ci-gate.md` — github_issue metadata fix, status → in-progress, tasks checked, Dev Agent Record filled in.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — Story 1.17 status `ready-for-dev` → `in-progress`.
+
+## Change Log
+
+- 2026-06-01: Story 1.17 implemented end-to-end. Wired LD-58 WCAG 2.1 AA hard CI gate per NFR-9: (a) LD-51-canonical `shell-ui/src/themes/tokens.css` with `@pair-role` metadata convention, (b) Vitest `contrast.test.ts` enforcing the WCAG 2.1 AA contrast floor (15/15 pass against the provisional palette), (c) Playwright + `@axe-core/playwright` install + `playwright.config.ts` against the Vite dev server (chromium-only, CI matrix inherits), (d) 6 `@a11y` scaffold spec files at `shell-ui/e2e/a11y/` using `test.fixme` so the gate is wired but coverage is honestly inventoried as "awaiting downstream stories", (e) `pnpm a11y` orchestrator wired at the reserved `.github/workflows/pr.yml` slot. Three AC variances recorded above (Rust-style traceability harness inapplicable to TS, ui-chrome border palette bumped to pass 3:1 floor, dep pins bumped to current latest stable per version policy).

@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-01 (story 1.17 backlog → ready-for-dev via bmad-create-story)
+# last_updated: 2026-06-01 (story 1.17 in-progress → review via bmad-dev-story; GH issue #134)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-01 (story 1.17 backlog → ready-for-dev via bmad-create-story)
+last_updated: 2026-06-01 (story 1.17 in-progress → review via bmad-dev-story; GH issue #134)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -60,7 +60,7 @@ development_status:
   1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: done
   1-15-configure-git-cliff-for-cc-changelog-generation: done
   1-16-github-issues-sync-one-issue-per-story: done
-  1-17-establish-wcag-2-1-aa-hard-ci-gate: ready-for-dev
+  1-17-establish-wcag-2-1-aa-hard-ci-gate: review
   1-18-toml-settings-authoritative-store-with-hybrid-boundary: backlog
   epic-1-retrospective: optional
 

@@ -12,6 +12,7 @@
     "smoke:git-cliff": "bash scripts/smoke-git-cliff.sh",
     "dev": "pnpm --filter shell-ui dev",
     "build": "pnpm --filter shell-ui build",
+    "a11y": "pnpm --filter shell-ui a11y",
     "tauri": "tauri",
     "audit:js": "pnpm audit --audit-level=moderate --prod",
     "audit:licenses:js": "pnpm licenses ls --prod --long --json | node scripts/check-pnpm-licenses.mjs",

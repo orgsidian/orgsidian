@@ -1,0 +1,62 @@
+/*
+ * Orgsidian design tokens — FR-22 vocabulary (LD-51 canonical source).
+ * LD-58 gate input.
+ *
+ * PROVISIONAL palette — Story 6.7 will refine.
+ * Story 1.17 ships the structural minimum required by the LD-58 contrast gate
+ * (>=1 body-text pair + >=1 UI-chrome pair per theme); Story 6.7 fills in the
+ * full palette per the designed dark + light themes.
+ *
+ * PAIR-ROLE METADATA CONVENTION (LD-58 gate input):
+ * Every fg/bg pair MUST declare its role via a `@pair-role: <role>` comment line
+ * immediately preceding the fg token, where <role> in {body-text, large-text, ui-chrome}.
+ * Tokens without a declared pair role fail the LD-58 contrast gate (forces explicit
+ * categorization rather than ad-hoc heuristics).
+ *
+ * @pair-role values:
+ *   body-text  -> ratio_required >= 4.5 (WCAG 2.1 SC 1.4.3 AA)
+ *   large-text -> ratio_required >= 3.0 (WCAG 2.1 SC 1.4.3 AA, >=18pt or >=14pt bold)
+ *   ui-chrome  -> ratio_required >= 3.0 (WCAG 2.1 SC 1.4.11 AA non-text contrast)
+ *
+ * Pairing rule: each `--org-*-fg` (or `--org-fg-*`) token is paired against the
+ * nearest preceding `--org-bg-*` token in the same selector block.
+ */
+
+:root {
+  /* === Backgrounds (FR-22) === */
+  --org-bg-canvas: #ffffff;     /* main editor / surfaces */
+  --org-bg-surface: #f7f7f7;    /* sidebars, panels */
+  --org-bg-elevated: #ffffff;   /* dialogs, popovers */
+
+  /* === Foregrounds (FR-22) === */
+  /* @pair-role: body-text */
+  --org-fg-default: #1a1a1a;
+  /* @pair-role: body-text */
+  --org-fg-muted: #4a4a4a;
+  /* @pair-role: large-text */
+  --org-fg-subtle: #6a6a6a;
+
+  /* === Borders (FR-22) === */
+  /* @pair-role: ui-chrome */
+  --org-border-default: #767676;
+  /* @pair-role: ui-chrome */
+  --org-border-focus: #2563eb;
+}
+
+.dark {
+  --org-bg-canvas: #0a0a0a;
+  --org-bg-surface: #141414;
+  --org-bg-elevated: #1a1a1a;
+
+  /* @pair-role: body-text */
+  --org-fg-default: #f5f5f5;
+  /* @pair-role: body-text */
+  --org-fg-muted: #b5b5b5;
+  /* @pair-role: large-text */
+  --org-fg-subtle: #888888;
+
+  /* @pair-role: ui-chrome */
+  --org-border-default: #888888;
+  /* @pair-role: ui-chrome */
+  --org-border-focus: #3b82f6;
+}

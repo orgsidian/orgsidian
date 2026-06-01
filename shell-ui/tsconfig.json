@@ -23,6 +23,6 @@
     /* Path alias (TS 5.0+ resolves paths relative to tsconfig.json; baseUrl deprecated) */
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"],
+  "include": ["src", "e2e"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
