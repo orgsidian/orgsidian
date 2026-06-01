@@ -111,3 +111,11 @@
 - ~~**`extract_traces` `trim_start()` matches indented bullets containing `**Traces:**`**~~ — _Promoted to patch during review wrap-up: surfaced by the `extract_ac_block_ignores_earlier_lookalike_terminator` regression test; fixed to column-0-only match in [tools/issues-sync/src/parser.rs](tools/issues-sync/src/parser.rs)._
 - **`expected_milestone_num: None` silently drops milestone on create/reconcile** [`tools/issues-sync/src/sync.rs:142`] [LOW] — Defensive case requiring partial-fail in `ensure_milestones`; abort-on-error covers the steady state. Owner: defensive hardening.
 - **`partition_labels` accepts the literal `"status:"` (no suffix) into the preserved set** [`tools/issues-sync/src/sync.rs partition_labels`] [NIT] — Trigger: maintainer creates a bare `status:` label. Cosmetic. Owner: dismiss-on-sight.
+
+## Deferred from: code review of story-1.17 (2026-06-01)
+
+- **Selector regex `[^}]*` in `contrast.test.ts` cannot survive nested braces** [`shell-ui/src/themes/contrast.test.ts:parseTokens`] [LOW] — Story 6.7 may introduce Tailwind 4 idioms like `@media` nesting inside `:root`. Today's tokens.css doesn't trigger; future-fragility flagged for Story 6.7.
+- **Dark theme `.dark` block is gate #1-validated but unreachable at runtime** [`shell-ui/src/themes/tokens.css`] [LOW] — No theme toggle wired (next-themes is in deps but no provider). Gates #2/#3 give zero dark-mode axe coverage until a toggle ships. Defer to Story 6.7 / theme-toggle work.
+- **Workflow Step 14 → Step 16 ordering is load-bearing but undocumented** [`.github/workflows/pr.yml`] [LOW] — Dev server boot depends on Vite/route/lingui generated files from `Build shell-ui`; reordering would silently break the gate (vacuous fixme pass). Add inline comment in next `pr.yml` refactor.
+- **PR #135 sprint-status.yaml flips 1-10 and 1-14 to `done` orthogonally to Story 1.17 scope** [`_bmad-output/implementation-artifacts/sprint-status.yaml`] [NIT] — Sprint-tracking hygiene: reverting PR #135 would regress unrelated story statuses. Separate sprint-management concern.
+- **No `actions/upload-artifact` step for Playwright traces/HTML reports on CI failure** [`.github/workflows/pr.yml`] [LOW] — Quality-of-life debugging once downstream stories un-fixme scenarios. Add when a real failure mode surfaces.

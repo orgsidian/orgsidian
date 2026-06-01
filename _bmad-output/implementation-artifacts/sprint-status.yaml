@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-05-29 (story 1.16 → done via bmad-code-review; 12 patches applied, 29 tests green)
+# last_updated: 2026-06-01 (story 1.17 review → done via bmad-code-review; 8 findings resolved, 5 deferred)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-05-29 (story 1.16 → done via bmad-code-review; 12 patches applied, 29 tests green)
+last_updated: 2026-06-01 (story 1.17 review → done via bmad-code-review; 8 findings resolved, 5 deferred)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -53,14 +53,14 @@ development_status:
   1-7-configure-cargo-deny-cargo-audit-supply-chain-hygiene: done
   1-8-configure-ci-matrix-profile-release-panic-unwind-invoke-plugin-hook-macro-stub: done
   1-9-add-anchor-smoke-tests-anti-placebo-green-per-party-mode-p2: done
-  1-10-add-security-md-architecture-md-changelog-md-contributing-md: review
+  1-10-add-security-md-architecture-md-changelog-md-contributing-md: done
   1-11-establish-ld-41-failure-mode-test-harness-party-mode-round-2-p0-murat: done
   1-12-establish-perf-snapshot-regression-infrastructure-party-mode-round-2-p0-murat: done
   1-13-bootstrap-github-organization-private-repo-label-scheme-project-board: done
-  1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: review
+  1-14-configure-commitlint-husky-commit-msg-hook-ci-gate: done
   1-15-configure-git-cliff-for-cc-changelog-generation: done
   1-16-github-issues-sync-one-issue-per-story: done
-  1-17-establish-wcag-2-1-aa-hard-ci-gate: backlog
+  1-17-establish-wcag-2-1-aa-hard-ci-gate: done
   1-18-toml-settings-authoritative-store-with-hybrid-boundary: backlog
   epic-1-retrospective: optional
 

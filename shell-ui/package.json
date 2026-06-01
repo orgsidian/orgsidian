@@ -10,7 +10,12 @@
     "preview": "vite preview",
     "extract": "lingui extract --clean",
     "compile": "lingui compile",
-    "i18n:check": "lingui extract --clean && git diff --exit-code src/locales"
+    "i18n:check": "lingui extract --clean && git diff --exit-code src/locales",
+    "test:contrast": "vitest run src/themes/contrast.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:a11y": "playwright test --grep @a11y",
+    "e2e:setup": "playwright install chromium",
+    "a11y": "pnpm run test:contrast && pnpm run test:e2e:a11y"
   },
   "dependencies": {
     "@lingui/core": "^6.0.1",
@@ -42,10 +47,12 @@
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@lingui/cli": "^6.0.1",
     "@lingui/conf": "^6.0.1",
     "@lingui/swc-plugin": "^6.0.1",
     "@lingui/vite-plugin": "^6.0.1",
+    "@playwright/test": "^1.60.0",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/router-cli": "^1.167.8",
     "@tanstack/router-plugin": "^1.168.6",
@@ -54,7 +61,9 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^4.0.0",
     "eslint-plugin-lingui": "^0.13.1",
+    "jsdom": "^29.1.1",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^4.1.7"
   }
 }
