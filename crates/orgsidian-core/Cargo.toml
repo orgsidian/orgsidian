@@ -31,6 +31,12 @@ tracing = { workspace = true }
 # `optional = true` + the `dep:serde_json` activator on the `test-support` feature
 # (above) keep this OUT of production binary builds. Pin floats on 1.x (workspace dep).
 serde_json = { workspace = true, optional = true }
+# Story 1.18 (LD-40): TOML settings authoritative store. First cross-crate edge
+# to `orgsidian-vault` (LEAF graph rule per deny.toml#L186-188). `toml` + `dirs`
+# are the new direct deps; both float on the latest stable major (see workspace).
+orgsidian-vault = { workspace = true }
+toml = { workspace = true }
+dirs = { workspace = true }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
@@ -41,6 +47,8 @@ fail = { workspace = true, features = ["failpoints"] }
 # parallel test runs do not collide on shared baseline files. Hoisted to the
 # workspace per Story 1.12 review P7 / [[feedback_version_policy]].
 tempfile = { workspace = true }
+# Story 1.18 (LD-40): property-based round-trip test for the settings schema.
+proptest = { workspace = true }
 
 # Story 1.11 (LD-41): workspace-root failure-mode harness + coverage gate live
 # physically at `tests/` (see test-design.md §5.1 — discoverability of the
@@ -67,3 +75,16 @@ path = "../../tests/failure_modes_coverage.rs"
 name = "perf_canary"
 path = "tests/perf_canary.rs"
 required-features = ["test-support"]
+
+# Story 1.18 (LD-40): workspace-root drift guard for the boundary doc, mirroring
+# the failure_modes pattern above. Lives at workspace `tests/` because the
+# boundary doc is a cross-cutting architecture artifact.
+[[test]]
+name = "settings_boundary_doc"
+path = "../../tests/settings_boundary_doc.rs"
+
+# Story 1.18 (LD-40): traceability grep-smoke. Scans `src/settings/` for the
+# `LD-40 + FR-23` annotation per Story 1.17's grep-smoke convention.
+[[test]]
+name = "settings_trace"
+path = "../../tests/settings.rs"

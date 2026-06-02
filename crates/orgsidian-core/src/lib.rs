@@ -15,3 +15,7 @@ pub mod registry;
 // covers external consumers that opt in via dev-dependencies.
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
+
+// Story 1.18 (LD-40): TOML settings authoritative store. First cross-crate edge
+// from `orgsidian-core` to `orgsidian-vault` (LEAF graph rule per deny.toml).
+pub mod settings;

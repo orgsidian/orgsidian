@@ -1,10 +1,10 @@
 # Story 1.18: TOML settings authoritative store with hybrid boundary
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Metadata
 
-github_issue: <!-- Story 1.16 (LD-55) issues-sync auto-creates one on push-to-main. Leave blank until then; dev fills in after the first sync run. -->
+github_issue: 136
 
 ## Story
 
@@ -236,22 +236,22 @@ So that the dual-surface OQ-7 commitment ([PRD §10 OQ-7](_bmad-output/planning-
 
 ## Tasks / Subtasks
 
-- [ ] **T1** — Scaffold `crates/orgsidian-core/src/settings/` directory with empty `mod.rs`, `schema.rs`, `vault.rs`, `global.rs`, `meta.rs`, `error.rs`. Each file starts with `//! Implements LD-40 + FR-23 settings store (OQ-7 dual-surface)`. Wire `pub mod settings;` into `crates/orgsidian-core/src/lib.rs`. Run `cargo check -p orgsidian-core` — must compile. (AC1, AC8)
-- [ ] **T2** — Add `toml = "1"`, `dirs = "6"`, `proptest = "1"` to workspace `[workspace.dependencies]` in root `Cargo.toml`. Add `orgsidian-vault` workspace dep entry (mirror `orgsidian-core` pattern: explicit `version = "0.0.0"` + `path = "crates/orgsidian-vault"`). (AC4)
-- [ ] **T3** — Add `toml`, `dirs`, `orgsidian-vault` to `[dependencies]` of `crates/orgsidian-core/Cargo.toml`; add `proptest` + `tempfile` (already workspace) to `[dev-dependencies]`. Run `cargo build -p orgsidian-core` — must compile. (AC4)
-- [ ] **T4** — Implement `schema.rs`: `SchemaVersion`, `SCHEMA_VERSION_CURRENT`, `ThemeChoice`, `UiMode`, `AgendaPreset`, `TodayDashboardSections`, `VaultSettings`, `GlobalSettings`. All derive `Debug, Clone, Default, Serialize, Deserialize, PartialEq, specta::Type` per AC2. Wire custom `Deserialize` for `SchemaVersion` that rejects > `SCHEMA_VERSION_CURRENT`. (AC2)
-- [ ] **T5** — Implement `error.rs`: `SettingsError` enum (`ConfigDirUnavailable`, `Io { path, source }`, `ParseFailed { path, source }`, `SerializeFailed { source }`, `SchemaVersionUnsupported { found, supported }`). Derives `thiserror::Error` per the [`OrgError` precedent](crates/orgsidian-core/src/error.rs). `pub type SettingsResult<T> = Result<T, SettingsError>;`. (AC1)
-- [ ] **T6** — Implement `vault.rs`: `vault_settings_path`, `read_vault_settings`, `write_vault_settings` per AC1 semantics. Use `toml::from_str` / `toml::to_string_pretty` + `orgsidian_vault::atomic_write`. Add the `// FOLLOWUP(Story-5.4): watcher reload hook lands here per LD-7 Single Writer Rule` comment. Add `// FOLLOWUP(Story-12.3): swap to toml_edit for format-preserving GUI round-trip` comment. (AC1, AC3 scope note, AC6 hook)
-- [ ] **T7** — Implement `global.rs`: `global_settings_path`, `read_global_settings`, `write_global_settings`. Use `dirs::config_dir()` for the base path. (AC1)
-- [ ] **T8** — Co-locate unit tests in each module via `#[cfg(test)] mod tests { ... }` per AC7. Use `tempfile::tempdir()` for filesystem fixtures. Run `cargo test -p orgsidian-core settings` — all pass. (AC7)
-- [ ] **T9** — Write `crates/orgsidian-core/tests/settings_round_trip.rs` with the 6 round-trip tests + 1 proptest per AC3. Hand-write a `Strategy` impl or compose existing ones (Rust patterns at `proptest::strategy::Strategy`). (AC3)
-- [ ] **T10** — Wire shell-app bootstrap smoke per AC6: add a `setup` closure step in `crates/orgsidian-shell-app/src/lib.rs` after the existing `tauri-plugin-store` registration that calls `orgsidian_core::settings::read_global_settings()` and logs the result via `tracing`. Verify `cargo build -p orgsidian-shell-app` succeeds. (AC6)
-- [ ] **T11** — Write `docs/architecture/settings-boundary.md` per AC5 (6 sections, ~80-120 lines). Cross-link to LD-40 / OQ-7 / FR-23. (AC5)
-- [ ] **T12** — Write `tests/settings_boundary_doc.rs` workspace-rooted drift guard per AC5; declare it via a `[[test]]` block in `crates/orgsidian-core/Cargo.toml` (mirror the `failure_modes` pattern at [lines 51-53](crates/orgsidian-core/Cargo.toml#L51-L53)). (AC5)
-- [ ] **T13** — Write `tests/settings.rs` traceability grep-smoke asserting `LD-40 + FR-23` appears in ≥6 files under `crates/orgsidian-core/src/settings/`. Mirror Story 1.17's grep-smoke pattern. (AC8)
-- [ ] **T14** — Run `cargo deny check licenses bans advisories`; run `cargo audit`; confirm no NEW advisories. Run `cargo test --workspace`; confirm all green and report Story 1.18's test count in Completion Notes. (AC4, AC7)
-- [ ] **T15** — Update `ARCHITECTURE.md` / `docs/architecture.md` crates table with the new `settings` module exposed by `orgsidian-core`. Append the deferred-work stanza to `_bmad-output/implementation-artifacts/deferred-work.md`. (AC8, AC3 scope note)
-- [ ] **T16** — Commit + open PR. Commit title: `feat(core): wire LD-40 TOML settings authoritative store (Story 1.18, closes #<issue-num>)` (mirrors the Story 1.16 / 1.17 `feat(<scope>): wire LD-NN ...` Conventional Commits pattern + the [[feedback_no_co_author_credit]] memory — NO co-author trailer, NO "Generated with Claude Code" footer). Issue number filled in after the LD-55 issues-sync run merges the auto-created issue onto the branch. (AC4, AC7)
+- [x] **T1** — Scaffold `crates/orgsidian-core/src/settings/` directory with empty `mod.rs`, `schema.rs`, `vault.rs`, `global.rs`, `meta.rs`, `error.rs`. Each file starts with `//! Implements LD-40 + FR-23 settings store (OQ-7 dual-surface)`. Wire `pub mod settings;` into `crates/orgsidian-core/src/lib.rs`. Run `cargo check -p orgsidian-core` — must compile. (AC1, AC8)
+- [x] **T2** — Add `toml = "1"`, `dirs = "6"`, `proptest = "1"` to workspace `[workspace.dependencies]` in root `Cargo.toml`. Add `orgsidian-vault` workspace dep entry (mirror `orgsidian-core` pattern: explicit `version = "0.0.0"` + `path = "crates/orgsidian-vault"`). (AC4)
+- [x] **T3** — Add `toml`, `dirs`, `orgsidian-vault` to `[dependencies]` of `crates/orgsidian-core/Cargo.toml`; add `proptest` + `tempfile` (already workspace) to `[dev-dependencies]`. Run `cargo build -p orgsidian-core` — must compile. (AC4)
+- [x] **T4** — Implement `schema.rs`: `SchemaVersion`, `SCHEMA_VERSION_CURRENT`, `ThemeChoice`, `UiMode`, `AgendaPreset`, `TodayDashboardSections`, `VaultSettings`, `GlobalSettings`. All derive `Debug, Clone, Default, Serialize, Deserialize, PartialEq, specta::Type` per AC2. Wire custom `Deserialize` for `SchemaVersion` that rejects > `SCHEMA_VERSION_CURRENT`. (AC2)
+- [x] **T5** — Implement `error.rs`: `SettingsError` enum (`ConfigDirUnavailable`, `Io { path, source }`, `ParseFailed { path, source }`, `SerializeFailed { source }`, `SchemaVersionUnsupported { found, supported }`). Derives `thiserror::Error` per the [`OrgError` precedent](crates/orgsidian-core/src/error.rs). `pub type SettingsResult<T> = Result<T, SettingsError>;`. (AC1)
+- [x] **T6** — Implement `vault.rs`: `vault_settings_path`, `read_vault_settings`, `write_vault_settings` per AC1 semantics. Use `toml::from_str` / `toml::to_string_pretty` + `orgsidian_vault::atomic_write`. Add the `// FOLLOWUP(Story-5.4): watcher reload hook lands here per LD-7 Single Writer Rule` comment. Add `// FOLLOWUP(Story-12.3): swap to toml_edit for format-preserving GUI round-trip` comment. (AC1, AC3 scope note, AC6 hook)
+- [x] **T7** — Implement `global.rs`: `global_settings_path`, `read_global_settings`, `write_global_settings`. Use `dirs::config_dir()` for the base path. (AC1)
+- [x] **T8** — Co-locate unit tests in each module via `#[cfg(test)] mod tests { ... }` per AC7. Use `tempfile::tempdir()` for filesystem fixtures. Run `cargo test -p orgsidian-core settings` — all pass. (AC7)
+- [x] **T9** — Write `crates/orgsidian-core/tests/settings_round_trip.rs` with the 6 round-trip tests + 1 proptest per AC3. Hand-write a `Strategy` impl or compose existing ones (Rust patterns at `proptest::strategy::Strategy`). (AC3)
+- [x] **T10** — Wire shell-app bootstrap smoke per AC6: add a `setup` closure step in `crates/orgsidian-shell-app/src/lib.rs` after the existing `tauri-plugin-store` registration that calls `orgsidian_core::settings::read_global_settings()` and logs the result via `tracing`. Verify `cargo build -p orgsidian-shell-app` succeeds. (AC6)
+- [x] **T11** — Write `docs/architecture/settings-boundary.md` per AC5 (6 sections, ~80-120 lines). Cross-link to LD-40 / OQ-7 / FR-23. (AC5)
+- [x] **T12** — Write `tests/settings_boundary_doc.rs` workspace-rooted drift guard per AC5; declare it via a `[[test]]` block in `crates/orgsidian-core/Cargo.toml` (mirror the `failure_modes` pattern at [lines 51-53](crates/orgsidian-core/Cargo.toml#L51-L53)). (AC5)
+- [x] **T13** — Write `tests/settings.rs` traceability grep-smoke asserting `LD-40 + FR-23` appears in ≥6 files under `crates/orgsidian-core/src/settings/`. Mirror Story 1.17's grep-smoke pattern. (AC8)
+- [x] **T14** — Run `cargo deny check licenses bans advisories`; run `cargo audit`; confirm no NEW advisories. Run `cargo test --workspace`; confirm all green and report Story 1.18's test count in Completion Notes. (AC4, AC7)
+- [x] **T15** — Update `ARCHITECTURE.md` / `docs/architecture.md` crates table with the new `settings` module exposed by `orgsidian-core`. Append the deferred-work stanza to `_bmad-output/implementation-artifacts/deferred-work.md`. (AC8, AC3 scope note)
+- [x] **T16** — Commit + open PR. Commit title: `feat(core): wire LD-40 TOML settings authoritative store (Story 1.18, closes #136)` (mirrors the Story 1.16 / 1.17 `feat(<scope>): wire LD-NN ...` Conventional Commits pattern + the [[feedback_no_co_author_credit]] memory — NO co-author trailer, NO "Generated with Claude Code" footer). (AC4, AC7)
 
 ## Review Findings
 
@@ -378,6 +378,58 @@ Claude Opus 4.7 (1M context) via Claude Code, invoked through the `bmad-dev-stor
 
 ### Completion Notes List
 
+**Story 1.18 wraps with 21 net-new tests:** 10 unit + 7 integration (6 round-trip + 1 proptest, 256 cases) + 3 boundary-doc drift guards + 1 grep-smoke traceability. `cargo test --workspace` (with default + `--features test-support` matrix) all green. `cargo deny check` green (advisories ok, bans ok, licenses ok, sources ok — 5 pre-existing "unused wrapper" warnings unchanged; no new entries in `[bans].skip`). `cargo audit` shows the same 18 allowed warnings as the Story 1.17 baseline (no new advisories surfaced by `toml`, `dirs`, or `proptest`).
+
+**Variance notes:**
+
+- **`schema_version` is a top-level TOML scalar, not under `[meta]`.** TOML grammar requires top-level keys before `[table]` headers. The epic AC text "[meta] schema_version = 1" was loose phrasing; the implementation uses a top-level `schema_version = N` field. The file-header comment `# === Orgsidian settings — schema v1 (LD-40) ===` carries the "meta" framing per Dev Notes §6. The dedicated `meta.rs` module holds the file-header constant — the trace-grep counts it as one of the 6 LD-40+FR-23-annotated files.
+- **`dirs` over `directories`.** Story 1.18 picked `dirs` (lower surface area) per Dev Notes guidance; no functional impact on AC1's path-resolution contract.
+- **`#[specta(skip)]` on `_extra` field.** `specta::Type` does not derive cleanly for `toml::Table`; skipping the field from the TS export is safe because it is a forward-compat catch-all without semantic shape (consumers should not depend on it).
+- **`required-features = ["test-support"]` not added to new `[[test]]` blocks.** The boundary-doc + grep-smoke tests do not depend on `test_support/perf.rs`; they read fixtures directly. They run under both `cargo test -p orgsidian-core` and `cargo test --workspace` without the feature flag because their entry points compile independently — only the lib-test `cfg(test)` path drags `test_support/perf.rs` in, and that path is gated by `cargo test --features test-support` already.
+- **Issue created manually pre-implementation.** `gh issue list --search '[Story 1.18] in:title'` returned empty pre-flight; per the bmad-dev-story prepend step, created GitHub issue #136 with `status:backlog` then transitioned to `status:in-progress`. The LD-55 `sync-issues` workflow will not auto-create a duplicate because the title `[Story 1.18] ...` matches its dedupe key — if a duplicate ever surfaces it's a one-off cleanup. Confirmed with user before creating.
+
+**Test count breakdown:**
+
+- `src/settings/schema.rs::tests` (3 unit tests): `schema_version_rejects_future_version`, `schema_version_default_equals_current`, `extra_table_round_trips`.
+- `src/settings/vault.rs::tests` (5 unit tests): `vault_settings_path_joins_dotorgsidian`, `read_returns_default_when_file_missing`, `write_creates_dotorgsidian_dir`, `parse_failure_surfaces_parse_failed_variant`, `write_then_read_round_trips`.
+- `src/settings/global.rs::tests` (2 unit tests): `global_settings_path_resolves_under_config_dir`, `read_returns_default_when_global_file_missing` (guarded: skips when developer has a real `global.toml`).
+- `crates/orgsidian-core/tests/settings_round_trip.rs` (7 integration tests including 1 proptest with 256 cases): `default_vault_settings_round_trip`, `default_global_settings_round_trip`, `populated_vault_settings_round_trip`, `writer_fixed_point`, `unknown_fields_preserved`, `schema_version_one_present_on_default_write`, `vault_settings_round_trip_property`.
+- `tests/settings_boundary_doc.rs` (3 drift guards): `required_section_headings_present`, `ephemeral_allowlist_has_exactly_four_entries`, `schema_field_names_present`.
+- `tests/settings.rs` (1 grep-smoke): `ld40_fr23_trace_appears_in_at_least_six_files`.
+
+Total: **21 tests** (AC7 threshold ≥16). Plus the file-trace count: 6 `.rs` files under `src/settings/` (mod.rs, schema.rs, vault.rs, global.rs, meta.rs, error.rs) all carry the `LD-40 + FR-23` annotation.
+
 ### File List
 
+**New (Rust source):**
+
+- `crates/orgsidian-core/src/settings/mod.rs`
+- `crates/orgsidian-core/src/settings/schema.rs`
+- `crates/orgsidian-core/src/settings/vault.rs`
+- `crates/orgsidian-core/src/settings/global.rs`
+- `crates/orgsidian-core/src/settings/error.rs`
+- `crates/orgsidian-core/src/settings/meta.rs`
+- `crates/orgsidian-core/tests/settings_round_trip.rs`
+- `tests/settings_boundary_doc.rs`
+- `tests/settings.rs`
+
+**New (docs):**
+
+- `docs/architecture/settings-boundary.md`
+
+**Modified:**
+
+- `Cargo.toml` — added `toml = "1"`, `dirs = "6"`, `proptest = "1"`, `orgsidian-vault` to `[workspace.dependencies]`.
+- `crates/orgsidian-core/Cargo.toml` — added crate-level deps; declared `settings_boundary_doc` + `settings_trace` `[[test]]` blocks.
+- `crates/orgsidian-core/src/lib.rs` — `pub mod settings;` wire.
+- `crates/orgsidian-shell-app/Cargo.toml` — added `tracing` workspace dep.
+- `crates/orgsidian-shell-app/src/lib.rs` — bootstrap smoke for `read_global_settings`.
+- `ARCHITECTURE.md` — crates-table row for `orgsidian-core` references the new `settings` module + boundary doc.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — Story 1.18 deferred stanza (5 items).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — story status `ready-for-dev` → `in-progress` (will be flipped to `review` at workflow Step 9).
+- `_bmad-output/implementation-artifacts/1-18-toml-settings-authoritative-store-with-hybrid-boundary.md` — `github_issue: 136`, status, tasks ticked, Dev Agent Record.
+- `Cargo.lock` — auto-updated by `cargo` for new direct deps.
+
 ## Change Log
+
+- 2026-06-02 — Story 1.18 implementation pass: TOML settings authoritative store wired (`crates/orgsidian-core/src/settings/`), boundary doc + drift guard + grep-smoke traceability tests, shell-app bootstrap smoke for `read_global_settings`. 21 net-new tests; `cargo test --workspace`, `cargo deny`, `cargo audit` all green. Issue #136 created + transitioned to `status:in-progress`.
