@@ -183,7 +183,10 @@ mod tests {
 
     #[test]
     fn schema_version_default_equals_current() {
-        assert_eq!(SchemaVersion::default(), SchemaVersion(SCHEMA_VERSION_CURRENT));
+        assert_eq!(
+            SchemaVersion::default(),
+            SchemaVersion(SCHEMA_VERSION_CURRENT)
+        );
     }
 
     #[test]

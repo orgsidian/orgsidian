@@ -11,12 +11,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+use orgsidian_core::settings::schema::{AgendaPreset, ThemeChoice, TodayDashboardSections, UiMode};
 use orgsidian_core::settings::{
-    read_vault_settings, vault_settings_path, write_vault_settings, GlobalSettings,
-    SchemaVersion, VaultSettings, SCHEMA_VERSION_CURRENT,
-};
-use orgsidian_core::settings::schema::{
-    AgendaPreset, ThemeChoice, TodayDashboardSections, UiMode,
+    read_vault_settings, vault_settings_path, write_vault_settings, GlobalSettings, SchemaVersion,
+    VaultSettings, SCHEMA_VERSION_CURRENT,
 };
 use proptest::collection;
 use proptest::option;
@@ -89,8 +87,7 @@ fn writer_fixed_point() {
     let dir_a = tempdir().expect("tempdir A");
     let dir_b = tempdir().expect("tempdir B");
     let mut s = VaultSettings::default();
-    s.keybindings
-        .insert("editor.save".into(), "Cmd+S".into());
+    s.keybindings.insert("editor.save".into(), "Cmd+S".into());
 
     write_vault_settings(dir_a.path(), &s).expect("write A");
     write_vault_settings(dir_b.path(), &s).expect("write B");
@@ -113,9 +110,7 @@ fn unknown_fields_preserved() {
     // Inject a v2-style extension into the on-disk file by hand.
     let path = vault_settings_path(dir.path());
     let existing = std::fs::read_to_string(&path).expect("read existing");
-    let injected = format!(
-        "{existing}\n[some_v2_extension]\nfoo = 1\nbar = \"hello\"\n"
-    );
+    let injected = format!("{existing}\n[some_v2_extension]\nfoo = 1\nbar = \"hello\"\n");
     std::fs::write(&path, &injected).expect("inject v2 extension");
 
     let read_back = read_vault_settings(dir.path()).expect("read with extension");

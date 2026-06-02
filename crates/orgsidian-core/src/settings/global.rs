@@ -42,7 +42,9 @@ pub fn read_global_settings() -> SettingsResult<GlobalSettings> {
 /// Atomically write global settings. Creates `<config-dir>/orgsidian/` if absent.
 pub fn write_global_settings(settings: &GlobalSettings) -> SettingsResult<()> {
     let path = global_settings_path()?;
-    let dir = path.parent().expect("global config path always has a parent");
+    let dir = path
+        .parent()
+        .expect("global config path always has a parent");
     fs::create_dir_all(dir).map_err(|source| SettingsError::Io {
         path: dir.to_path_buf(),
         source,

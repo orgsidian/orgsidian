@@ -18,8 +18,7 @@ fn read_doc() -> String {
     let path: PathBuf = PathBuf::from(manifest_dir)
         .join("../..")
         .join("docs/architecture/settings-boundary.md");
-    fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()))
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()))
 }
 
 #[test]

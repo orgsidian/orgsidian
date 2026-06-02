@@ -86,7 +86,10 @@ mod tests {
         let settings = VaultSettings::default();
         write_vault_settings(dir.path(), &settings).expect("write succeeds");
         let on_disk = vault_settings_path(dir.path());
-        assert!(on_disk.exists(), "settings.toml should exist at {on_disk:?}");
+        assert!(
+            on_disk.exists(),
+            "settings.toml should exist at {on_disk:?}"
+        );
         assert!(
             on_disk.parent().unwrap().is_dir(),
             ".orgsidian/ directory should be created"
@@ -99,8 +102,11 @@ mod tests {
         // Create .orgsidian/settings.toml with deliberately malformed TOML.
         let settings_path = vault_settings_path(dir.path());
         fs::create_dir_all(settings_path.parent().unwrap()).unwrap();
-        fs::write(&settings_path, "schema_version = \"not-a-number-and-no-closing-quote")
-            .expect("seed malformed file");
+        fs::write(
+            &settings_path,
+            "schema_version = \"not-a-number-and-no-closing-quote",
+        )
+        .expect("seed malformed file");
         let err = read_vault_settings(dir.path()).expect_err("malformed TOML must error");
         assert!(matches!(err, SettingsError::ParseFailed { .. }));
     }
