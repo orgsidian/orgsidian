@@ -1,6 +1,6 @@
 # Story 1.18: TOML settings authoritative store with hybrid boundary
 
-Status: in-progress
+Status: review
 
 ## Metadata
 

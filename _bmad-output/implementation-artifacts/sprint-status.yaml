@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-02 (story 1.18 dev started → in-progress)
+# last_updated: 2026-06-02 (story 1.18 dev complete → review; PR #137)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-02 (story 1.18 dev started → in-progress)
+last_updated: 2026-06-02 (story 1.18 dev complete → review; PR #137)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -61,7 +61,7 @@ development_status:
   1-15-configure-git-cliff-for-cc-changelog-generation: done
   1-16-github-issues-sync-one-issue-per-story: done
   1-17-establish-wcag-2-1-aa-hard-ci-gate: done
-  1-18-toml-settings-authoritative-store-with-hybrid-boundary: in-progress
+  1-18-toml-settings-authoritative-store-with-hybrid-boundary: review
   epic-1-retrospective: optional
 
   # Epic 2: Parser & Round-trip Fidelity
