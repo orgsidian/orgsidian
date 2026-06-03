@@ -23,6 +23,10 @@ tauri-plugin-opener = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 orgsidian-core = { workspace = true }
+# Story 1.18 (LD-40): structured logging for the bootstrap smoke that proves the
+# settings store wire is live. Facade only; subscriber wiring stays as Tauri
+# plugin-log's job (LD-35).
+tracing = { workspace = true }
 tauri-specta = { workspace = true }
 specta = { workspace = true }
 specta-typescript = { workspace = true }

@@ -50,7 +50,7 @@ The LEAF discipline is visible at a glance: `parser`, `index`, `watcher`, `vault
 | `orgsidian-vault` | Atomic-write subsystem (`atomic-write-file`), dirty-buffer manager, single-writer discipline, refile subtree primitives. |
 | `orgsidian-plugin-api` | Public trait surface (`OrgsidianPlugin`, `Event`, `HookOutcome`, `PluginContext`) — leaf crate, the only one slated for crates.io publication at v1.5+. |
 | `orgsidian-report` | Project report export — Typst-as-library + bundled fonts + parallel HTML renderer. |
-| `orgsidian-core` | The hub: orchestrators, plugin registry, clock, starter-vault templates, public API the binaries consume. |
+| `orgsidian-core` | The hub: orchestrators, plugin registry, clock, starter-vault templates, public API the binaries consume. Hosts the LD-40 TOML [`settings`](./crates/orgsidian-core/src/settings/) module (per-Vault + global stores) — see [`docs/architecture/settings-boundary.md`](./docs/architecture/settings-boundary.md) for the `tauri-plugin-store` boundary. |
 | `orgsidian-cli` | `orgsidian` binary — `parse-file`, `index init/rebuild/stats`, future commands. Reaches leaves through `core`. |
 | `orgsidian-shell-app` | Tauri 2.x host — owns the webview, IPC commands, system tray, global shortcuts, plugin loading. |
 | `shell-ui` | React 19 + TS + Tailwind 4 + shadcn + forked TanStack Router renderer — editor (CodeMirror 6), dashboards, agendas, capture, settings, merge dialog. |

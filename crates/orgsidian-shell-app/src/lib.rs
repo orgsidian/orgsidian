@@ -69,6 +69,23 @@ pub fn run() -> tauri::Result<()> {
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app| {
             specta_builder.mount_events(app);
+
+            // Story 1.18 (LD-40): boot-time smoke for the TOML settings store.
+            // Proves the wire compiles + reads; full GUI consumption is Story
+            // 12.x scope. Failure does NOT abort startup — caller (Story 6.7+)
+            // will wire the LD-41 backup-and-warn fallback.
+            match orgsidian_core::settings::read_global_settings() {
+                Ok(_settings) => tracing::info!(
+                    target: "orgsidian::settings",
+                    "LD-40 global settings loaded from disk (or default-on-missing)"
+                ),
+                Err(err) => tracing::warn!(
+                    target: "orgsidian::settings",
+                    error = %err,
+                    "LD-40 global settings read failed; continuing with in-memory defaults (Story 6.7+ wires LD-41 fallback)"
+                ),
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())

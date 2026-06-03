@@ -60,6 +60,22 @@ tempfile = "3"
 # (otherwise a path-only dep is interpreted as a `*` wildcard for a public
 # crate). Version stays in lockstep with workspace.package.version.
 orgsidian-core = { path = "crates/orgsidian-core", version = "0.0.0" }
+# Story 1.18 (LD-40): first-use cross-crate edge from `orgsidian-core` to the
+# vault LEAF. The LEAF graph rule at deny.toml only allows `orgsidian-core` as
+# the wrapper, so a workspace entry is required so the dependent crate can use
+# `{ workspace = true }`. Same `version + path` pattern as `orgsidian-core`
+# above to keep `cargo deny check bans` happy.
+orgsidian-vault = { path = "crates/orgsidian-vault", version = "0.0.0" }
+# Story 1.18 (LD-40): TOML 1.x for authoritative settings (de)serialization.
+# Story 12.3 may swap the writer to `toml_edit` for format-preserving GUI
+# round-trip; the reader stays on `toml` core. MIT/Apache-2.0.
+toml = "1"
+# Story 1.18 (LD-40): OS-conventional config dir resolution. 6.x is the latest
+# stable line. MIT/Apache-2.0.
+dirs = "6"
+# Story 1.18 (LD-40): property-based testing for the schema round-trip
+# fixed-point. First proptest use in the workspace. MIT/Apache-2.0.
+proptest = "1"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a
