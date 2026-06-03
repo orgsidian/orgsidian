@@ -1,6 +1,6 @@
 # Story 2.1: Vendor `tree-sitter-org` as SHA-pinned git submodule
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -223,7 +223,20 @@ So that the LD-48 maintenance contingency is in place from day-1 (forkable-on-st
 
 ## Review Findings
 
-(empty — populated on code-review)
+### Review Findings (2026-06-03, bmad-code-review)
+
+3 layer paralleli: Blind Hunter (15 raw), Edge Case Hunter (11 raw), Acceptance Auditor (15 raw, 12 confirms). Dopo dedupe + verifica: 3 patch, 3 defer, ~15 dismiss. Zero must-fix / zero decision-needed.
+
+- [x] [Review][Patch] Smoke test `grammar_link.rs` is weaker than AC4 intent — `abi_version() > 0` passes even on a stale/incompatible grammar ABI; it never exercises `Parser::set_language()`, which is the actual ABI-compat check. [`crates/orgsidian-parser/tests/grammar_link.rs:25`] — **Fixed**: appended `Parser::new() + set_language(&language).expect(…)` after the `abi_version` assert. Test passes against the pinned grammar.
+- [x] [Review][Patch] `build.rs` has two `rerun-if-changed` gaps that bite local dev: (a) the existence-panic branch returns BEFORE any `cargo:rerun-if-changed=` is printed, so after a fresh-clone failure → `git submodule update --init`, cargo may not re-run build.rs without a `cargo clean`; (b) no rerun trigger on `grammar/src/tree_sitter/*.h` headers. [`crates/orgsidian-parser/build.rs`] — **Fixed**: moved all three `cargo:rerun-if-changed=` (parser.c, scanner.c, tree_sitter/ headers dir) BEFORE the existence check; cargo now watches the right paths even when the panic-branch fires.
+- [x] [Review][Patch] AC2 letter violation: `CONTRIBUTING.md` §8 cross-links to `architecture.md` are missing the `#L1276` line anchor required by the spec ("so a future contributor reading either doc lands on the other"). [`CONTRIBUTING.md:153,184,188`] — **Fixed**: appended `#L1276` to the three LD-48 cross-links in §8.
+- [x] [Review][Defer] `_language_for_smoke` is `pub fn` (un-gated) — leaks `tree_sitter::Language` into the crate's stable public API. Already disclosed in Debug Log References + deferred-work.md; Story 2.2 deletes it. Deferred, pre-existing decision recorded in the story's Debug Log.
+- [x] [Review][Defer] `submodules: recursive` on `actions/checkout@v5` will silently expand the vendored surface if upstream `tree-sitter-org` ever introduces nested submodules — the parser-owner SHA-review checklist in CONTRIBUTING.md §8 enumerates `grammar.js`/`scanner.c`/test-corpus/node-types but NOT a `.gitmodules` diff in the submodule itself. Today `tree-sitter-org` has no nested submodules so impact is theoretical. Defer: add ".gitmodules diff" to the §8 SHA-review checklist as part of the v0.3 dry-run prep, not Story 2.1 scope.
+- [x] [Review][Defer] No MSRV pin (`rust-version` in workspace Cargo.toml, intentionally omitted per Story 1.2) — the new `unsafe extern "C" { … }` block syntax compiles only on rustc ≥ 1.82 (Rust-2024 form). `rust-toolchain.toml` pins `channel = "stable"` so CI is auto-current, but a contributor with a stale local `stable` channel hits a parse error with no MSRV floor to anchor the message. Defer to the MSRV-policy story (no current breakage in CI).
+
+**Dismissed as noise (sample):** SHA-pin without in-repo content hash (git's Merkle SHA *is* the content hash), `tree-sitter` as runtime dep (required because `_language_for_smoke` is `pub`), license-not-in-diff (LICENSE is at SHA), dead-code warning on `language()` (reachable via `_language_for_smoke`), Arch container safe.directory race (actions/checkout@v5 handles per-submodule), serde_json indexmap activation (cargo deny passed), MinGW `target_env="gnu"` flag (CI runs MSVC), speculative future-clippy/future-cc lints, GITHUB_TOKEN persist-credentials (public submodule).
+
+**Gate exit:** spec letter holds. Scope-fence intact (`parse()` body + `tests/anchor.rs` untouched). FR-1 traceability verbatim. Pinned SHA + `.gitmodules` + workspace dep block + build.rs + grammar/mod.rs match AC verbatim shapes. CI `submodules: recursive` flips verified (2 in nightly, 1 in pr.yml; merge-gate-nightly-fresh stays `false` correctly). Cargo deny/audit/build/test all green per Completion Notes.
 
 ## Dev Notes
 
@@ -396,3 +409,4 @@ claude-opus-4-7 (1M context) via bmad-dev-story workflow
 |------|--------|--------|
 | 2026-06-03 | bmad-create-story | Created story spec for Story 2.1 |
 | 2026-06-03 | bmad-dev-story | Implemented Story 2.1 (T1–T15); SHA pinned 219c0b27, cold build 5.15s, all gates green |
+| 2026-06-03 | bmad-code-review | Adversarial review (3 parallel layers): 0 must-fix, 3 patch fixed (smoke `Parser::set_language` guard, `build.rs` `rerun-if-changed` gaps closed, CONTRIBUTING §8 `#L1276` anchors), 3 defer recorded; status → done |

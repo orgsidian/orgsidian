@@ -10,11 +10,23 @@
 
 fn main() {
     let grammar_src = std::path::Path::new("grammar").join("src");
+    let parser_c = grammar_src.join("parser.c");
+    let scanner_c = grammar_src.join("scanner.c");
+    let headers_dir = grammar_src.join("tree_sitter");
+
+    // Emit `rerun-if-changed` BEFORE the existence check so that cargo
+    // re-runs build.rs after `git submodule update --init --recursive`
+    // (otherwise a fresh-clone panic leaves cargo with no watched path and
+    // recovery requires `cargo clean`). Watching the headers dir
+    // (`tree_sitter/parser.h` etc., included by parser.c + scanner.c)
+    // ensures SHA bumps that only touch headers also trigger a rebuild.
+    println!("cargo:rerun-if-changed={}", parser_c.display());
+    println!("cargo:rerun-if-changed={}", scanner_c.display());
+    println!("cargo:rerun-if-changed={}", headers_dir.display());
 
     // Anti-footgun: hard-fail with a parser-owner-readable message if the
     // submodule has not been initialized (fresh clone without
     // `git submodule update --init --recursive` — extremely common).
-    let parser_c = grammar_src.join("parser.c");
     if !parser_c.exists() {
         panic!(
             "tree-sitter-org submodule not initialized. \
@@ -35,12 +47,9 @@ fn main() {
     c_config.flag("-utf-8");
 
     c_config.file(&parser_c);
-    println!("cargo:rerun-if-changed={}", parser_c.display());
 
-    let scanner_c = grammar_src.join("scanner.c");
     if scanner_c.exists() {
         c_config.file(&scanner_c);
-        println!("cargo:rerun-if-changed={}", scanner_c.display());
     }
 
     c_config.compile("tree_sitter_org");

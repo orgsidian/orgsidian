@@ -150,7 +150,7 @@ Story 1.11 implements the LD-41 failure-mode harness; Story 1.12 implements the 
 
 ## 8. Parser ownership (LD-48)
 
-The org-mode grammar at [`crates/orgsidian-parser/grammar/`](./crates/orgsidian-parser/grammar/) is a **SHA-pinned git submodule** vendoring [`nvim-orgmode/tree-sitter-org`](https://github.com/nvim-orgmode/tree-sitter-org). The vendoring discipline, the parser-owner role, and the upgrade process are mandated by [LD-48 in architecture.md](./_bmad-output/planning-artifacts/architecture.md). This section is the human-readable contract; the machine-readable pin is whatever SHA `git ls-tree HEAD crates/orgsidian-parser/grammar` reports.
+The org-mode grammar at [`crates/orgsidian-parser/grammar/`](./crates/orgsidian-parser/grammar/) is a **SHA-pinned git submodule** vendoring [`nvim-orgmode/tree-sitter-org`](https://github.com/nvim-orgmode/tree-sitter-org). The vendoring discipline, the parser-owner role, and the upgrade process are mandated by [LD-48 in architecture.md](./_bmad-output/planning-artifacts/architecture.md#L1276). This section is the human-readable contract; the machine-readable pin is whatever SHA `git ls-tree HEAD crates/orgsidian-parser/grammar` reports.
 
 ### Role: parser owner
 
@@ -181,8 +181,8 @@ When the parser owner wants to bump the pin:
 
 ### Fork-and-maintain dry run
 
-[LD-48 reserves 2 weeks at the v0.3 milestone](./_bmad-output/planning-artifacts/architecture.md) for a fork-and-maintain dry run: the parser owner checks out upstream, builds from source, fixes a trivial issue, and runs the full parser test corpus. This section only **documents** the cadence; the dry-run itself is a v0.3-milestone task, not Story 2.1 scope.
+[LD-48 reserves 2 weeks at the v0.3 milestone](./_bmad-output/planning-artifacts/architecture.md#L1276) for a fork-and-maintain dry run: the parser owner checks out upstream, builds from source, fixes a trivial issue, and runs the full parser test corpus. This section only **documents** the cadence; the dry-run itself is a v0.3-milestone task, not Story 2.1 scope.
 
 ### In-house fork trigger
 
-Per [LD-48](./_bmad-output/planning-artifacts/architecture.md): if at any `v*` milestone upstream `nvim-orgmode/tree-sitter-org` has had no commits for more than 6 months, fork to `orgsidian-org/tree-sitter-org` and maintain in-house under MIT. The current parser-owner SHA-review log is the input to that decision.
+Per [LD-48](./_bmad-output/planning-artifacts/architecture.md#L1276): if at any `v*` milestone upstream `nvim-orgmode/tree-sitter-org` has had no commits for more than 6 months, fork to `orgsidian-org/tree-sitter-org` and maintain in-house under MIT. The current parser-owner SHA-review log is the input to that decision.

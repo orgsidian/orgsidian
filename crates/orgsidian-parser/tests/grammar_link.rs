@@ -25,4 +25,15 @@ fn grammar_language_symbol_links() {
         language.abi_version() > 0,
         "tree-sitter-org Language must have positive ABI version"
     );
+    // Stronger guard: `Parser::set_language` performs the ABI compatibility
+    // check between the grammar's compiled version and the host tree-sitter
+    // crate's supported range. A grammar compiled by a stale generator
+    // returning an ABI outside the host's supported window passes the
+    // `abi_version() > 0` smoke but fails here — which is precisely the
+    // regression the Story 2.2 `Parser::set_language(&language)?` call would
+    // hit downstream, surfacing it now.
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&language)
+        .expect("tree-sitter-org Language must be ABI-compatible with host tree-sitter crate");
 }
