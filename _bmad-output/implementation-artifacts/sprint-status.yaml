@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-02 (story 1.18 dev complete → review; PR #137)
+# last_updated: 2026-06-03 (story 2.1 review)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-02 (story 1.18 dev complete → review; PR #137)
+last_updated: 2026-06-03 (story 2.1 review)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -61,12 +61,12 @@ development_status:
   1-15-configure-git-cliff-for-cc-changelog-generation: done
   1-16-github-issues-sync-one-issue-per-story: done
   1-17-establish-wcag-2-1-aa-hard-ci-gate: done
-  1-18-toml-settings-authoritative-store-with-hybrid-boundary: review
+  1-18-toml-settings-authoritative-store-with-hybrid-boundary: done
   epic-1-retrospective: optional
 
   # Epic 2: Parser & Round-trip Fidelity
-  epic-2: backlog
-  2-1-vendor-tree-sitter-org-as-sha-pinned-git-submodule: backlog
+  epic-2: in-progress
+  2-1-vendor-tree-sitter-org-as-sha-pinned-git-submodule: review
   2-2-implement-orgsidian-parser-grammar-wrapper: backlog
   2-3-implement-semantic-layer-todo-cycling-drawer-types-timestamps-link-types: backlog
   2-4-implement-round-trip-faithful-serializer: backlog

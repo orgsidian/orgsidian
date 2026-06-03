@@ -51,7 +51,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: false
+          # Required for the tree-sitter-org grammar at
+          # crates/orgsidian-parser/grammar/ (LD-48). Nightly runs
+          # `cargo test --workspace` which compiles orgsidian-parser.
+          submodules: recursive
 
       # Linux native deps for Tauri 2.x. GitHub-hosted ubuntu-24.04 does
       # NOT pre-install GTK/WebKit/libsoup development headers; glib-sys
@@ -193,7 +196,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: false
+          # Required for the tree-sitter-org grammar at
+          # crates/orgsidian-parser/grammar/ (LD-48). Arch cell runs the
+          # full workspace cargo test, which compiles orgsidian-parser.
+          submodules: recursive
 
       # Mark the workspace as a `safe.directory` for git. Inside the Arch
       # container the runner UID and the workspace owner UID diverge, so git

@@ -147,3 +147,42 @@ That document defines: the three-level round-trip oracle (L0 per-PR / L1 nightly
 Per the architecture's [Cross-Cutting Concerns header](./_bmad-output/planning-artifacts/architecture.md), `test-design.md` is the binding strategy for every story's red-phase scaffold (Process Discipline rule A); architecture LD-32 / LD-37 / LD-41 / LD-43 / LD-44 / LD-45 are referenced by it, not superseded.
 
 Story 1.11 implements the LD-41 failure-mode harness; Story 1.12 implements the perf-snapshot regression macro consumed across the epics — both reference `test-design.md` as the source spec.
+
+## 8. Parser ownership (LD-48)
+
+The org-mode grammar at [`crates/orgsidian-parser/grammar/`](./crates/orgsidian-parser/grammar/) is a **SHA-pinned git submodule** vendoring [`nvim-orgmode/tree-sitter-org`](https://github.com/nvim-orgmode/tree-sitter-org). The vendoring discipline, the parser-owner role, and the upgrade process are mandated by [LD-48 in architecture.md](./_bmad-output/planning-artifacts/architecture.md). This section is the human-readable contract; the machine-readable pin is whatever SHA `git ls-tree HEAD crates/orgsidian-parser/grammar` reports.
+
+### Role: parser owner
+
+A single **parser owner** holds working familiarity with the `tree-sitter-org` grammar source and signs off on every submodule SHA bump. The role MUST exist at all times per LD-48; the identity of the holder is tracked outside this document (the GitHub org's maintainer list, or `MAINTAINERS.md` if/when it lands). For v0.1 Alpha the **current lead maintainer** fills the role by default; the wording stays role-agnostic so it remains accurate as the team grows. No separate ceremony is required until a second parser-touching contributor appears.
+
+### SHA-pin discipline
+
+The submodule is pinned to a specific commit SHA — **not** to a branch. The `.gitmodules` entry intentionally omits any `branch =` key. Running `git submodule update --remote` as a workflow shortcut is **forbidden**: it would fast-forward the local checkout to upstream HEAD and silently change the parser behaviour. Bumps land **only** through a reviewed PR (see below). The recorded gitlink in the parent-repo index (`git ls-tree HEAD crates/orgsidian-parser/grammar`) is the authoritative pin.
+
+### Upgrade process (the LD-48 contingency mechanism)
+
+When the parser owner wants to bump the pin:
+
+1. **Enumerate** upstream commits since the last pin:
+   ```sh
+   git -C crates/orgsidian-parser/grammar log <current-SHA>..origin/main --oneline
+   ```
+2. **Review** every commit in the range for:
+   - Grammar correctness regressions (any `grammar.js` change).
+   - Test corpus changes (any `test/corpus/*.txt` change).
+   - `scanner.c` edits — external-token logic, the highest-risk surface.
+   - Node-type renames — the Story 2.2 wrapper depends on these strings.
+3. **Open a PR** titled `chore(parser): bump tree-sitter-org to <SHA>`. The PR description includes:
+   - The upstream commit-range diff link.
+   - Which node-type strings were added / renamed / removed.
+   - Whether the L0 round-trip subset (Story 2.6 — flag as "future" until that story ships) still passes.
+4. **Sign-off**: the bump lands only after the parser owner's explicit approval in the PR. **No auto-bump** — Dependabot / Renovate MUST NOT be configured for this submodule.
+
+### Fork-and-maintain dry run
+
+[LD-48 reserves 2 weeks at the v0.3 milestone](./_bmad-output/planning-artifacts/architecture.md) for a fork-and-maintain dry run: the parser owner checks out upstream, builds from source, fixes a trivial issue, and runs the full parser test corpus. This section only **documents** the cadence; the dry-run itself is a v0.3-milestone task, not Story 2.1 scope.
+
+### In-house fork trigger
+
+Per [LD-48](./_bmad-output/planning-artifacts/architecture.md): if at any `v*` milestone upstream `nvim-orgmode/tree-sitter-org` has had no commits for more than 6 months, fork to `orgsidian-org/tree-sitter-org` and maintain in-house under MIT. The current parser-owner SHA-review log is the input to that decision.
