@@ -37,12 +37,14 @@ jobs:
       matrix:
         os: [macos-14, ubuntu-24.04]
     steps:
-      # Step 1 — checkout. submodules: false today; Story 2.1 flips to
-      # `recursive` when tree-sitter-org lands as a SHA-pinned submodule.
+      # Step 1 — checkout. submodules: recursive — required for the
+      # tree-sitter-org grammar at crates/orgsidian-parser/grammar/ (LD-48).
+      # If the submodule is ever moved to a private repo (LD-48 in-house fork
+      # trigger fires), add `token: ${{ secrets.SUBMODULE_PAT }}` here.
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          submodules: false
+          submodules: recursive
 
       # Step 1.5 — Linux native deps for Tauri 2.x (GTK3 + WebKit2GTK 4.1 +
       # libsoup3 + librsvg + ayatana-appindicator3). The GitHub-hosted
@@ -227,6 +229,9 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.sha }}
+          # submodules: false intentional — this job only reads
+          # .github/workflows/nightly.yml from base ref. No submodule-touching
+          # code runs here, so skipping the fetch saves ~3s/PR.
           submodules: false
       - name: merge-gate-nightly-fresh
         env:

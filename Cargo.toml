@@ -76,6 +76,13 @@ dirs = "6"
 # Story 1.18 (LD-40): property-based testing for the schema round-trip
 # fixed-point. First proptest use in the workspace. MIT/Apache-2.0.
 proptest = "1"
+# Story 2.1 (LD-48): tree-sitter Rust host for the nvim-orgmode/tree-sitter-org
+# vendored grammar at crates/orgsidian-parser/grammar/. Latest stable 0.26.x at
+# impl time. MIT.
+tree-sitter = "0.26"
+# Story 2.1: C compiler driver for build.rs — compiles vendored parser.c +
+# scanner.c through the host's cc/cl/clang. MIT/Apache-2.0. Pre-allowed.
+cc = "1"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

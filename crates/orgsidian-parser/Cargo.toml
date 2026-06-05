@@ -6,8 +6,16 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+build = "build.rs"
 
 [dependencies]
 # Story 1.9: `thiserror` for the `ParseError` enum used by the anchor stub.
-# tree-sitter / tree-sitter-org land in Story 2.1+ per the epic-2 sequence.
 thiserror = { workspace = true }
+# Story 2.1 (LD-48): tree-sitter Rust host. The vendored nvim-orgmode/tree-sitter-org
+# grammar lives as a SHA-pinned git submodule under `grammar/`; `build.rs` compiles
+# its C sources via `cc` and `grammar::language()` exposes the FFI Language handle.
+tree-sitter = { workspace = true }
+
+[build-dependencies]
+# Story 2.1: cc driver for build.rs — compiles vendored grammar/src/{parser,scanner}.c.
+cc = { workspace = true }
