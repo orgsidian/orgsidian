@@ -2803,6 +2803,7 @@ name = "orgsidian-parser"
 version = "0.0.0"
 dependencies = [
  "cc",
+ "chrono",
  "thiserror 1.0.69",
  "tree-sitter",
 ]

@@ -15,6 +15,9 @@ thiserror = { workspace = true }
 # grammar lives as a SHA-pinned git submodule under `grammar/`; `build.rs` compiles
 # its C sources via `cc` and `grammar::language()` exposes the FFI Language handle.
 tree-sitter = { workspace = true }
+# Story 2.3 (FR-1): chrono NaiveDate/NaiveTime for the semantic layer's
+# `Timestamp` values — see [workspace.dependencies] for the pin rationale.
+chrono = { workspace = true }
 
 [build-dependencies]
 # Story 2.1: cc driver for build.rs — compiles vendored grammar/src/{parser,scanner}.c.
