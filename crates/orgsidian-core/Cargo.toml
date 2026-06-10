@@ -37,6 +37,11 @@ serde_json = { workspace = true, optional = true }
 orgsidian-vault = { workspace = true }
 toml = { workspace = true }
 dirs = { workspace = true }
+# Story 2.8 (LD-27/LD-37): second cross-crate LEAF edge — re-exported as the
+# `parser` façade module so consumers (first: `orgsidian-cli`) reach the
+# parser through core only, per the deny.toml LEAF graph rule. The workspace
+# entry activates the parser's opt-in `serde` feature.
+orgsidian-parser = { workspace = true }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode

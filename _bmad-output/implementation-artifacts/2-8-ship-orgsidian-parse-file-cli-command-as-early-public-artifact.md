@@ -1,6 +1,6 @@
 # Story 2.8: Ship `orgsidian parse <file>` CLI command as early public artifact
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -115,16 +115,16 @@ The deliverable is exactly: workspace + `orgsidian-core` façade wiring (AC1), f
 
 ## Tasks / Subtasks
 
-- [ ] **T1** — Workspace wiring: root `Cargo.toml` `[workspace.dependencies]` += `orgsidian-parser` (path+version+features, vault-entry pattern), `clap`, `clap_mangen`, `assert_cmd` (+ `predicates` if used), each with Story-2.8 comments. (AC1, AC7)
-- [ ] **T2** — Parser serde feature: `[features] serde = ["dep:serde", "chrono/serde"]` + optional serde dep in parser `Cargo.toml`; `cfg_attr` Serialize + camelCase derives on the AC2 type list across `src/semantic/*.rs`. Verify feature-off build + 77-test baseline untouched. (AC2)
-- [ ] **T3** — Core façade: parser workspace dep in core `Cargo.toml` (Story-2.8 comment) + `pub use orgsidian_parser as parser;` in core `lib.rs`. Run `cargo deny check bans` early — it proves the LEAF-edge direction before any CLI code exists. (AC1)
-- [ ] **T4** — RED first: write `crates/orgsidian-cli/tests/parse_cmd.rs` + `tests/fixtures/parse_cmd.org` against the stub binary; watch every case fail for the right reason. (AC6)
-- [ ] **T5** — CLI implementation: `src/cli.rs` (self-contained clap derive defs + about/long_about), `src/main.rs` (thin dispatch, ExitCode, LD-27 module doc), `src/render.rs` (deterministic human-readable tree), `--json` via `serde_json::to_string_pretty`. CLI `Cargo.toml` deps per AC1/AC6. (AC3, AC4)
-- [ ] **T6** — Man pages: `build.rs` with `include!("src/cli.rs")` + `CommandFactory` + `clap_mangen::generate_to` into `CARGO_MANIFEST_DIR/man/`; rerun-if-changed directives; build twice, verify byte-stable; commit `man/orgsidian.1` + `man/orgsidian-parse.1`. (AC5)
-- [ ] **T7** — GREEN: all parse_cmd tests pass, including the man-page guard and the recommended round-trip cross-check. (AC5, AC6)
-- [ ] **T8** — Gates per AC7 (mind the `--locked` bootstrap order); record test-count + lockfile deltas in Completion Notes; sentinel `git status` check. (AC7)
-- [ ] **T9** — deferred-work.md: pre-seed the story-2.8 stanza (AC8 candidates). (AC8)
-- [ ] **T10** — Commit + open PR. Commit title: `feat(cli): ship orgsidian parse CLI command (Story 2.8, closes #24)` — Conventional Commits scope `cli` per CONTRIBUTING §2. **NO** `Co-Authored-By` trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body: (a) LEAF-rule wiring rationale (workspace entry + core façade, deny-bans-verified), (b) serde feature posture (opt-in, Serialize-only, camelCase, feature-off baseline untouched), (c) man-page build.rs variance (in-tree `man/`, architecture-mandated, byte-stable), (d) dependency delta + deny/audit verdicts, (e) `Closes #24`. (process)
+- [x] **T1** — Workspace wiring: root `Cargo.toml` `[workspace.dependencies]` += `orgsidian-parser` (path+version+features, vault-entry pattern), `clap`, `clap_mangen`, `assert_cmd` (+ `predicates` if used), each with Story-2.8 comments. (AC1, AC7)
+- [x] **T2** — Parser serde feature: `[features] serde = ["dep:serde", "chrono/serde"]` + optional serde dep in parser `Cargo.toml`; `cfg_attr` Serialize + camelCase derives on the AC2 type list across `src/semantic/*.rs`. Verify feature-off build + 77-test baseline untouched. (AC2)
+- [x] **T3** — Core façade: parser workspace dep in core `Cargo.toml` (Story-2.8 comment) + `pub use orgsidian_parser as parser;` in core `lib.rs`. Run `cargo deny check bans` early — it proves the LEAF-edge direction before any CLI code exists. (AC1)
+- [x] **T4** — RED first: write `crates/orgsidian-cli/tests/parse_cmd.rs` + `tests/fixtures/parse_cmd.org` against the stub binary; watch every case fail for the right reason. (AC6)
+- [x] **T5** — CLI implementation: `src/cli.rs` (self-contained clap derive defs + about/long_about), `src/main.rs` (thin dispatch, ExitCode, LD-27 module doc), `src/render.rs` (deterministic human-readable tree), `--json` via `serde_json::to_string_pretty`. CLI `Cargo.toml` deps per AC1/AC6. (AC3, AC4)
+- [x] **T6** — Man pages: `build.rs` with `include!("src/cli.rs")` + `CommandFactory` + `clap_mangen::generate_to` into `CARGO_MANIFEST_DIR/man/`; rerun-if-changed directives; build twice, verify byte-stable; commit `man/orgsidian.1` + `man/orgsidian-parse.1`. (AC5)
+- [x] **T7** — GREEN: all parse_cmd tests pass, including the man-page guard and the recommended round-trip cross-check. (AC5, AC6)
+- [x] **T8** — Gates per AC7 (mind the `--locked` bootstrap order); record test-count + lockfile deltas in Completion Notes; sentinel `git status` check. (AC7)
+- [x] **T9** — deferred-work.md: pre-seed the story-2.8 stanza (AC8 candidates). (AC8)
+- [x] **T10** — Commit + open PR. Commit title: `feat(cli): ship orgsidian parse CLI command (Story 2.8, closes #24)` — Conventional Commits scope `cli` per CONTRIBUTING §2. **NO** `Co-Authored-By` trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body: (a) LEAF-rule wiring rationale (workspace entry + core façade, deny-bans-verified), (b) serde feature posture (opt-in, Serialize-only, camelCase, feature-off baseline untouched), (c) man-page build.rs variance (in-tree `man/`, architecture-mandated, byte-stable), (d) dependency delta + deny/audit verdicts, (e) `Closes #24`. (process — committed locally; PR + issue-label sync deferred to the next pipeline step per the 2.4 deviation precedent, see Completion Notes)
 
 ## Dev Notes
 
@@ -235,12 +235,53 @@ The deliverable is exactly: workspace + `orgsidian-core` façade wiring (AC1), f
 
 ### Agent Model Used
 
+claude-fable-5[1m] (Fable 5, Claude Code)
+
 ### Debug Log References
+
+- RED run (T4): 4/5 parse_cmd tests failed for the right reasons against the stub binary (stub greeting on stdout, missing man page, exit 0 on missing file); the façade round-trip test passed immediately — by design, it exercises only the T1–T3 wiring (core façade + serde-feature compile), which was already in place.
+- macOS `/tmp` symlink note: `cargo` invoked with a `--manifest-path` under `/tmp/...` panicked inside its vendored `gix` ("we have sanitized path with is_git()") when opening the git-worktree repo; using the canonical `/private/tmp/...` path resolves it. Local tooling note only — no project impact.
+- Man-page byte-stability (AC5): two consecutive builds (second forced via `src/cli.rs` mtime bump) produced identical sizes (orgsidian.1 = 669 B, orgsidian-parse.1 = 915 B) and identical content; pages embed no dates/timestamps.
 
 ### Completion Notes List
 
+- **AC1** — Three-manifest wiring landed: root `[workspace.dependencies]` gains `orgsidian-parser` (path+version+`features = ["serde"]`, vault-entry pattern) + `clap`/`clap_mangen`/`assert_cmd` pins; core gains the parser dep + `pub use orgsidian_parser as parser;` façade re-export (re-export only, no wrapper logic); CLI depends on `orgsidian-core`/`clap`/`serde_json` and has NO parser entry. `cargo deny check bans` = ok (LEAF edge direction proven).
+- **AC2** — `serde = ["dep:serde", "chrono/serde"]` opt-in feature on the parser; all 19 AC2-listed semantic types carry `#[cfg_attr(feature = "serde", derive(serde::Serialize), serde(rename_all = "camelCase"))]`. Serialize-only (OrgError precedent). Feature-off parser test baseline unchanged: **77 passed**. One necessary addition beyond bare derives: chrono's `serde` feature does NOT cover `TimeDelta`, so `ClockEntry::duration` uses a feature-gated `serialize_with` helper emitting whole seconds (exact for org `=> H:MM` durations; recorded in deferred-work for the Epic 4+ schema-contract decision).
+- **AC3/AC4** — `src/cli.rs` (clap+std only, `include!`-shared with build.rs; about/long_about on every level; long_about documents the JSON no-stability-contract posture), `src/main.rs` (thin dispatch → `ExitCode`; LD-27 module doc; no FR header), `src/render.rs` (deterministic human tree; `properties` HashMap sorted before printing; "(no headlines)" for empty docs). Errors → stderr + exit 1 (distinct from clap's usage exit 2); no `unwrap`/`expect`/`panic!` in committed binary code (build.rs `expect` allowed). `--json` = `serde_json::to_string_pretty` + trailing newline, nothing else on stdout.
+- **AC5** — `build.rs` resolves `man/` via `CARGO_MANIFEST_DIR`, `include!`s `src/cli.rs`, emits rerun-if-changed for both, and `clap_mangen::generate_to` writes `orgsidian.1` + `orgsidian-parse.1` (both committed). Byte-stable across two builds (see Debug Log). Anti-placebo man-page guard test included.
+- **AC6** — `tests/parse_cmd.rs`: 5 cases via `Command::cargo_bin("orgsidian")` — human mode (loose substrings), `--json` (parsed `Value` field asserts incl. camelCase `todoState` + snake_case absence), missing file (stderr + non-zero + empty stdout + not exit 2), man-page guard, FR-2 round-trip cross-check through the façade. Co-located fixture `tests/fixtures/parse_cmd.org` reuses semantic.rs-proven constructs. RED-first verified (T4).
+- **AC7** — Gates (all `--locked` after the legitimate first non-locked lockfile update): parser 77 passed; workspace **127 passed / 11 ignored** (= 122 baseline + 5 new CLI tests, no regressions); clippy clean (only the 5 known upstream scanner.c C warnings); `cargo fmt --check` clean; `cargo deny check licenses bans advisories` = ok/ok/ok; `cargo audit` = 18 allowed warnings (baseline unchanged). Lockfile delta: 22 new dev/CLI crates (clap, clap_builder, clap_derive, clap_lex, anstream/anstyle family, clap_mangen, roff, assert_cmd, predicates family, bstr, difflib, termtree, polyfills) — all MIT/Apache-2.0-class, as declared. `cargo doc` on the three crates: zero warnings from Story 2.8 code; one PRE-EXISTING warning in `orgsidian-core/src/settings/error.rs:6` (Story 1.18 file, private-item doc link) recorded in deferred-work — out of this story's scope fence.
+- **AC8** — story-2.8 stanza pre-seeded in deferred-work.md (command-tree remainder, docs/cli.md, JSON schema contract, man-page bundling, exit-code doc, TimeDelta-seconds representation, the pre-existing core rustdoc warning).
+- **Variances** (per Dev Notes §7, recorded not spec-edited): (1) wiring touches root/core/parser beyond the CLI crate — LEAF-rule-mandated; (2) human-readable default + `--json` flag (epic AC + LD-27 output rule win over the LD-27 one-liner); (3) build.rs writes the in-tree `man/` (architecture-mandated; pages committed); (4) `generate_to` also emits root `orgsidian.1` — both committed.
+- **Process deviation** (2.4 precedent): pipeline rules forbid PR creation and GitHub issue/label mutation — committed locally on `story/2.8-parse-cli-command` with the prescribed message; PR + issue #24 label sync (`status:in-progress`→`status:in-review`) belong to the next pipeline step. Sprint-status transitions ready-for-dev → in-progress → review were applied directly in sprint-status.yaml.
+
 ### File List
+
+- `Cargo.toml` — UPDATE: workspace deps `orgsidian-parser` (serde feature), `clap`, `clap_mangen`, `assert_cmd` (Story-2.8 comments)
+- `Cargo.lock` — UPDATE: 22 new crates (clap ecosystem, clap_mangen+roff, assert_cmd family; dev/CLI only) + feature-flip recompiles
+- `crates/orgsidian-parser/Cargo.toml` — UPDATE: `[features] serde` + optional `serde` dep
+- `crates/orgsidian-parser/src/semantic/mod.rs` — UPDATE: cfg_attr Serialize derives (Document, Preamble, Directive)
+- `crates/orgsidian-parser/src/semantic/headline.rs` — UPDATE: derives (Headline, Tag)
+- `crates/orgsidian-parser/src/semantic/timestamp.rs` — UPDATE: derives (Timestamp, Repeater, RepeaterKind, Delay, DelayKind, TimeUnit)
+- `crates/orgsidian-parser/src/semantic/todo.rs` — UPDATE: derives (TodoState, TodoConfig, TodoSequence)
+- `crates/orgsidian-parser/src/semantic/drawer.rs` — UPDATE: derives (Drawer, DrawerKind, ClockEntry) + feature-gated `serialize_opt_timedelta` helper
+- `crates/orgsidian-parser/src/semantic/link.rs` — UPDATE: derives (Link, LinkKind)
+- `crates/orgsidian-core/Cargo.toml` — UPDATE: `orgsidian-parser = { workspace = true }` (Story-2.8 comment)
+- `crates/orgsidian-core/src/lib.rs` — UPDATE: `pub use orgsidian_parser as parser;` façade re-export (+ doc)
+- `crates/orgsidian-cli/Cargo.toml` — UPDATE: dependencies / build-dependencies / dev-dependencies per AC1/AC5/AC6
+- `crates/orgsidian-cli/src/main.rs` — UPDATE: stub → thin dispatch (`run_parse`, ExitCode, LD-27 module doc)
+- `crates/orgsidian-cli/src/cli.rs` — NEW: self-contained clap derive definitions (Cli, Command::Parse)
+- `crates/orgsidian-cli/src/render.rs` — NEW: deterministic human-readable AST renderer
+- `crates/orgsidian-cli/build.rs` — NEW: clap_mangen man-page generation into in-tree `man/`
+- `crates/orgsidian-cli/man/orgsidian.1` — NEW (generated, committed)
+- `crates/orgsidian-cli/man/orgsidian-parse.1` — NEW (generated, committed)
+- `crates/orgsidian-cli/tests/parse_cmd.rs` — NEW: 5 assert_cmd integration tests
+- `crates/orgsidian-cli/tests/fixtures/parse_cmd.org` — NEW: co-located fixture
+- `_bmad-output/implementation-artifacts/deferred-work.md` — UPDATE: story-2.8 stanza
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — UPDATE: story 2.8 → review
+- `_bmad-output/implementation-artifacts/2-8-ship-orgsidian-parse-file-cli-command-as-early-public-artifact.md` — UPDATE: status/tasks/dev record (this file)
 
 ## Change Log
 
 - 2026-06-10 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; grounded in the real stub CLI crate, the deny.toml LEAF graph rule forcing the core façade + serde-feature design, and crates.io-verified clap 4.6.1 / clap_mangen 0.3.0 / assert_cmd 2.2.2). Status: ready-for-dev.
+- 2026-06-10 — Story 2.8 implemented (T1–T10): LEAF-rule wiring (workspace entry + core `parser` façade), opt-in Serialize-only serde feature on the parser semantic types (camelCase), `orgsidian parse <file> [--json]` via clap derive (cli.rs/main.rs/render.rs), build-time man pages (orgsidian.1 + orgsidian-parse.1, byte-stable), 5 RED-first assert_cmd integration tests + co-located fixture, deferred-work stanza. Gates: parser 77, workspace 127/11 ignored, clippy/fmt/doc clean (one pre-existing core doc warning recorded), deny ok/ok/ok, audit 18-warning baseline. Status: review.

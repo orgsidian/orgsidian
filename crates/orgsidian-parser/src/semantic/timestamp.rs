@@ -18,6 +18,11 @@ use chrono::{NaiveDate, NaiveTime};
 
 /// How a repeater advances a timestamp when its task is marked done.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub enum RepeaterKind {
     /// `+` — shift by exactly one interval from the stamped date.
     Cumulate,
@@ -29,6 +34,11 @@ pub enum RepeaterKind {
 
 /// How a `-`/`--` warning delay applies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub enum DelayKind {
     /// `-` — delay applies to all occurrences.
     All,
@@ -38,6 +48,11 @@ pub enum DelayKind {
 
 /// Time unit of a repeater or delay interval.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub enum TimeUnit {
     /// `h`
     Hour,
@@ -53,6 +68,11 @@ pub enum TimeUnit {
 
 /// A repeater interval, e.g. `+1w`, `++2d`, `.+1m`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Repeater {
     /// Repeat strategy (`+`, `++`, `.+`).
     pub kind: RepeaterKind,
@@ -64,6 +84,11 @@ pub struct Repeater {
 
 /// A warning-delay interval, e.g. `-2d`, `--1w`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Delay {
     /// Delay strategy (`-`, `--`).
     pub kind: DelayKind,
@@ -79,6 +104,11 @@ pub struct Delay {
 /// Day names (`Wed`) are display sugar — they are kept in [`raw`](Self::raw)
 /// but not modeled (the date alone determines the weekday).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Timestamp {
     /// `true` for `<…>` (active), `false` for `[…]` (inactive).
     pub active: bool,

@@ -1,0 +1,21 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH orgsidian-parse 1  "parse " 
+.SH NAME
+orgsidian\-parse \- Parse an org file and print its AST
+.SH SYNOPSIS
+\fBorgsidian parse\fR [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIFILE\fR> 
+.SH DESCRIPTION
+Parse an org file and print its semantic AST.
+.PP
+By default the AST is rendered as a human\-readable headline tree (best\-effort presentation — the exact format is not a stability contract). With \-\-json the full semantic document is printed as pretty JSON with camelCase keys; the JSON shape mirrors the current semantic types and is NOT yet a schema\-stability contract (the stable wire surface arrives with the GUI IPC layer).
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Print the AST as pretty JSON (camelCase keys) instead of the human\-readable tree
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+<\fIFILE\fR>
+Path to the `.org` file to parse

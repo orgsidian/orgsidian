@@ -8,9 +8,21 @@ license.workspace = true
 repository.workspace = true
 build = "build.rs"
 
+[features]
+# Story 2.8 (LD-27): opt-in `Serialize` (NOT `Deserialize` — the OrgError
+# Serialize-only precedent, Story 1.4) on the public semantic output types,
+# camelCase field names per the project-wide JSON wire convention. Off by
+# default to keep the leaf serde-free for consumers that don't need it;
+# `orgsidian-core` activates it via the workspace dependency entry.
+# `chrono/serde` supplies the ISO-8601 impls for `NaiveDate`/`NaiveTime`
+# (the workspace chrono pin is default-features-off).
+serde = ["dep:serde", "chrono/serde"]
+
 [dependencies]
 # Story 1.9: `thiserror` for the `ParseError` enum used by the anchor stub.
 thiserror = { workspace = true }
+# Story 2.8: optional — activated only by the `serde` feature above.
+serde = { workspace = true, optional = true }
 # Story 2.1 (LD-48): tree-sitter Rust host. The vendored nvim-orgmode/tree-sitter-org
 # grammar lives as a SHA-pinned git submodule under `grammar/`; `build.rs` compiles
 # its C sources via `cc` and `grammar::language()` exposes the FFI Language handle.

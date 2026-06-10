@@ -16,6 +16,11 @@ use super::timestamp::{self, Timestamp};
 
 /// The three drawer classes the semantic layer distinguishes.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub enum DrawerKind {
     /// `:PROPERTIES:` — structured key/value pairs (see `Headline::properties`).
     Properties,
@@ -28,6 +33,11 @@ pub enum DrawerKind {
 
 /// One drawer attached to a headline, with its raw contents and spans.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Drawer {
     /// Classification by drawer name (case-insensitive for `LOGBOOK`).
     pub kind: DrawerKind,
@@ -54,6 +64,11 @@ pub struct Drawer {
 /// Open form: `CLOCK: [2026-06-10 Wed 08:00]` — start only.
 /// Closed form: `CLOCK: [start]--[end] => H:MM` — start, end, and duration.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct ClockEntry {
     /// Clock-in timestamp (org writes these in inactive `[…]` form).
     pub start: Timestamp,
@@ -61,10 +76,27 @@ pub struct ClockEntry {
     pub end: Option<Timestamp>,
     /// The `=> H:MM` duration as written; `None` for open entries (or when
     /// the duration text does not parse — the entry is kept, the field is
-    /// dropped).
+    /// dropped). With the `serde` feature on, serializes as whole seconds
+    /// (chrono's serde support does not cover [`TimeDelta`]).
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_opt_timedelta"))]
     pub duration: Option<TimeDelta>,
     /// Byte range of the parsed CLOCK line content in the `analyze()` input.
     pub span: Range<usize>,
+}
+
+/// Serialize an `Option<TimeDelta>` as whole seconds (Story 2.8 `serde`
+/// feature): chrono's `serde` feature implements `Serialize` for the
+/// date/time types only, not for `TimeDelta`. Seconds are exact here — org
+/// `=> H:MM` durations carry no sub-second component.
+#[cfg(feature = "serde")]
+fn serialize_opt_timedelta<S>(value: &Option<TimeDelta>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match value {
+        Some(delta) => serializer.serialize_some(&delta.num_seconds()),
+        None => serializer.serialize_none(),
+    }
 }
 
 /// Scan drawer contents line by line for well-formed `CLOCK:` lines.

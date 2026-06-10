@@ -20,6 +20,11 @@ use super::todo::{TodoConfig, TodoState};
 
 /// One headline tag (`:work:` → name `work`).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Tag {
     /// Tag text without the surrounding colons.
     pub name: String,
@@ -33,6 +38,11 @@ pub struct Tag {
 /// `deadline`, `properties`, …) plus the structural fields downstream
 /// stories need (`level`, `title`, `span`, `children`).
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Headline {
     /// Heading depth = number of leading stars (1-based).
     ///

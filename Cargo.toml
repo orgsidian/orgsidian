@@ -90,6 +90,25 @@ cc = "1"
 # *edge*, zero new crates. `default-features = false` drops clock/locale/wasm
 # baggage; `std` is all NaiveDate/NaiveTime need. MIT/Apache-2.0.
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+# Story 2.8 (LD-27/LD-37): second cross-crate LEAF edge — `orgsidian-core`
+# grows the parser façade so the CLI consumes the parser through core only
+# (deny.toml LEAF graph rule). `features = ["serde"]` activates the parser's
+# opt-in Serialize derives (camelCase JSON for `orgsidian parse --json`).
+# Same `version + path` pattern as `orgsidian-vault` above to keep
+# `cargo deny check bans` happy.
+orgsidian-parser = { path = "crates/orgsidian-parser", version = "0.0.0", features = ["serde"] }
+# Story 2.8 (LD-27): clap derive for the CLI command tree — clap annotations
+# are the primary CLI documentation (architecture CLI Documentation Strategy).
+# Latest stable 4.6.x at impl time. MIT/Apache-2.0.
+clap = { version = "4", features = ["derive"] }
+# Story 2.8 (LD-27): build-time man-page generation into the in-tree
+# `crates/orgsidian-cli/man/` dir via build.rs. Requires clap ^4 (satisfied).
+# Latest stable 0.3.x at impl time. MIT/Apache-2.0.
+clap_mangen = "0.3"
+# Story 2.8: dev-only CLI integration-test runner (spawns the real
+# `orgsidian` binary; architecture assert_cmd convention). Latest stable
+# 2.x at impl time. MIT/Apache-2.0.
+assert_cmd = "2"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

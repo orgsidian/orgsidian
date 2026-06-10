@@ -44,6 +44,11 @@ use crate::ParseError;
 
 /// One `#+NAME: value` directive line.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Directive {
     /// Directive name without the `#+`/`:` framing (e.g. `TITLE`, `TODO`).
     pub name: String,
@@ -55,6 +60,11 @@ pub struct Directive {
 
 /// Document-level content before the first headline (the zeroth section).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Preamble {
     /// Raw preamble text, exactly as written. On pathological input the
     /// region may extend over adjacent gap-absorbed bytes the grammar left
@@ -71,6 +81,11 @@ pub struct Preamble {
 
 /// The semantic view of one org document.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Document {
     /// Top-level headlines, in document order; nesting via
     /// [`Headline::children`].
