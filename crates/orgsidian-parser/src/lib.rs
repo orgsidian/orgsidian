@@ -21,9 +21,20 @@ use thiserror::Error;
 /// stays single-sourced through this leaf crate.
 pub use tree_sitter;
 
-/// Opaque parse result wrapping the raw [`tree_sitter::Tree`]. The newtype is
-/// the stable API surface (LD-5 crate-API-barrier); the wrapped tree is an
-/// implementation detail consumers reach through accessors only.
+/// Parse result wrapping the raw [`tree_sitter::Tree`]. The newtype is the
+/// stable API surface (LD-5 crate-API-barrier), but the wrapped tree is
+/// deliberately reachable — [`tree`](ParseTree::tree) borrows it and the
+/// [`tree_sitter`] re-export makes its full API nameable downstream. The raw
+/// tree IS the contract: the pinned `tree-sitter` version is part of this
+/// crate's public surface, and a `tree-sitter` major bump is a breaking
+/// change for consumers of this crate.
+///
+/// Node byte-ranges resolve only against the **exact source** passed to
+/// [`parse`] — keep it alive and byte-identical to read node text
+/// (`node.utf8_text(source.as_bytes())`). A normalized or re-read copy yields
+/// garbage spans or out-of-bounds slicing. `ParseTree` is `Send + Sync`
+/// (`tree_sitter::Tree` carries both at the pinned 0.26.9; compile-asserted
+/// in `tests/grammar.rs`).
 #[derive(Debug)]
 pub struct ParseTree {
     tree: tree_sitter::Tree,
@@ -46,14 +57,17 @@ impl ParseTree {
 #[derive(Debug, Error)]
 pub enum ParseError {
     /// The vendored grammar's ABI is incompatible with the host `tree-sitter`
-    /// crate. In a correctly built crate this is unreachable (Story 2.1's
-    /// `grammar_link` smoke proved ABI-compat at the pinned SHA); surfaced as
-    /// an error rather than a panic to keep the parser panic-free.
+    /// crate. In a correctly built crate this is unreachable — every
+    /// [`parse`] call exercises the FFI link + ABI check at the pinned SHA
+    /// (`tests/grammar.rs` keeps it covered); surfaced as an error rather
+    /// than a panic to keep the parser panic-free.
     #[error("failed to load tree-sitter-org grammar: {0}")]
     Grammar(#[from] tree_sitter::LanguageError),
     /// `tree_sitter::Parser::parse` returned `None`. Only happens on a
-    /// cancellation flag / timeout, neither of which this wrapper sets, so
-    /// this is defensive — but mapping it keeps `parse()` total.
+    /// cancellation flag, a timeout, or a parser with no language set — none
+    /// of which applies here (the wrapper sets neither flag and always calls
+    /// `set_language` first), so this is defensive — but mapping it keeps
+    /// `parse()` total.
     #[error("tree-sitter returned no tree")]
     NoTree,
 }
@@ -64,6 +78,11 @@ pub enum ParseError {
 /// `document` root. Malformed constructs surface as `ERROR`/`MISSING` nodes
 /// *inside* a valid tree, not as `Err` — both [`ParseError`] arms are
 /// defensive (see variant docs). Panic-free by contract.
+///
+/// Keep `source` to interpret the result: node ranges are byte offsets into
+/// it (see [`ParseTree`]). tree-sitter addresses bytes as `u32`, so input
+/// beyond 4 GiB is silently not lexed — the tree covers only the addressable
+/// prefix. Far beyond any realistic `.org` file; documented for completeness.
 pub fn parse(source: &str) -> Result<ParseTree, ParseError> {
     let mut parser = tree_sitter::Parser::new();
     parser.set_language(&grammar::language())?;
