@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-03 (story 2.1 done)
+# last_updated: 2026-06-10 (story 2.2 review)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-03 (story 2.1 done)
+last_updated: 2026-06-10 (story 2.2 review)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +67,7 @@ development_status:
   # Epic 2: Parser & Round-trip Fidelity
   epic-2: in-progress
   2-1-vendor-tree-sitter-org-as-sha-pinned-git-submodule: done
-  2-2-implement-orgsidian-parser-grammar-wrapper: backlog
+  2-2-implement-orgsidian-parser-grammar-wrapper: review
   2-3-implement-semantic-layer-todo-cycling-drawer-types-timestamps-link-types: backlog
   2-4-implement-round-trip-faithful-serializer: backlog
   2-5-build-tools-corpus-extractor-fixture-governance: backlog
