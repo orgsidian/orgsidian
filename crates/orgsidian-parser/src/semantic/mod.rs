@@ -56,7 +56,10 @@ pub struct Directive {
 /// Document-level content before the first headline (the zeroth section).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Preamble {
-    /// Raw preamble text, exactly as written.
+    /// Raw preamble text, exactly as written. On pathological input the
+    /// region may extend over adjacent gap-absorbed bytes the grammar left
+    /// outside any retained region (root-level `ERROR` nodes) — part of the
+    /// Story 2.4 tiling invariant, see [`Headline::raw`].
     pub text: String,
     /// Byte range of [`text`](Self::text) in the `analyze()` input.
     pub span: Range<usize>,
@@ -106,9 +109,19 @@ pub fn analyze(source: &str) -> Result<Document, ParseError> {
         .map(|d| d.value.as_str());
     let todo_config = TodoConfig::from_directive_values(todo_values);
 
-    // Preamble: the document's zeroth-section `body` field, when present.
-    let preamble = root.child_by_field_name("body").map(|body| {
-        let span = body.byte_range();
+    // Top-level coverage cursor (Story 2.4 tiling invariant): preamble +
+    // headline `raw` regions must tile the source 0..len byte-for-byte.
+    // Bytes the grammar leaves outside retained regions (root-level `ERROR`
+    // nodes, `section`s without a `headline` field) are gap-absorbed into
+    // the nearest retained region — never dropped.
+    let mut pos = 0usize;
+
+    // Preamble: the document's zeroth-section `body` field, when present —
+    // extended backward over any uncovered prefix (e.g. a root-level `ERROR`
+    // node preceding the body).
+    let mut preamble = root.child_by_field_name("body").map(|body| {
+        let node_span = body.byte_range();
+        let span = pos.min(node_span.start)..node_span.end;
         let text = source.get(span.clone()).unwrap_or("").to_string();
         let links = link::scan_links(&text, span.start);
         let directives = directives
@@ -116,6 +129,7 @@ pub fn analyze(source: &str) -> Result<Document, ParseError> {
             .filter(|d| d.span.start >= span.start && d.span.end <= span.end)
             .cloned()
             .collect();
+        pos = span.end;
         Preamble {
             text,
             span,
@@ -124,12 +138,47 @@ pub fn analyze(source: &str) -> Result<Document, ParseError> {
         }
     });
 
-    // Top-level sections → headlines; nesting via `children`.
+    // Top-level sections → headlines; nesting via `children`. Uncovered
+    // bytes before a section are prepended to its `raw`.
+    let mut headlines: Vec<Headline> = Vec::new();
     let mut cursor = root.walk();
-    let headlines = root
-        .children_by_field_name("subsection", &mut cursor)
-        .filter_map(|section| headline::build_section(section, source, &todo_config))
-        .collect();
+    for section in root.children_by_field_name("subsection", &mut cursor) {
+        let range = section.byte_range();
+        if let Some(mut h) = headline::build_section(section, source, &todo_config) {
+            if range.start > pos {
+                h.raw
+                    .insert_str(0, source.get(pos..range.start).unwrap_or(""));
+            }
+            pos = pos.max(range.end);
+            headlines.push(h);
+        }
+    }
+
+    // Trailing uncovered bytes: append after the last emitted region. When
+    // nothing was retained at all (pathological all-`ERROR` input), the
+    // whole source becomes the preamble — it *is* content before the first
+    // headline, there being none.
+    if pos < source.len() {
+        let tail = source.get(pos..).unwrap_or("");
+        if let Some(last) = headlines.last_mut() {
+            headline::absorb_trailing(last, tail);
+        } else if let Some(p) = preamble.as_mut() {
+            p.text.push_str(tail);
+            p.span.end = source.len();
+        } else {
+            let span = pos..source.len();
+            preamble = Some(Preamble {
+                text: tail.to_string(),
+                links: link::scan_links(tail, span.start),
+                directives: directives
+                    .iter()
+                    .filter(|d| d.span.start >= span.start && d.span.end <= span.end)
+                    .cloned()
+                    .collect(),
+                span,
+            });
+        }
+    }
 
     Ok(Document {
         headlines,

@@ -1,0 +1,4 @@
+#+TODO: DRAFT | PUBLISHED
+* DRAFT Post
+* TODO Plain words
+* PUBLISHED Shipped

@@ -1,0 +1,16 @@
+* Clocked
+:LOGBOOK:
+CLOCK: [2026-06-09 Tue 10:00]--[2026-06-09 Tue 11:30] =>  1:30
+CLOCK: [2026-06-10 Wed 08:00]
+:END:
+* H
+:PROPERTIES:
+:ID: abc-123
+:CUSTOM_ID: xyz
+:END:
+:LOGBOOK:
+CLOCK: [2026-06-10 Wed 08:00]
+:END:
+:MYDRAWER:
+free text
+:END:

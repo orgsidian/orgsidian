@@ -1,0 +1,3 @@
+Preamble has [[id:abc]] link.
+* Links
+See [[wiki page][the docs]], [[file://notes/x.org]], [[https://example.com/page][site]], [[other]] and plain http://example.com here.

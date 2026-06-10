@@ -2804,6 +2804,7 @@ version = "0.0.0"
 dependencies = [
  "cc",
  "chrono",
+ "proptest",
  "thiserror 1.0.69",
  "tree-sitter",
 ]

@@ -1,0 +1,6 @@
+* TODO One
+** NEXT Two
+*** DONE Three
+**** WAITING Four
+***** TODO Five
+****** DONE Six

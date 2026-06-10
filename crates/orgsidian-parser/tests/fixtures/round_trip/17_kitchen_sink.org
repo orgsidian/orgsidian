@@ -1,0 +1,23 @@
+
+
+#+TITLE: Kitchen sink
+#+TODO: OPEN | CLOSEDK
+
+Intro with a [[https://example.org][link]].
+
+* OPEN First :alpha:beta:
+SCHEDULED: <2026-07-01 Wed +1w>
+:PROPERTIES:
+:ID: sink-1
+:END:
+Some *bold* body.
+
+** Child one
+- item
+- [X] done
+
+* CLOSEDK Last
+CLOSED: [2026-06-30 Tue 12:00]
+tail body
+
+

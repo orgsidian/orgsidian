@@ -1,0 +1,2 @@
+* Markup heading
+Text with *bold* /italic/ =verbatim= ~code~ +strike+ _underline_ words.

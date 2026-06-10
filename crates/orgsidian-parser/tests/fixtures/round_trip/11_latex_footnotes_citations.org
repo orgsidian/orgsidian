@@ -1,0 +1,8 @@
+* Latex
+Inline $x^2$ and \(a+b\) and \[c\] forms.
+* Notes
+Text with an inline[fn::inline note] ref and a normal[fn:1] ref.
+
+[fn:1] The definition line.
+* Cited
+Claim backed by [cite:@key2026] here.

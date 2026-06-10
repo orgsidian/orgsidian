@@ -1,0 +1,7 @@
+* Over-indented   
+   :PROPERTIES:
+   :ID: deep
+   :END:
+body
+* Trailing tabs		
+more

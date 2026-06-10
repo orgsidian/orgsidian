@@ -1,0 +1,6 @@
+#+TITLE: Only a preamble
+#+AUTHOR: nobody
+
+Just intro text.
+
+Two paragraphs, no headlines.

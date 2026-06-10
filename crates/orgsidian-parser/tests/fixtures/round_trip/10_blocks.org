@@ -1,0 +1,13 @@
+* Blocks
+#+BEGIN_SRC rust
+fn main() {}
+#+END_SRC
+#+BEGIN_QUOTE
+q
+#+END_QUOTE
+#+BEGIN_EXAMPLE
+e
+#+END_EXAMPLE
+#+BEGIN_VERSE
+v
+#+END_VERSE
