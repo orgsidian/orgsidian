@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-10 (story 2.4 done — code review passed)
+# last_updated: 2026-06-10 (story 2.8 story file created — ready-for-dev)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-10 (story 2.4 done — code review passed)
+last_updated: 2026-06-10 (story 2.8 story file created — ready-for-dev)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -73,7 +73,7 @@ development_status:
   2-5-build-tools-corpus-extractor-fixture-governance: backlog
   2-6-light-up-l0-round-trip-ci-gate-per-pr-100-files-60s: backlog
   2-7-light-up-nightly-full-corpus-l2-emacs-oracle-gates: backlog
-  2-8-ship-orgsidian-parse-file-cli-command-as-early-public-artifact: backlog
+  2-8-ship-orgsidian-parse-file-cli-command-as-early-public-artifact: ready-for-dev
   epic-2-retrospective: optional
 
   # Epic 3: Vault & SQLite Index Foundation
