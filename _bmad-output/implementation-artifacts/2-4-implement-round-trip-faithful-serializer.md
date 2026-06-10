@@ -1,6 +1,6 @@
 # Story 2.4: Implement round-trip-faithful serializer
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -117,6 +117,20 @@ The deliverable is exactly: `crates/orgsidian-parser/src/serializer.rs` (`//! Im
 - [x] **T8** — Gates: `cargo build -p orgsidian-parser --locked`, `cargo test -p orgsidian-parser --locked`, `cargo test --workspace --locked`, `cargo clippy --workspace --all-targets --locked`, `cargo fmt --check`, `cargo deny check licenses bans advisories`, `cargo audit`. Verify sentinel files untouched via `git status`. Report test-count delta + lockfile delta in Completion Notes. (AC6)
 - [x] **T9** — deferred-work.md: annotate the `Timestamp::end_time` item with the 2.4 decision; pre-seed the story-2.4 stanza. (AC7)
 - [x] **T10** — Commit + open PR. Commit title: `feat(parser): implement round-trip-faithful serializer (Story 2.4, closes #20)` — Conventional Commits scope `parser` per CONTRIBUTING §2. **NO** `Co-Authored-By` trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body: (a) anchor + grammar + semantic tests byte-unchanged + green, (b) corpus + both properties present, `round_trip_subset` name locked for Story 2.6, (c) proptest dev-dep edge rationale + deny/audit nil delta, (d) tiling invariant + gap-absorption summary, (e) variances recorded (serialize_document, interim corpus, zero-normalization). (process)
+
+### Review Findings (adversarial code review, 2026-06-10)
+
+Three review layers (Blind Hunter — diff only; Edge Case Hunter — diff + read access; Acceptance Auditor — diff + spec + context docs; run sequentially in-session, no subagent tool available in the review run — deviation recorded). 16 raw findings → deduplicated and triaged: 0 decision-needed, 3 patch (all applied), 2 defer, 11 dismissed as noise/false-positive. Auditor verdict: AC1–AC7 all PASS pre-fix; gates re-executed independently by the review session (see notes below).
+
+- [x] [Review][Patch] No-op `.prop_map(|s| s)` on the body-line regex strategy [tests/round_trip.rs:253] — removed; `prop_oneof!` accepts heterogeneous strategies with the same `Value` natively
+- [x] [Review][Patch] Byte-sensitivity tripwire covered only fixture 18 (EOL); the trailing-whitespace fixture had no guard against whitespace-stripping tools (editor hooks, formatters) [tests/round_trip.rs:106] — `corpus_retains_byte_sensitive_fixtures` now also asserts `14_overindented_drawer.org` keeps its trailing spaces/tabs
+- [x] [Review][Patch] Own-region slice computed twice (links scan + `raw`) — identical bounds today, but two separate `source.get(..)` expressions could drift under future edits, weakening the AC2 "single source of truth" claim [src/semantic/headline.rs:276-286] — a single `own_region` binding now feeds both
+- [x] [Review][Defer] Unbounded recursion in `emit`/`absorb_trailing` mirrors the pre-existing `build_section` recursion (Story 2.3): a pathologically deep headline tree (thousands of nesting levels) could overflow the stack [src/serializer.rs, src/semantic/headline.rs] — deferred, pre-existing parser posture, not a 2.4 regression; recorded in deferred-work.md
+- [x] [Review][Defer] Team PR gate (`Closes #20` in the PR body) not verifiable: no PR exists for the branch — PR creation is forbidden at this pipeline step (deviation already recorded in Completion Notes); the commit title carries `closes #20`. The gate must be honored when the PR is opened by the next pipeline step — process item, no code action
+
+Dismissed (11): `pos.min(node_span.start)` with provably-zero `pos` in the preamble extension — defensive and correct, cursor narrative intentional; fake day-name `Xdy` in the planning-line strategy — raw passthrough is day-name-indifferent, the date itself is chrono-valid; generated `CLOSED:` with active `<>` stamps — unrealistic but lenience-intended input; drawer-key regex can emit an `:END: value` property line — semantic shape irrelevant to the byte property; corpus floor `>= 10` magic number — per AC3 (~10-20 interim files); `String::with_capacity(document.span.len())` — verified `Document.span` covers the full input, exact hint; `first_divergence` prefix case — handled (returns min length); overlapping `subsection` ranges would duplicate bytes — impossible per tree-sitter sibling invariants, arbitrary-input proptest is the enforcement; non-UTF8 fixture panics in corpus read — intentional, diagnostic message present; `context_window` byte-slicing across char boundaries — handled via `from_utf8_lossy`; epic AC "full subset corpus" not satisfiable in 2.4 — variance #2, sanctioned by story AC3 (Story 2.5's own AC is *Given Story 2.4*).
+
+Post-fix gates (review session, 2026-06-10): `cargo test -p orgsidian-parser --locked` 77 passed (1 anchor + 4 grammar + 24 semantic + 34 unit + 14 round_trip); `cargo test --workspace --locked` 122 passed / 0 failed / 11 ignored; clippy workspace all-targets clean (only pre-existing vendored-scanner.c C warnings); `cargo fmt --check` clean; `cargo doc -p orgsidian-parser --no-deps` no rustdoc warnings; `cargo deny check licenses bans advisories` ok/ok/ok; `cargo audit` 18 allowed warnings (baseline unchanged); anchor/grammar/semantic sentinels still byte-untouched.
 
 ## Dev Notes
 

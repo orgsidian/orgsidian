@@ -273,17 +273,14 @@ pub(crate) fn build_section(
         .next()
         .map(|sub| sub.start_byte())
         .unwrap_or_else(|| section.end_byte());
-    let links = source
+    let own_region = source
         .get(section.start_byte()..own_region_end)
-        .map(|text| link::scan_links(text, section.start_byte()))
-        .unwrap_or_default();
+        .unwrap_or("");
+    let links = link::scan_links(own_region, section.start_byte());
 
-    // Raw own region: same boundaries as the links scan above — single
-    // source of truth, the two can never drift (Story 2.4 tiling invariant).
-    let mut raw = source
-        .get(section.start_byte()..own_region_end)
-        .unwrap_or("")
-        .to_string();
+    // Raw own region: the SAME slice the links scan covers — single source
+    // of truth, the two can never drift (Story 2.4 tiling invariant).
+    let mut raw = own_region.to_string();
 
     // Children: nested sections, recursively, with a gap-absorption cursor —
     // a child `section` without a `headline` field (possible inside `ERROR`

@@ -100,8 +100,9 @@ fn round_trip_subset() {
 
 // The committed corpus must keep its byte-sensitive members byte-sensitive:
 // if EOL mangling (autocrlf without the .gitattributes `-text` rule) ever
-// rewrites the no-trailing-newline fixture, this tripwire fires before the
-// round-trip gate silently weakens.
+// rewrites the no-trailing-newline fixture, or a whitespace-stripping tool
+// (editor hook, formatter) rewrites the trailing-whitespace fixture, this
+// tripwire fires before the round-trip gate silently weakens.
 #[test]
 fn corpus_retains_byte_sensitive_fixtures() {
     let path = fixtures_dir().join("18_no_trailing_newline.org");
@@ -110,6 +111,14 @@ fn corpus_retains_byte_sensitive_fixtures() {
         !src.ends_with('\n'),
         "18_no_trailing_newline.org must NOT end with a newline — \
          EOL protection (.gitattributes -text) has been bypassed"
+    );
+
+    let path = fixtures_dir().join("14_overindented_drawer.org");
+    let src = fs::read_to_string(&path).expect("fixture present");
+    assert!(
+        src.lines().any(|l| l.ends_with(' ') || l.ends_with('\t')),
+        "14_overindented_drawer.org must keep its trailing whitespace/tabs — \
+         a whitespace-stripping tool has rewritten the fixture"
     );
 }
 
@@ -248,10 +257,7 @@ fn drawer_strategy() -> impl Strategy<Value = String> {
 /// with `*`, so the generated structure stays as declared).
 fn body_strategy() -> impl Strategy<Value = String> {
     collection::vec(
-        prop_oneof![
-            Just(String::new()),
-            "[A-Za-z][A-Za-z0-9 .,]{0,24}".prop_map(|s| s)
-        ],
+        prop_oneof![Just(String::new()), "[A-Za-z][A-Za-z0-9 .,]{0,24}"],
         0..4,
     )
     .prop_map(|lines| {
