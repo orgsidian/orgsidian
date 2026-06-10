@@ -33,11 +33,19 @@ pub struct Drawer {
     pub kind: DrawerKind,
     /// The drawer name exactly as written (without colons), e.g. `LOGBOOK`.
     pub name: String,
-    /// Raw text between the `:NAME:` line and `:END:`, exactly as written.
+    /// The drawer's contents, exactly as written. For generic drawers this is
+    /// the grammar's `contents` region (between the `:NAME:` line and
+    /// `:END:`); for the [`Properties`](DrawerKind::Properties) drawer it
+    /// covers the property lines (first property through last — the grammar
+    /// structures properties individually, so stray non-property lines
+    /// outside that range are not included).
     pub contents: String,
     /// Byte range of the whole drawer (`:NAME:` through `:END:`).
     pub span: Range<usize>,
     /// Byte range of [`contents`](Self::contents) in the `analyze()` input.
+    /// For a drawer with no contents this is an **empty** range anchored at
+    /// the drawer node's end — callers must treat `is_empty()` spans as "no
+    /// contents", not index around them.
     pub contents_span: Range<usize>,
 }
 
@@ -87,13 +95,14 @@ fn parse_clock_line(line: &str, line_offset: usize) -> Option<ClockEntry> {
     let (start, consumed) = timestamp::parse_one(&line[start_pos..], line_offset + start_pos)?;
     let mut cursor = start_pos + consumed;
 
-    // Optional `--[end]`.
+    // Optional `--[end]`. A `--` whose right-hand side does not parse makes
+    // the whole line malformed (review fix: it must not be misread as an
+    // open/running entry) — it stays raw drawer content.
     let mut end = None;
     if let Some(rest) = line[cursor..].strip_prefix("--") {
-        if let Some((end_ts, end_len)) = timestamp::parse_one(rest, line_offset + cursor + 2) {
-            end = Some(end_ts);
-            cursor += 2 + end_len;
-        }
+        let (end_ts, end_len) = timestamp::parse_one(rest, line_offset + cursor + 2)?;
+        end = Some(end_ts);
+        cursor += 2 + end_len;
     }
 
     // Optional ` => H:MM` (only meaningful on closed entries; an unparseable
@@ -121,12 +130,22 @@ fn parse_clock_line(line: &str, line_offset: usize) -> Option<ClockEntry> {
     })
 }
 
-/// `H:MM` (hours unbounded, e.g. `123:45`) → [`TimeDelta`], overflow-safe.
+/// `H:MM` (hours unbounded, e.g. `123:45`; minutes `00`-`59`) →
+/// [`TimeDelta`], overflow-safe. Signed or out-of-range components are
+/// rejected (review fix: `-1:30` / `1:99` / `1:-5` are not durations — the
+/// entry is kept, the field is dropped).
 fn parse_duration(token: &str) -> Option<TimeDelta> {
     let (hours, minutes) = token.split_once(':')?;
-    let hours: i64 = hours.parse().ok()?;
-    let minutes: i64 = minutes.parse().ok()?;
-    TimeDelta::try_minutes(hours.checked_mul(60)?.checked_add(minutes)?)
+    let hours: u32 = hours.parse().ok()?;
+    let minutes: u32 = minutes.parse().ok()?;
+    if minutes > 59 {
+        return None;
+    }
+    TimeDelta::try_minutes(
+        i64::from(hours)
+            .checked_mul(60)?
+            .checked_add(minutes.into())?,
+    )
 }
 
 #[cfg(test)]
@@ -162,6 +181,32 @@ mod tests {
             0,
         )
         .expect("entry kept");
+        assert!(entry.duration.is_none());
+    }
+
+    #[test]
+    fn range_with_unparseable_end_is_malformed_not_open() {
+        // Review fix (Story 2.3): `--garbage` must not yield an open entry.
+        assert_eq!(
+            parse_clock_line("CLOCK: [2026-06-09 Tue 10:00]--garbage\n", 0),
+            None
+        );
+        assert_eq!(
+            parse_clock_line("CLOCK: [2026-06-09 Tue 10:00]-- => 1:30\n", 0),
+            None
+        );
+    }
+
+    #[test]
+    fn nonsense_durations_are_rejected() {
+        // Review fix (Story 2.3): signed/out-of-range components drop the
+        // field (entry kept), never a negative or rewritten TimeDelta.
+        for bad in ["-1:30", "1:99", "1:-5"] {
+            assert_eq!(parse_duration(bad), None, "{bad}");
+        }
+        assert_eq!(parse_duration("123:45"), TimeDelta::try_minutes(7425));
+        let line = "CLOCK: [2026-06-09 Tue 10:00]--[2026-06-09 Tue 11:30] => -1:30\n";
+        let entry = parse_clock_line(line, 0).expect("entry kept");
         assert!(entry.duration.is_none());
     }
 

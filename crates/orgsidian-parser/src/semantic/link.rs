@@ -8,8 +8,14 @@
 //!
 //! Edge posture (documented, not over-engineered — see
 //! `docs/parser/KNOWN_DIVERGENCES.md`): `][` splits target/description,
-//! `]]` terminates; an empty target (`[[]]`) is not a link; angle links
-//! (`<http://…>`), link abbreviations, and `~/` expansion are out of scope.
+//! `]]` terminates; an empty target (`[[]]`) is not a link; a candidate
+//! bracket link is abandoned at the first newline (multi-line/wrapped links
+//! are out of scope); angle links (`<http://…>`), link abbreviations, and
+//! `~/` expansion are out of scope. Scheme matching is **case-sensitive**
+//! (org-faithful: link types are lowercase — `HTTP://x` is not a URL link
+//! and `File:x` is a wiki target). Plain URLs are recognized only at a word
+//! boundary (start of text or after a non-alphanumeric byte) and must carry
+//! a non-empty remainder after the scheme.
 
 use std::ops::Range;
 
@@ -59,11 +65,16 @@ pub(crate) fn scan_links(text: &str, offset: usize) -> Vec<Link> {
                 continue;
             }
         }
-        if bytes[i..].starts_with(b"http://") || bytes[i..].starts_with(b"https://") {
-            let (link, end) = parse_plain_url(text, i, offset);
-            links.push(link);
-            i = end;
-            continue;
+        // Plain URLs only at a word boundary: `xhttp://…` is not a link.
+        let at_word_boundary = i == 0 || !bytes[i - 1].is_ascii_alphanumeric();
+        if at_word_boundary
+            && (bytes[i..].starts_with(b"http://") || bytes[i..].starts_with(b"https://"))
+        {
+            if let Some((link, end)) = parse_plain_url(text, i, offset) {
+                links.push(link);
+                i = end;
+                continue;
+            }
         }
         // Advance one byte: all scan anchors (`[[`, `http`) are ASCII, so a
         // mid-codepoint position can never match and slicing only happens at
@@ -75,7 +86,9 @@ pub(crate) fn scan_links(text: &str, offset: usize) -> Vec<Link> {
 
 /// Parse `[[…]]` starting at byte `start` (which holds `[[`). Returns the
 /// link and the byte index just past the closing `]]`, or `None` when the
-/// link never terminates or has an empty target.
+/// link never terminates, has an empty target, or runs into a newline (a
+/// candidate that does not close on its own line is raw text — this keeps an
+/// unterminated `[[` from swallowing the following paragraphs).
 fn parse_bracket_link(text: &str, start: usize, offset: usize) -> Option<(Link, usize)> {
     let inner_start = start + 2;
     let rest = &text[inner_start..];
@@ -87,6 +100,7 @@ fn parse_bracket_link(text: &str, start: usize, offset: usize) -> Option<(Link, 
     let rest_bytes = rest.as_bytes();
     for (pos, window) in rest_bytes.windows(2).enumerate() {
         match window {
+            [b'\n', _] => return None, // newline before any terminator
             b"]]" => {
                 target_end = Some(pos);
                 break;
@@ -103,11 +117,11 @@ fn parse_bracket_link(text: &str, start: usize, offset: usize) -> Option<(Link, 
         (Some(split), _) => {
             let desc_rest = &rest[split + 2..];
             let desc_end = desc_rest.find("]]")?;
-            (
-                &rest[..split],
-                Some(desc_rest[..desc_end].to_string()),
-                split + 2 + desc_end,
-            )
+            let desc = &desc_rest[..desc_end];
+            if desc.contains('\n') {
+                return None; // description crossing lines — raw text
+            }
+            (&rest[..split], Some(desc.to_string()), split + 2 + desc_end)
         }
         (None, Some(end)) => (&rest[..end], None, end),
         (None, None) => return None,
@@ -142,8 +156,10 @@ fn classify_target(target: &str) -> LinkKind {
 
 /// Parse a bare URL starting at byte `start` (which holds `http`). The URL
 /// runs to the first whitespace or bracket-ish delimiter; trailing sentence
-/// punctuation is trimmed (simple posture, documented).
-fn parse_plain_url(text: &str, start: usize, offset: usize) -> (Link, usize) {
+/// punctuation is trimmed (simple posture, documented). Returns `None` when
+/// nothing remains after the scheme (`http://` alone, or `http://.` after
+/// trimming, is not a link).
+fn parse_plain_url(text: &str, start: usize, offset: usize) -> Option<(Link, usize)> {
     let rest = &text[start..];
     let len = rest
         .find(|c: char| c.is_whitespace() || matches!(c, '[' | ']' | '<' | '>'))
@@ -152,6 +168,10 @@ fn parse_plain_url(text: &str, start: usize, offset: usize) -> (Link, usize) {
     while let Some(stripped) = url.strip_suffix(['.', ',', ';', ':', '!', '?', ')', '\'', '"']) {
         url = stripped;
     }
+    let scheme_len = if url.starts_with("https://") { 8 } else { 7 };
+    if url.len() <= scheme_len {
+        return None; // empty host: scheme alone is not a link
+    }
     let end = start + url.len();
     let link = Link {
         kind: LinkKind::Plain,
@@ -159,7 +179,7 @@ fn parse_plain_url(text: &str, start: usize, offset: usize) -> (Link, usize) {
         description: None,
         span: offset + start..offset + end,
     };
-    (link, end)
+    Some((link, end))
 }
 
 #[cfg(test)]
@@ -205,6 +225,39 @@ mod tests {
         );
         // `][` without a terminating `]]` is not a link either.
         assert!(scan_links("[[a][b", 0).is_empty());
+    }
+
+    #[test]
+    fn plain_url_requires_word_boundary() {
+        // Review fix (Story 2.3): no mid-word matches.
+        assert!(scan_links("xhttp://foo deadhttps://evil", 0).is_empty());
+        let links = scan_links("(http://a.io) e:https://b.io", 0);
+        assert_eq!(links.len(), 2, "{links:?}");
+        assert_eq!(links[0].target, "http://a.io");
+        assert_eq!(links[1].target, "https://b.io");
+    }
+
+    #[test]
+    fn scheme_alone_is_not_a_link() {
+        // Review fix (Story 2.3): empty host after trimming is not a link.
+        assert!(scan_links("see http://. and https:// done", 0).is_empty());
+    }
+
+    #[test]
+    fn bracket_links_do_not_cross_newlines() {
+        // Review fix (Story 2.3): an unterminated `[[` must not swallow the
+        // following lines; wrapped links are documented out of scope.
+        assert!(scan_links("[[target\nnext line]] text", 0).is_empty());
+        assert!(scan_links("[[a][desc\nwrapped]] text", 0).is_empty());
+    }
+
+    #[test]
+    fn scheme_matching_is_case_sensitive() {
+        // Documented org-faithful posture: link types are lowercase.
+        let links = scan_links("[[HTTP://x]] [[File:y]] HTTP://z", 0);
+        assert_eq!(links.len(), 2, "{links:?}");
+        assert_eq!(links[0].kind, LinkKind::Wiki);
+        assert_eq!(links[1].kind, LinkKind::Wiki);
     }
 
     #[test]

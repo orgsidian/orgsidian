@@ -149,17 +149,25 @@ fn semantic_clock_entries() {
 // 5. Recurring timestamps: repeater kind / value / unit on plan-position stamps.
 #[test]
 fn semantic_recurring_timestamps() {
+    // The epic's enumerated literals (`+1w`, `+1d`, `+1m`, `+1y`) verbatim,
+    // plus the `++`/`.+` kinds (review fix: the cumulate month/year forms
+    // were previously substituted, not covered).
     let src = "* W\nSCHEDULED: <2026-06-10 Wed +1w>\n\
                * D\nSCHEDULED: <2026-06-10 Wed +1d>\n\
-               * M\nSCHEDULED: <2026-06-10 Wed ++1m>\n\
-               * Y\nSCHEDULED: <2026-06-10 Wed .+1y>\n";
+               * M\nSCHEDULED: <2026-06-10 Wed +1m>\n\
+               * Y\nSCHEDULED: <2026-06-10 Wed +1y>\n\
+               * CU\nSCHEDULED: <2026-06-10 Wed ++1m>\n\
+               * RS\nSCHEDULED: <2026-06-10 Wed .+1y>\n";
     let doc = orgsidian_parser::analyze(src).expect("recurring sample must analyze");
     let expected = [
         (RepeaterKind::Cumulate, 1u32, TimeUnit::Week),
         (RepeaterKind::Cumulate, 1, TimeUnit::Day),
+        (RepeaterKind::Cumulate, 1, TimeUnit::Month),
+        (RepeaterKind::Cumulate, 1, TimeUnit::Year),
         (RepeaterKind::CatchUp, 1, TimeUnit::Month),
         (RepeaterKind::Restart, 1, TimeUnit::Year),
     ];
+    assert_eq!(doc.headlines.len(), expected.len());
     for (h, (kind, value, unit)) in doc.headlines.iter().zip(expected) {
         let ts = h.scheduled.as_ref().expect("scheduled set");
         let rep = ts.repeater.as_ref().expect("repeater parsed");
@@ -465,8 +473,10 @@ fn semantic_preamble_and_empty_document() {
     let src = "#+TITLE: My doc\nIntro paragraph.\n* First\n";
     let doc = orgsidian_parser::analyze(src).expect("preamble doc must analyze");
     let pre = doc.preamble.as_ref().expect("preamble present");
-    assert!(pre.text.contains("Intro paragraph."));
-    assert_eq!(&src[pre.span.clone()], pre.text);
+    // Review fix: assert against the expected literal (the old
+    // `src[span] == text` check was true by construction).
+    assert_eq!(pre.text, "#+TITLE: My doc\nIntro paragraph.\n");
+    assert_eq!(pre.span, 0..pre.text.len());
     assert!(
         pre.directives
             .iter()
@@ -479,6 +489,53 @@ fn semantic_preamble_and_empty_document() {
     assert!(empty.headlines.is_empty());
     assert!(empty.preamble.is_none());
     assert_eq!(empty.todo_config, TodoConfig::default());
+}
+
+// AC5/AC1 (review fix): CLOSED: plan entries route into `Headline::closed`.
+#[test]
+fn semantic_closed_timestamp() {
+    let src = "* DONE Shipped\nCLOSED: [2026-06-09 Tue 18:15] DEADLINE: <2026-06-12 Fri>\n";
+    let doc = orgsidian_parser::analyze(src).expect("closed sample must analyze");
+    let h = &doc.headlines[0];
+    let closed = h.closed.as_ref().expect("closed set");
+    assert!(!closed.active, "org writes CLOSED stamps inactive");
+    assert_eq!(closed.date, date(2026, 6, 9));
+    assert_eq!(closed.time, Some(time(18, 15)));
+    assert!(h.deadline.is_some(), "same plan line still routes DEADLINE");
+    assert!(h.scheduled.is_none());
+}
+
+// AC2 (review fix): directive NAMES match case-insensitively (org-style) —
+// `#+todo:` configures the document exactly like `#+TODO:`.
+#[test]
+fn semantic_lowercase_todo_directive_name() {
+    let src = "#+todo: DRAFT | FINAL\n* DRAFT x\n";
+    let doc = orgsidian_parser::analyze(src).expect("lowercase directive must analyze");
+    let todo = doc.headlines[0]
+        .todo_state
+        .as_ref()
+        .expect("DRAFT recognized via #+todo:");
+    assert!(!todo.done);
+    assert_eq!(doc.todo_config.next(Some("DRAFT")), Some("FINAL"));
+}
+
+// AC2 regression (review): `#+TODO:` lines inside block/drawer contents are
+// expr soup at the pinned grammar SHA — they must NOT feed TodoConfig.
+#[test]
+fn semantic_directives_inside_blocks_and_drawers_are_inert() {
+    let src = "#+BEGIN_EXAMPLE\n#+TODO: HIJACK | PWNED\n#+END_EXAMPLE\n\
+               * H\n:MYDRAWER:\n#+TODO: DRAWERJACK | D\n:END:\n\
+               * HIJACK x\n";
+    let doc = orgsidian_parser::analyze(src).expect("quoted directives must analyze");
+    assert_eq!(
+        doc.todo_config,
+        TodoConfig::default(),
+        "quoted #+TODO: lines must not replace the default config"
+    );
+    assert!(
+        doc.headlines[1].todo_state.is_none(),
+        "HIJACK is title text, not a state"
+    );
 }
 
 // AC5: timestamp date ranges (`<a>--<b>`) and time ranges (`10:00-11:00`).

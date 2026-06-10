@@ -141,10 +141,16 @@ impl TodoConfig {
 /// Parse one `#+TODO:` directive value with org's pipe convention: keywords
 /// before `|` are active, after it are done; with no `|` the **last** keyword
 /// is the done set. Org fast-access suffixes (`TODO(t!)`) are stripped to the
-/// bare keyword. Returns `None` when the value contains no keywords.
+/// bare keyword; stray extra `|` tokens (org allows at most one separator)
+/// are dropped rather than registered as keywords. Returns `None` when the
+/// value contains no keywords.
 fn parse_directive_value(value: &str) -> Option<TodoSequence> {
-    let words =
-        |s: &str| -> Vec<String> { s.split_whitespace().filter_map(strip_fast_access).collect() };
+    let words = |s: &str| -> Vec<String> {
+        s.split_whitespace()
+            .filter(|t| *t != "|")
+            .filter_map(strip_fast_access)
+            .collect()
+    };
     let (active, done) = match value.split_once('|') {
         Some((left, right)) => (words(left), words(right)),
         None => {
@@ -207,6 +213,20 @@ mod tests {
         let seq = parse_directive_value("TODO(t) WAIT(w@/!) | DONE(d!)").expect("keywords");
         assert_eq!(seq.active, ["TODO", "WAIT"]);
         assert_eq!(seq.done, ["DONE"]);
+    }
+
+    #[test]
+    fn extra_pipes_are_not_keywords() {
+        // Review fix (Story 2.3): a second `|` must not register a literal
+        // "|" keyword reachable via classify/keywords/next.
+        let seq = parse_directive_value("A | B | C").expect("keywords");
+        assert_eq!(seq.active, ["A"]);
+        assert_eq!(seq.done, ["B", "C"]);
+        let cfg = TodoConfig {
+            sequences: vec![seq],
+        };
+        assert_eq!(cfg.classify("|"), None);
+        assert!(cfg.keywords().all(|k| k != "|"));
     }
 
     #[test]

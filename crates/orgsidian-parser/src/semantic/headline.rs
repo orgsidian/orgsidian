@@ -35,6 +35,10 @@ pub struct Tag {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Headline {
     /// Heading depth = number of leading stars (1-based).
+    ///
+    /// Degenerate sentinels (never produced by well-formed org): `0` when a
+    /// `headline` node inside an `ERROR` region carries no `stars` field;
+    /// star counts beyond 255 saturate at `u8::MAX`.
     pub level: u8,
     /// The recognized TODO keyword, when the first title word matches the
     /// document's [`TodoConfig`] (case-sensitive). An unconfigured first
@@ -64,6 +68,12 @@ pub struct Headline {
     pub clocks: Vec<ClockEntry>,
     /// Links found in this headline's own region (headline line + body,
     /// excluding child sections — children collect their own).
+    ///
+    /// The scan is textual over the whole region: link-shaped text inside
+    /// verbatim contexts (`#+BEGIN_SRC`/`#+BEGIN_EXAMPLE` blocks, drawer
+    /// contents, property values) is also reported. See
+    /// `docs/parser/KNOWN_DIVERGENCES.md` entry 1 (Epic 4 decides whether
+    /// verbatim regions get excluded).
     pub links: Vec<Link>,
     /// Byte range of the headline's whole section (headline line through the
     /// end of its last child) in the `analyze()` input.

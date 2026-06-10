@@ -1,6 +1,6 @@
 # Story 2.3: Implement semantic layer (TODO cycling, drawer types, timestamps, link types)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -174,6 +174,35 @@ Plus anything new the dev discovers while implementing (each AC6 sample that pro
 - [x] **T13** — deferred-work.md: append the pre-seeded `## Deferred from: code review of story-2.3 (YYYY-MM-DD)` stanza (candidates: inline-markup/citation/LaTeX semantic modeling → Epic 4 consumer decides; link-grammar completeness vs org-element — angle links, abbreviations; multi-`#+TODO:`-sequence cycling edge semantics; body-paragraph timestamp extraction). Also **annotate the two Story-2.2 deferred items this story resolves/decides**: `ParseTree` source-retention (resolved: owned semantic structs — AC1) and incremental-reparse (explicitly NOT taken: no editor consumer yet — Scope Fence). (process hygiene)
 - [x] **T14** — Commit + open PR. Commit title: `feat(parser): implement semantic layer (Story 2.3, closes #19)` — Conventional Commits scope `parser` per CONTRIBUTING §2. **NO** `Co-Authored-By` trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body: (a) anchor + grammar tests unchanged + green, (b) 15/15 construct tests present, (c) chrono direct-dep rationale + deny/audit nil delta, (d) KNOWN_DIVERGENCES.md initialized, (e) source-retention decision recorded. (process)
 
+### Review Findings (adversarial code review, 2026-06-10)
+
+Three parallel layers (Blind Hunter — diff only; Edge Case Hunter — diff + read access; Acceptance Auditor — diff + spec + context docs). 26 raw findings → deduplicated and triaged: 0 decision-needed, 18 patch (all applied), 2 defer, 4 dismissed as noise/false-positive. Auditor verdict: AC1–AC9 all PASS pre-fix; gates re-executed by the review session (see notes below).
+
+- [x] [Review][Patch] Multi-pipe `#+TODO: A | B | C` registered a literal `|` done-keyword reachable via classify/keywords/next [src/semantic/todo.rs:151] — stray `|` tokens now dropped; pinned by `extra_pipes_are_not_keywords`
+- [x] [Review][Patch] Plain-URL scan had no left word boundary (`xhttp://foo` matched mid-word) [src/semantic/link.rs:68] — boundary guard (start-of-text or non-alphanumeric predecessor); pinned by `plain_url_requires_word_boundary`
+- [x] [Review][Patch] Degenerate `http://` (empty remainder after scheme, e.g. `http://.` post-trim) reported as a Plain link [src/semantic/link.rs:160] — scheme-only URLs rejected; pinned by `scheme_alone_is_not_a_link`
+- [x] [Review][Patch] An unterminated `[[` swallowed following lines/paragraphs into one link span [src/semantic/link.rs:96] — newline now aborts the bracket candidate (multi-line links documented out of scope); pinned by `bracket_links_do_not_cross_newlines`
+- [x] [Review][Patch] `CLOCK: [ts]--garbage` was misread as an open/running entry [src/semantic/drawer.rs:97] — a `--` with unparseable right side now makes the whole line malformed (stays raw content); pinned by `range_with_unparseable_end_is_malformed_not_open`
+- [x] [Review][Patch] Durations accepted signed/out-of-range components (`=> -1:30` → negative TimeDelta; `1:-5` → 55 min; `1:99` → 159 min) [src/semantic/drawer.rs:133] — unsigned parse + minutes ≤ 59; pinned by `nonsense_durations_are_rejected`
+- [x] [Review][Patch] Zero-value repeater/delay (`+0d`) parsed into a `Repeater` that would loop any downstream repeat-advance math [src/semantic/timestamp.rs:252] — zero intervals rejected as stray text; pinned by `zero_value_intervals_are_stray_text`
+- [x] [Review][Patch] Range second half parsed with throwaway `offset 0` (garbage span trap) [src/semantic/timestamp.rs:121] — real offset now passed
+- [x] [Review][Patch] Epic-enumerated repeater literals `+1m`/`+1y` never tested verbatim (test substituted `++1m`/`.+1y`) [tests/semantic.rs `semantic_recurring_timestamps`] — test now covers all four epic literals plus the `++`/`.+` kinds (6 cases)
+- [x] [Review][Patch] `CLOSED:` plan-entry routing never integration-tested [tests/semantic.rs] — added `semantic_closed_timestamp`
+- [x] [Review][Patch] Tautological assertion in `semantic_preamble_and_empty_document` (`src[span] == text` true by construction) [tests/semantic.rs] — replaced with independent literal assertions
+- [x] [Review][Patch] Lowercase `#+todo:` directive-name acceptance (recorded AC2 extension) unpinned by tests [tests/semantic.rs] — added `semantic_lowercase_todo_directive_name`
+- [x] [Review][Patch] Directive inertness inside block/drawer contents unpinned (hijack false-positive, see dismissed) [tests/semantic.rs] — added `semantic_directives_inside_blocks_and_drawers_are_inert`
+- [x] [Review][Patch] `Drawer::contents` doc contradicted the Properties-drawer construction; empty-drawer `contents_span` fallback (empty range at drawer end) undocumented [src/semantic/drawer.rs:36-49] — both contracts now documented
+- [x] [Review][Patch] `Headline::level` sentinels (0 = missing `stars` in ERROR regions; >255 saturates) undocumented [src/semantic/headline.rs:37-42] — documented
+- [x] [Review][Patch] `end_time` precedence on degenerate mixed ranges + silent degrade of unparseable `--` tails undocumented [src/semantic/timestamp.rs] — documented on the field and `parse_at`; degrade pinned by `unparseable_range_tail_degrades_to_first_half`
+- [x] [Review][Patch] Link-scheme case-sensitivity posture (org-faithful lowercase types) undocumented [src/semantic/link.rs module docs + KNOWN_DIVERGENCES #1] — documented; pinned by `scheme_matching_is_case_sensitive`
+- [x] [Review][Patch] Link-shaped text inside verbatim contexts (SRC/EXAMPLE blocks, drawer contents, property values) reported as links with no documentation [src/semantic/headline.rs `links` + KNOWN_DIVERGENCES #1] — documented (structural exclusion deferred, see below)
+- [x] [Review][Defer] Link scan does not exclude verbatim regions (structural fix: subtract block/drawer node ranges) [src/semantic/headline.rs:244-253] — deferred to Epic 4 link navigation; harmless to round-trip
+- [x] [Review][Defer] `Timestamp::end_time` single-field shape conflates time-ranges and date-range second halves [src/semantic/timestamp.rs] — API-shape decision deferred to Story 2.4+/Epic 4 consumer; precedence documented, `raw` carries fidelity
+
+Dismissed (4): TODO-config hijack via directives inside quoted/example blocks or drawers — **false positive**, empirically verified at the pinned SHA (block/drawer contents are `expr` soup, no `directive` nodes; now pinned by the inertness regression test); plain-URL `)` trimming heuristic — documented posture (KNOWN_DIVERGENCES #1); T7 "grammar `duration` field" letter-vs-implementation mismatch — disclosed in Completion Notes, behavior-equivalent (text parser route); auditor's non-re-executed gates — re-executed green by the review session.
+
+Post-fix gates (review session, 2026-06-10): `cargo test -p orgsidian-parser --locked` 59 passed (1 anchor + 4 grammar + 24 semantic + 30 unit; +12 review tests); `cargo test --workspace --locked` 104 passed / 11 ignored; clippy clean; `cargo fmt --check` clean; `cargo doc -p orgsidian-parser --no-deps` no warnings; `cargo deny check licenses bans advisories` ok/ok/ok; `cargo audit` 18 allowed warnings (baseline unchanged); anchor/grammar/build.rs/grammar/ still byte-untouched.
+
 ## Dev Notes
 
 ### Critical context the dev agent must internalize
@@ -309,3 +338,4 @@ claude-fable-5[1m] (Fable 5, Claude Code)
 
 - 2026-06-10 — Story created (ultimate context engine analysis completed — comprehensive developer guide created). Status: ready-for-dev.
 - 2026-06-10 — Story 2.3 implemented (semantic layer: `analyze()` → `Document`/`Headline`, TODO cycling config, drawer classification + CLOCK parsing, timestamp model, link scanner; 42 new tests, all gates green; KNOWN_DIVERGENCES.md initialized; source-retention deferred item resolved as owned-data). Status: review.
+- 2026-06-10 — Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor): 18 patches applied (8 code — multi-pipe `#+TODO:`, plain-URL word boundary + empty-host, bracket-link newline guard, CLOCK `--garbage` malformed, duration bounds, zero-interval repeaters, range second-half offset; 5 tests; 5 docs), 2 deferred (verbatim-region link scan, `end_time` field shape), 4 dismissed (incl. empirically-disproven directive-hijack). Parser suite 47 → 59 tests, workspace 92 → 104, all gates green. Status: done.

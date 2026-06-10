@@ -89,7 +89,11 @@ pub struct Timestamp {
     /// End date for `<…>--<…>` ranges.
     pub end_date: Option<NaiveDate>,
     /// End time, from either a `10:00-11:00` range or the second half of a
-    /// `<…>--<…>` range.
+    /// `<…>--<…>` range. When both are present (degenerate
+    /// `<d1 10:00-11:00>--<d2 t>` forms), the second half's time wins; with
+    /// no time on the second half, the first half's range end is kept —
+    /// consumers needing per-date end-time attribution should re-read
+    /// [`raw`](Self::raw) (single-field shape recorded in deferred-work).
     pub end_time: Option<NaiveTime>,
     /// Repeater interval (`+1w`, `++1m`, `.+1d`), when present.
     pub repeater: Option<Repeater>,
@@ -102,13 +106,17 @@ pub struct Timestamp {
 }
 
 /// Parse a full timestamp at the start of `text` (which must begin with `<`
-/// or `[`), merging a `--`-joined second half into `end_date`/`end_time`.
+/// or `[`), merging a `--`-joined second half into `end_date`/`end_time`
+/// (a repeater/delay written only on the second half is promoted to the
+/// merged stamp). A `--` tail whose second half does not parse is left
+/// unconsumed: the result degrades to the first half alone and the tail
+/// stays raw text outside [`Timestamp::raw`] (lenient posture).
 /// `offset` is the byte position of `text[0]` in the original source.
 pub(crate) fn parse_at(text: &str, offset: usize) -> Option<Timestamp> {
     let (mut ts, mut consumed) = parse_one(text, offset)?;
     let rest = &text[consumed..];
     if let Some(second) = rest.strip_prefix("--") {
-        if let Some((end, end_len)) = parse_one(second, 0) {
+        if let Some((end, end_len)) = parse_one(second, offset + consumed + 2) {
             ts.end_date = Some(end.date);
             ts.end_time = end.time.or(ts.end_time);
             ts.repeater = ts.repeater.or(end.repeater);
@@ -226,7 +234,10 @@ fn parse_delay(token: &str) -> Option<Delay> {
     Some(Delay { kind, value, unit })
 }
 
-/// `1w` → `(1, Week)`; the unit must be the final character.
+/// `1w` → `(1, Week)`; the unit must be the final character. A zero value
+/// (`+0d`) is rejected (review fix: a zero-interval repeater would make any
+/// downstream repeat-advance loop forever) — the token is skipped as stray
+/// text and survives in `raw`.
 fn parse_interval(text: &str) -> Option<(u32, TimeUnit)> {
     let unit = match text.as_bytes().last()? {
         b'h' => TimeUnit::Hour,
@@ -237,6 +248,9 @@ fn parse_interval(text: &str) -> Option<(u32, TimeUnit)> {
         _ => return None,
     };
     let value: u32 = text[..text.len() - 1].parse().ok()?;
+    if value == 0 {
+        return None;
+    }
     Some((value, unit))
 }
 
@@ -298,6 +312,25 @@ mod tests {
     fn day_names_and_stray_tokens_are_tolerated() {
         let ts = parse_at("<2026-06-10 Mer 10:00 garbage>", 0).expect("lenient");
         assert_eq!(ts.time, NaiveTime::from_hms_opt(10, 0, 0));
+    }
+
+    #[test]
+    fn zero_value_intervals_are_stray_text() {
+        // Review fix (Story 2.3): `+0d` must not become a Repeater/Delay.
+        assert_eq!(parse_repeater("+0d"), None);
+        assert_eq!(parse_delay("-0w"), None);
+        let ts = parse_at("<2026-06-10 Wed +0d>", 0).expect("stamp still parses");
+        assert_eq!(ts.repeater, None);
+        assert_eq!(ts.raw, "<2026-06-10 Wed +0d>", "token survives in raw");
+    }
+
+    #[test]
+    fn unparseable_range_tail_degrades_to_first_half() {
+        // Documented lenient posture: the `--…` tail stays outside `raw`.
+        let ts = parse_at("<2026-06-10 Wed>--<garbage>", 7).expect("first half");
+        assert_eq!(ts.end_date, None);
+        assert_eq!(ts.raw, "<2026-06-10 Wed>");
+        assert_eq!(ts.span, 7..7 + 16);
     }
 
     #[test]

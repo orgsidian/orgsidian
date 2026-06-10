@@ -31,11 +31,26 @@ Entry format: **Construct** / Expected (org-mode/Emacs) / Observed
   slice: `[[…]]`/`[[…][…]]` spans classified by target prefix (`id:` →
   `Id`, `file:` → `File`, `http(s)://` → `Url`, no scheme → `Wiki`) plus a
   plain-`http(s)://` scan. Simplest correct bracket reading: `][` splits
-  target/description, `]]` terminates, empty targets are not links.
+  target/description, `]]` terminates, empty targets are not links, and a
+  candidate that hits a newline before terminating is abandoned (review
+  posture 2026-06-10: an unterminated `[[` must not swallow following
+  paragraphs). Plain URLs require a word boundary (start of text or a
+  preceding non-alphanumeric byte) and a non-empty remainder after the
+  scheme.
 - **Divergence risk:** angle links, link abbreviations (`#+LINK:`), `~/`
   expansion, and other `org-element` link types are NOT recognized — they
-  stay raw text. Trailing-punctuation trimming on plain URLs is heuristic
-  (`.,;:!?)'"` stripped).
+  stay raw text. Multi-line (wrapped) bracket links, which org-element
+  accepts, are not recognized either. Scheme matching is case-sensitive
+  (org-faithful: link types are lowercase — `HTTP://x` / `File:x` classify
+  as wiki targets; bare `HTTP://x` is plain text). Trailing-punctuation
+  trimming on plain URLs is heuristic (`.,;:!?)'"` stripped — a legitimate
+  trailing `)` as in `wiki/Foo_(bar)` is lost from the target; raw text
+  unaffected). The scan is purely textual over each headline's region:
+  link-shaped text inside verbatim contexts (`#+BEGIN_SRC` /
+  `#+BEGIN_EXAMPLE` blocks, drawer contents, property values) is also
+  reported as links — org-element would not. Epic 4 decides whether
+  verbatim regions get excluded (tracked in deferred-work, story-2.3
+  review stanza).
 - **Status/owner:** accepted gap for v0.1; revisit when Epic 4 link
   navigation needs the full org link grammar. Round-trip unaffected (raw
   text preserved; spans carried).
