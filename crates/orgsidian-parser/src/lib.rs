@@ -1,53 +1,91 @@
 //! orgsidian-parser: tree-sitter-org wrapper + semantic AST + serializer (FR-1, FR-2).
 //!
-//! Story 1.9 ships the anchor-smoke surface only — `parse()` is a stub that returns
-//! `Ok` for any non-empty UTF-8 source. Story 2.2 wires the real tree-sitter-org
-//! grammar and replaces this body; the public signature
-//! `parse(&str) -> Result<ParseTree, ParseError>` is preserved across that
-//! replacement (anchor sentinel discipline — see `tests/anchor.rs`).
+//! Implements FR-1.
+//!
+//! Wraps the vendored `nvim-orgmode/tree-sitter-org` grammar (SHA-pinned
+//! submodule at `grammar/`, Story 2.1) behind a stable raw-syntax-tree API:
+//! [`parse`] turns `.org` source into a [`ParseTree`] carrying a real
+//! [`tree_sitter::Tree`], reachable via [`ParseTree::root_node`] /
+//! [`ParseTree::tree`]. The public signature
+//! `parse(&str) -> Result<ParseTree, ParseError>` is the anchor sentinel
+//! (see `tests/anchor.rs`) and is preserved across stories. The semantic
+//! layer (Story 2.3) and the round-trip serializer (Story 2.4, FR-2) build
+//! on this surface.
 
 mod grammar;
 
 use thiserror::Error;
 
-/// Opaque parse result. Story 1.9 ships a sealed unit-content marker; Story 2.2
-/// replaces `_private: ()` with the real fields (`headlines: Vec<Headline>`, …).
+/// Re-export so downstream crates can name `orgsidian_parser::tree_sitter::Node`
+/// (etc.) without taking their own `tree-sitter` dependency — the version pin
+/// stays single-sourced through this leaf crate.
+pub use tree_sitter;
+
+/// Parse result wrapping the raw [`tree_sitter::Tree`]. The newtype is the
+/// stable API surface (LD-5 crate-API-barrier), but the wrapped tree is
+/// deliberately reachable — [`tree`](ParseTree::tree) borrows it and the
+/// [`tree_sitter`] re-export makes its full API nameable downstream. The raw
+/// tree IS the contract: the pinned `tree-sitter` version is part of this
+/// crate's public surface, and a `tree-sitter` major bump is a breaking
+/// change for consumers of this crate.
+///
+/// Node byte-ranges resolve only against the **exact source** passed to
+/// [`parse`] — keep it alive and byte-identical to read node text
+/// (`node.utf8_text(source.as_bytes())`). A normalized or re-read copy yields
+/// garbage spans or out-of-bounds slicing. `ParseTree` is `Send + Sync`
+/// (`tree_sitter::Tree` carries both at the pinned 0.26.9; compile-asserted
+/// in `tests/grammar.rs`).
 #[derive(Debug)]
 pub struct ParseTree {
-    _private: (),
+    tree: tree_sitter::Tree,
+}
+
+impl ParseTree {
+    /// Root node of the parsed tree. For any `.org` source the root kind is
+    /// `document` (the tree-sitter-org root rule).
+    pub fn root_node(&self) -> tree_sitter::Node<'_> {
+        self.tree.root_node()
+    }
+
+    /// Borrow the raw [`tree_sitter::Tree`] for walking / cursors / queries
+    /// (Story 2.3 semantic-layer consumption path).
+    pub fn tree(&self) -> &tree_sitter::Tree {
+        &self.tree
+    }
 }
 
 #[derive(Debug, Error)]
 pub enum ParseError {
-    #[error("empty source")]
-    Empty,
+    /// The vendored grammar's ABI is incompatible with the host `tree-sitter`
+    /// crate. In a correctly built crate this is unreachable — every
+    /// [`parse`] call exercises the FFI link + ABI check at the pinned SHA
+    /// (`tests/grammar.rs` keeps it covered); surfaced as an error rather
+    /// than a panic to keep the parser panic-free.
+    #[error("failed to load tree-sitter-org grammar: {0}")]
+    Grammar(#[from] tree_sitter::LanguageError),
+    /// `tree_sitter::Parser::parse` returned `None`. Only happens on a
+    /// cancellation flag, a timeout, or a parser with no language set — none
+    /// of which applies here (the wrapper sets neither flag and always calls
+    /// `set_language` first), so this is defensive — but mapping it keeps
+    /// `parse()` total.
+    #[error("tree-sitter returned no tree")]
+    NoTree,
 }
 
-/// Parse an org-mode source string.
+/// Parse an org-mode source string into a raw syntax tree.
 ///
-/// Story 1.9 stub: validates the input is non-empty UTF-8 (the `&str` bound already
-/// enforces UTF-8; the explicit check is structural to remind a future reader that
-/// the tree-sitter-org input contract is UTF-8). Returns `Err(ParseError::Empty)`
-/// for empty input, `Ok(ParseTree)` otherwise.
+/// Empty input is valid org: `parse("")` returns `Ok` with an empty
+/// `document` root. Malformed constructs surface as `ERROR`/`MISSING` nodes
+/// *inside* a valid tree, not as `Err` — both [`ParseError`] arms are
+/// defensive (see variant docs). Panic-free by contract.
+///
+/// Keep `source` to interpret the result: node ranges are byte offsets into
+/// it (see [`ParseTree`]). tree-sitter addresses bytes as `u32`, so input
+/// beyond 4 GiB is silently not lexed — the tree covers only the addressable
+/// prefix. Far beyond any realistic `.org` file; documented for completeness.
 pub fn parse(source: &str) -> Result<ParseTree, ParseError> {
-    // UTF-8 contract witness (AC4): the `&str` bound already guarantees UTF-8;
-    // this binding makes the contract visible in the body so a future
-    // tree-sitter-org swap (Story 2.2) keeps the same input invariant.
-    let _utf8_source: &str = source;
-    if source.is_empty() {
-        return Err(ParseError::Empty);
-    }
-    Ok(ParseTree { _private: () })
-}
-
-// Story 2.1 (AC4): integration-test-only shim so tests/grammar_link.rs can
-// exercise the FFI symbol-link path without promoting `grammar::language` to a
-// stable public API. `grammar::language` stays `pub(crate)` (re-exporting it
-// directly is forbidden by E0364); the `#[doc(hidden)]` + `_`-prefix shim is
-// the standard "internal escape hatch" pattern. `#[cfg(test)]` would NOT work
-// because integration tests link against the library compiled without `--test`.
-// Story 2.2 removes this when `parse()` consumes `language()` directly.
-#[doc(hidden)]
-pub fn _language_for_smoke() -> tree_sitter::Language {
-    grammar::language()
+    let mut parser = tree_sitter::Parser::new();
+    parser.set_language(&grammar::language())?;
+    let tree = parser.parse(source, None).ok_or(ParseError::NoTree)?;
+    Ok(ParseTree { tree })
 }
