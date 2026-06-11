@@ -26,10 +26,10 @@ pnpm tauri dev                        # launches the Tauri window
 Run this one-liner locally to exercise the exact per-PR gate set (Story 1.8 `pr.yml`):
 
 ```sh
-cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked && pnpm typecheck && pnpm test && pnpm a11y
+cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked && cargo test --manifest-path tools/issues-sync/Cargo.toml --locked && cargo test --manifest-path tools/corpus-extractor/Cargo.toml --locked && pnpm typecheck && pnpm test && pnpm a11y
 ```
 
-If this command passes locally, the per-PR CI matrix on macOS-arm64 + Ubuntu-LTS will pass too (modulo platform-specific differences caught by the nightly Windows + Arch sweep).
+If this command passes locally, the per-PR CI matrix on macOS-arm64 + Ubuntu-LTS will pass too (modulo platform-specific differences caught by the nightly Windows + Arch sweep). (The L0 round-trip subset gate — the dedicated `L0 round-trip subset gate (LD-32/LD-44, <60s)` step in `pr.yml` — is a filtered subset of `cargo test --workspace`, so parity-wise the one-liner already covers it.)
 
 ## 2. Conventional Commits (LD-54)
 
@@ -149,7 +149,7 @@ Every fixture set is declared in [`fixtures/fixtures.toml`](./fixtures/fixtures.
 
 `tests/fixtures/vault-corpus/**/*.org` is designed to be versioned through git-LFS.
 
-> **Current state (Story 2.5 fallback):** git-lfs was unavailable on the machine that generated the corpus, so the ~2.3 MB corpus is committed as **raw git objects** for now — the LFS stanza in `.gitattributes` is commented out with a `FOLLOWUP(Story-2.6)` marker (a scoped `-text` rule keeps the EOL-sensitive bytes intact), and the `git lfs migrate import` follow-up is tracked in deferred-work. Until that migration lands, no LFS setup is needed to read the corpus.
+> **Current state (Story 2.5 fallback):** git-lfs was unavailable on the machine that generated the corpus, so the ~2.3 MB corpus is committed as **raw git objects** for now — the LFS stanza in `.gitattributes` is commented out with a `FOLLOWUP(LFS-migration)` marker (a scoped `-text` rule keeps the EOL-sensitive bytes intact), and the migration is tracked in deferred-work (owner: the first maintainer machine with git-lfs, after the Epic-2 story stack merges — no history rewrite while stacked PRs are open). Until that migration lands, no LFS setup is needed to read the corpus.
 
 Once the migration lands, the one-time setup (only if you work on nightly/L2 gates or corpus regeneration) is:
 
@@ -206,7 +206,7 @@ When the parser owner wants to bump the pin:
 3. **Open a PR** titled `chore(parser): bump tree-sitter-org to <SHA>`. The PR description includes:
    - The upstream commit-range diff link.
    - Which node-type strings were added / renamed / removed.
-   - Whether the L0 round-trip subset (Story 2.6 — flag as "future" until that story ships) still passes.
+   - Whether the L0 round-trip subset (the `L0 round-trip subset gate` step in `pr.yml`) still passes.
 4. **Sign-off**: the bump lands only after the parser owner's explicit approval in the PR. **No auto-bump** — Dependabot / Renovate MUST NOT be configured for this submodule.
 
 ### Fork-and-maintain dry run

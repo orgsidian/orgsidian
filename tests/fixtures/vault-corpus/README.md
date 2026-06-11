@@ -33,10 +33,12 @@ This corpus is **test data only**:
 `*.org` files here are designed to be tracked via git-LFS (`.gitattributes`).
 **Current state:** git-lfs was unavailable on the generating machine (Story 2.5
 AC6 documented fallback), so the corpus is committed as raw git objects — the
-LFS stanza is commented out with a `FOLLOWUP(Story-2.6)` marker and a scoped
-`-text` rule protects the EOL-sensitive bytes. Until the `git lfs migrate
-import` follow-up lands (see deferred-work), no LFS setup is needed. After it
-lands: `git lfs install` (once) then `git lfs pull`. **The per-PR workflow does
+LFS stanza is commented out with a `FOLLOWUP(LFS-migration)` marker and a
+scoped `-text` rule protects the EOL-sensitive bytes (Story 2.6 re-deferred
+the migration: owner is the first maintainer machine with git-lfs, after the
+Epic-2 story stack merges — no history rewrite while stacked PRs are open).
+Until that migration lands, no LFS setup is needed. After it lands:
+`git lfs install` (once) then `git lfs pull`. **The per-PR workflow does
 not need any of this** — the L0 subset is embedded in `fixtures/subset-pr.json`;
 only nightly/L2 work and corpus regeneration read these files. Tooling detects
 LFS pointer stubs and reports the setup steps instead of mis-parsing them.
