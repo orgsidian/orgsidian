@@ -1,0 +1,4 @@
+* Headline
+:PROPERTIES:
+:foo: bar
+:END:

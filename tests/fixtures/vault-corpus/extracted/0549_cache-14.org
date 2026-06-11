@@ -1,0 +1,6 @@
+:DRAWER:
+P1
+
+P2
+#+END_EXAMPLE
+:END:

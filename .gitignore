@@ -40,6 +40,10 @@ crates/orgsidian-shell-app/gen/schemas/
 tools/corpus-extractor/target/
 *.local
 
+# Corpus-extractor download cache (Story 2.5 AC2 — the GPL test-org-element.el
+# is pinned-fetched at extraction time, NEVER vendored/committed; R-009/LD-37)
+tools/corpus-extractor/cache/
+
 # TanStack Router generated route tree (Story 1.3 Dev Notes §6 — regenerated on each dev/build)
 shell-ui/src/routeTree.gen.ts
 

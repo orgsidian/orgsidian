@@ -1,0 +1,3 @@
+#+begin_verse
+Verse block
+#+end_verse

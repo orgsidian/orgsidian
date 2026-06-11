@@ -1,0 +1,4 @@
+Some text alpha
+#+BEGIN_CENTER
+Some other text
+#+END_CENTER

@@ -1,0 +1,8 @@
+#+begin_center
+P0
+
+
+
+  P1
+  | a | b |
+#+end_center

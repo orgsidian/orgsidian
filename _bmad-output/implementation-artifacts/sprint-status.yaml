@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-10 (story 2.4 done — code review passed)
+# last_updated: 2026-06-11 (story 2.5 code review passed — 2 patch findings fixed, story done)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-10 (story 2.4 done — code review passed)
+last_updated: 2026-06-11 (story 2.5 code review passed — 2 patch findings fixed, story done)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -70,7 +70,7 @@ development_status:
   2-2-implement-orgsidian-parser-grammar-wrapper: done
   2-3-implement-semantic-layer-todo-cycling-drawer-types-timestamps-link-types: done
   2-4-implement-round-trip-faithful-serializer: done
-  2-5-build-tools-corpus-extractor-fixture-governance: backlog
+  2-5-build-tools-corpus-extractor-fixture-governance: done
   2-6-light-up-l0-round-trip-ci-gate-per-pr-100-files-60s: backlog
   2-7-light-up-nightly-full-corpus-l2-emacs-oracle-gates: backlog
   2-8-ship-orgsidian-parse-file-cli-command-as-early-public-artifact: backlog

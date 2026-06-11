@@ -1,0 +1,3 @@
+#+BEGIN_CENTER
+\alpha
+#+END_CENTER

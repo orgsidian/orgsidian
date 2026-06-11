@@ -1,0 +1,3 @@
+#+CAPTION[a]: 1
+#+CAPTION[b]: 2
+Paragraph

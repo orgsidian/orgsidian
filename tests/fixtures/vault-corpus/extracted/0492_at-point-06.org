@@ -1,0 +1,3 @@
+#+BEGIN_CENTER
+Paragraph
+#+END_CENTER

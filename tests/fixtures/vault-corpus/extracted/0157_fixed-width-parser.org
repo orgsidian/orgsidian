@@ -1,0 +1,2 @@
+: no blank
+:  one blank

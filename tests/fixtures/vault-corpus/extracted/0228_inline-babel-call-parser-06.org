@@ -1,0 +1,2 @@
+call_test[:results
+output](x=2)[:results html]

@@ -1,0 +1,1 @@
+[cite:@key1 post;@key2]

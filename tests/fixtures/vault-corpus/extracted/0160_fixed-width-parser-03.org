@@ -1,0 +1,4 @@
+
+- Item
+  : fixed-width inside
+: fixed-width outside

@@ -1,0 +1,7 @@
+#+BEGIN_CENTER
+Para1
+
+Para2
+
+Para3
+#+END_CENTER

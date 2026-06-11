@@ -1,0 +1,6 @@
+
+\begin{outer}
+\begin{inner}
+e^{i\pi}+1=0
+\end{inner}
+\end{outer}
