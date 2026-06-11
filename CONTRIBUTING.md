@@ -147,7 +147,11 @@ Every fixture set is declared in [`fixtures/fixtures.toml`](./fixtures/fixtures.
 
 ### git-LFS setup (vault corpus)
 
-`tests/fixtures/vault-corpus/**/*.org` is versioned through git-LFS. One-time setup, only if you work on nightly/L2 gates or corpus regeneration:
+`tests/fixtures/vault-corpus/**/*.org` is designed to be versioned through git-LFS.
+
+> **Current state (Story 2.5 fallback):** git-lfs was unavailable on the machine that generated the corpus, so the ~2.3 MB corpus is committed as **raw git objects** for now — the LFS stanza in `.gitattributes` is commented out with a `FOLLOWUP(Story-2.6)` marker (a scoped `-text` rule keeps the EOL-sensitive bytes intact), and the `git lfs migrate import` follow-up is tracked in deferred-work. Until that migration lands, no LFS setup is needed to read the corpus.
+
+Once the migration lands, the one-time setup (only if you work on nightly/L2 gates or corpus regeneration) is:
 
 ```sh
 git lfs install   # once per machine

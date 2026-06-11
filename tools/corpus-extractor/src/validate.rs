@@ -75,6 +75,7 @@ pub fn validate_subset(manifest: &SubsetManifest, classifier: &Classifier) -> Re
                 edges
             );
         }
+        validate_twin_path(&entry.id, &entry.path)?;
 
         *bucket_counts.entry(bucket).or_default() += 1;
         for c in &entry.constructs {
@@ -123,7 +124,7 @@ pub fn validate_subset(manifest: &SubsetManifest, classifier: &Classifier) -> Re
     Ok(())
 }
 
-/// Validate the pointer manifest: floor, unique ids, well-formed paths.
+/// Validate the pointer manifest: floor, unique ids, id-consistent paths.
 pub fn validate_full(manifest: &FullManifest) -> Result<()> {
     validate_header(
         &manifest.header.org_release_tag,
@@ -140,13 +141,24 @@ pub fn validate_full(manifest: &FullManifest) -> Result<()> {
         bail!("duplicate full-corpus ids: {dupes:?}");
     }
     for entry in &manifest.entries {
-        if !entry.path.ends_with(".org") || entry.path.starts_with('/') || entry.path.contains("..")
-        {
-            bail!("{}: malformed corpus path {:?}", entry.id, entry.path);
-        }
+        validate_twin_path(&entry.id, &entry.path)?;
         if entry.deftest.is_empty() {
             bail!("{}: empty deftest provenance", entry.id);
         }
+    }
+    Ok(())
+}
+
+/// Manifest paths are joined under `tests/fixtures/vault-corpus/` by `verify`
+/// and the preflight twin check — reject traversal/absolute paths, and pin the
+/// path to its id-derived form (`<id>.org`, the emission invariant), so a
+/// tampered manifest cannot silently point the twin checks elsewhere.
+fn validate_twin_path(id: &str, path: &str) -> Result<()> {
+    if !path.ends_with(".org") || path.starts_with('/') || path.contains("..") {
+        bail!("{id}: malformed corpus path {path:?}");
+    }
+    if path != format!("{id}.org") {
+        bail!("{id}: corpus path {path:?} does not match the id-derived twin path \"{id}.org\"");
     }
     Ok(())
 }
@@ -265,6 +277,37 @@ mod tests {
         };
         let err = validate_full(&manifest).expect_err("must fail");
         assert!(format!("{err:#}").contains("floor"), "{err:#}");
+    }
+
+    #[test]
+    fn rejects_twin_path_id_mismatch() {
+        // Subset side: a path pointing at a different (well-formed) twin.
+        let classifier = Classifier::new().expect("classifier");
+        let mut e = entry("extracted/0000_a", "* H\n", &classifier);
+        e.path = "extracted/0001_b.org".to_string();
+        let manifest = SubsetManifest {
+            header: header(),
+            entries: vec![e],
+        };
+        let err = validate_subset(&manifest, &classifier).expect_err("must fail");
+        assert!(format!("{err:#}").contains("id-derived"), "{err:#}");
+
+        // Full side: same tamper, same shared check.
+        let mut manifest = FullManifest {
+            header: header(),
+            entries: (0..FULL_CORPUS_FLOOR)
+                .map(|i| crate::model::FullEntry {
+                    id: format!("extracted/{i:04}_x"),
+                    deftest: "test-org-element/x".to_string(),
+                    constructs: vec![],
+                    path: format!("extracted/{i:04}_x.org"),
+                    byte_len: 4,
+                })
+                .collect(),
+        };
+        manifest.entries[1].path = "extracted/0000_x.org".to_string();
+        let err = validate_full(&manifest).expect_err("must fail");
+        assert!(format!("{err:#}").contains("id-derived"), "{err:#}");
     }
 
     #[test]

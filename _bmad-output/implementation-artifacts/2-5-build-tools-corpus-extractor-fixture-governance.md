@@ -1,6 +1,6 @@
 # Story 2.5: Build `tools/corpus-extractor` + fixture governance
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -148,6 +148,17 @@ Deliverables: the extractor (lib + bin, subcommands), `fixtures/subset-pr.json` 
 - [x] **T12** — Gates: full workspace suite (zero delta) + extractor suite + fmt/clippy both scopes + deny/audit baseline + `git status` sentinel sweep. (AC9) *(all runnable gates green — see Completion Notes; extractor integration tests + git-status sweep pending T7/T14)*
 - [x] **T13** — deferred-work.md: annotate 2.4 corpus-expansion item; pre-seed story-2.5 stanza. (AC10)
 - [x] **T14** — Commit. Suggested title: `feat(corpus-extractor): extract LD-44 corpus + establish fixture governance (Story 2.5, closes #21)` (scope enum is advisory, CONTRIBUTING §2). **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (when the pipeline's PR step runs): corpus numbers, determinism statement, LFS posture, variance list. (process)
+
+### Review Findings
+
+Adversarial review 2026-06-11 (three layers run sequentially in-session — no subagent runtime available in the review environment; Blind Hunter diff-only pass, Edge Case Hunter boundary pass, Acceptance Auditor vs AC1–AC10 + epics.md:828-842 + LD-44). 2 patch findings (both fixed), 0 decision-needed, 0 new defers (AC10 pre-seeded stanza already covers the known follow-ups), 3 dismissed as noise.
+
+- [x] [Review][Patch] LFS docs claimed current LFS tracking while the AC6 fallback shipped the corpus as raw git [CONTRIBUTING.md §5 "git-LFS setup", tests/fixtures/vault-corpus/README.md §git-LFS, fixtures/fixtures.toml corpus.vault-corpus, fixtures/README.md] — "is versioned through git-LFS" / "git lfs pull" instructions described the *target* state; the committed state is raw git objects with the `.gitattributes` stanza commented out (`FOLLOWUP(Story-2.6)`). A contributor following the docs would run a no-op `git lfs pull` or misread pointer-stub guidance. FIXED: each location now states the current fallback state and points at the FOLLOWUP marker + deferred-work migration item; the LFS instructions are framed as post-migration.
+- [x] [Review][Patch] `validate_subset` performed no `path` validation (and `validate_full` only checked malformed shapes) [tools/corpus-extractor/src/validate.rs] — subset `entry.path` feeds `vault_root.join(...)` in `verify` and the preflight twin test; a tampered manifest could point the twin checks at arbitrary files (incl. `../` traversal) without tripping TC-3. FIXED: shared `validate_twin_path` now rejects malformed paths AND pins `path == "<id>.org"` (the emission invariant) in both manifests; unit test `rejects_twin_path_id_mismatch` added (60 lib tests); committed artifacts re-validated green via the meta-test.
+
+Dismissed (noise): (1) `scan_deftests` can match `(ert-deftest ` inside string literals — pragmatic-scanner limit documented in ADR 0001 §2, not observed in the pinned file (harvest validated); (2) fixed temp-dir name in the `read_cached` unit test — test-only, collision risk negligible; (3) xorshift modulo bias in `Rng::pick` — determinism is the requirement, distribution uniformity is not.
+
+Process note (team override gate): no PR exists yet for this branch — when the pipeline opens it, the body MUST carry `Closes #21` (the impl commit title already carries "closes #21") and the issue label flips `status:review` → `status:done` at merge.
 
 ## Dev Notes
 
@@ -359,3 +370,4 @@ The pending T7/T8/T14 steps were executed by the pipeline orchestrator from the 
 - 2026-06-10 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; upstream-acquisition and fixture-path decisions resolved from specs with variances recorded, not spec-edited). Status: ready-for-dev.
 - 2026-06-10 — Dev session 1 (stalled): Cargo manifest, model/fetch/elisp/classify modules, synth.rs mid-write.
 - 2026-06-11 — Dev session 2 (resume): completed synth/select/emit/validate/CLI + both integration tests; all governance docs, ADR 0001, deferred-work updates; all runnable gates green (workspace 122/0/11 baseline, deny ok×3, audit 18-warnings baseline, fmt/clippy clean both scopes). T7 pipeline execution + LFS check + commit delegated to orchestrator (environment denies network/exec/git) — exact pending commands in Dev Agent Record. Status: in-progress.
+- 2026-06-11 — Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, run sequentially in-session): 2 patch findings fixed (LFS-fallback doc alignment across 4 files; shared `validate_twin_path` hardening + new unit test), 0 decision-needed, 0 new defers, 3 dismissed. Extractor suite 65/65 green (60 lib + 3 matrix + 2 preflight), fmt + clippy clean, committed artifacts unchanged (no regeneration — determinism check still holds). Status: done.

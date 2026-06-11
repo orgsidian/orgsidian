@@ -31,7 +31,7 @@ path = "tests/fixtures/vault-corpus/"
 owner = "epic-2"
 regenerated_by = "tools/corpus-extractor"
 ld_reference = "LD-44"
-notes = "Materialized .org corpus (full corpus + subset twins), versioned via git-LFS (*.org only). Derived from the GNU org-mode test suite — see its README.md for provenance/licensing."
+notes = "Materialized .org corpus (full corpus + subset twins). Designed for git-LFS (*.org only); currently committed raw per the Story 2.5 AC6 fallback — FOLLOWUP(Story-2.6) marker in .gitattributes. Derived from the GNU org-mode test suite — see its README.md for provenance/licensing."
 
 [parser.anchor]
 path = "crates/orgsidian-parser/tests/fixtures/anchor.org"
