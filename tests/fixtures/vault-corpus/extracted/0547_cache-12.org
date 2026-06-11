@@ -1,0 +1,5 @@
+#+BEGIN_EXAMPLE
+Para1
+
+Para2
+# +END_EXAMPLE

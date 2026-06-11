@@ -1,0 +1,4607 @@
+{
+  "header": {
+    "generator": "orgsidian-corpus-extractor",
+    "extractor_version": "0.0.0",
+    "org_release_tag": "release_9.8.5",
+    "source_sha256": "f3065e65d71adc0c124da87d72366c6618fc042517f10fdf65490c04e1dfce6d"
+  },
+  "entries": [
+    {
+      "id": "extracted/0000_secondary-p",
+      "deftest": "test-org-element/secondary-p",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0000_secondary-p.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0001_secondary-p-01",
+      "deftest": "test-org-element/secondary-p",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0001_secondary-p-01.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0002_map",
+      "deftest": "test-org-element/map",
+      "constructs": [],
+      "path": "extracted/0002_map.org",
+      "byte_len": 59
+    },
+    {
+      "id": "extracted/0003_map-01",
+      "deftest": "test-org-element/map",
+      "constructs": [],
+      "path": "extracted/0003_map-01.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0004_map-02",
+      "deftest": "test-org-element/map",
+      "constructs": [],
+      "path": "extracted/0004_map-02.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0005_map-03",
+      "deftest": "test-org-element/map",
+      "constructs": [],
+      "path": "extracted/0005_map-03.org",
+      "byte_len": 41
+    },
+    {
+      "id": "extracted/0006_ast-map",
+      "deftest": "test-org-element/ast-map",
+      "constructs": [],
+      "path": "extracted/0006_ast-map.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0007_put-property",
+      "deftest": "test-org-element/put-property",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0007_put-property.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0008_set-contents",
+      "deftest": "test-org-element/set-contents",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0008_set-contents.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0009_set-contents-01",
+      "deftest": "test-org-element/set-contents",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0009_set-contents-01.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0010_set-contents-02",
+      "deftest": "test-org-element/set-contents",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0010_set-contents-02.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0011_set-contents-03",
+      "deftest": "test-org-element/set-contents",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0011_set-contents-03.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0012_adopt-elements",
+      "deftest": "test-org-element/adopt-elements",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0012_adopt-elements.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0013_adopt-elements-01",
+      "deftest": "test-org-element/adopt-elements",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0013_adopt-elements-01.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0014_extract-element",
+      "deftest": "test-org-element/extract-element",
+      "constructs": [],
+      "path": "extracted/0014_extract-element.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0015_extract-element-01",
+      "deftest": "test-org-element/extract-element",
+      "constructs": [],
+      "path": "extracted/0015_extract-element-01.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0016_extract-element-02",
+      "deftest": "test-org-element/extract-element",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0016_extract-element-02.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0017_extract-element-03",
+      "deftest": "test-org-element/extract-element",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0017_extract-element-03.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0018_extract-element-04",
+      "deftest": "test-org-element/extract-element",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0018_extract-element-04.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0019_insert-before",
+      "deftest": "test-org-element/insert-before",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0019_insert-before.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0020_insert-before-01",
+      "deftest": "test-org-element/insert-before",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0020_insert-before-01.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0021_set",
+      "deftest": "test-org-element/set",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0021_set.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0022_set-01",
+      "deftest": "test-org-element/set",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0022_set-01.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0023_set-02",
+      "deftest": "test-org-element/set",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0023_set-02.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0024_set-03",
+      "deftest": "test-org-element/set",
+      "constructs": [],
+      "path": "extracted/0024_set-03.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0025_set-04",
+      "deftest": "test-org-element/set",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0025_set-04.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0026_set-05",
+      "deftest": "test-org-element/set",
+      "constructs": [],
+      "path": "extracted/0026_set-05.org",
+      "byte_len": 1
+    },
+    {
+      "id": "extracted/0027_copy",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0027_copy.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0028_copy-01",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0028_copy-01.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0029_copy-02",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0029_copy-02.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0030_copy-03",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0030_copy-03.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0031_copy-04",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0031_copy-04.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0032_copy-05",
+      "deftest": "test-org-element/copy",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0032_copy-05.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0033_affiliated-keywords-parser",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0033_affiliated-keywords-parser.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0034_affiliated-keywords-parser-01",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0034_affiliated-keywords-parser-01.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0035_affiliated-keywords-parser-02",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0035_affiliated-keywords-parser-02.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0036_affiliated-keywords-parser-03",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0036_affiliated-keywords-parser-03.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0037_affiliated-keywords-parser-04",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0037_affiliated-keywords-parser-04.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0038_affiliated-keywords-parser-05",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0038_affiliated-keywords-parser-05.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0039_affiliated-keywords-parser-06",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0039_affiliated-keywords-parser-06.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0040_affiliated-keywords-parser-07",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0040_affiliated-keywords-parser-07.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0041_affiliated-keywords-parser-08",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0041_affiliated-keywords-parser-08.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0042_affiliated-keywords-parser-09",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0042_affiliated-keywords-parser-09.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0043_affiliated-keywords-parser-10",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0043_affiliated-keywords-parser-10.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0044_affiliated-keywords-parser-11",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0044_affiliated-keywords-parser-11.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0045_affiliated-keywords-parser-12",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0045_affiliated-keywords-parser-12.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0046_affiliated-keywords-parser-13",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [
+        "clock"
+      ],
+      "path": "extracted/0046_affiliated-keywords-parser-13.org",
+      "byte_len": 74
+    },
+    {
+      "id": "extracted/0047_affiliated-keywords-parser-14",
+      "deftest": "test-org-element/affiliated-keywords-parser",
+      "constructs": [],
+      "path": "extracted/0047_affiliated-keywords-parser-14.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0048_babel-call-parser",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0048_babel-call-parser.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0049_babel-call-parser-01",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0049_babel-call-parser-01.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0050_babel-call-parser-02",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0050_babel-call-parser-02.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0051_babel-call-parser-03",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0051_babel-call-parser-03.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0052_babel-call-parser-04",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0052_babel-call-parser-04.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0053_babel-call-parser-05",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0053_babel-call-parser-05.org",
+      "byte_len": 50
+    },
+    {
+      "id": "extracted/0054_babel-call-parser-06",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0054_babel-call-parser-06.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0055_babel-call-parser-07",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0055_babel-call-parser-07.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0056_babel-call-parser-08",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0056_babel-call-parser-08.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0057_babel-call-parser-09",
+      "deftest": "test-org-element/babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0057_babel-call-parser-09.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0058_bold-parser",
+      "deftest": "test-org-element/bold-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0058_bold-parser.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0059_bold-parser-01",
+      "deftest": "test-org-element/bold-parser",
+      "constructs": [],
+      "path": "extracted/0059_bold-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0060_center-block-parser",
+      "deftest": "test-org-element/center-block-parser",
+      "constructs": [],
+      "path": "extracted/0060_center-block-parser.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0061_center-block-parser-01",
+      "deftest": "test-org-element/center-block-parser",
+      "constructs": [],
+      "path": "extracted/0061_center-block-parser-01.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0062_center-block-parser-02",
+      "deftest": "test-org-element/center-block-parser",
+      "constructs": [],
+      "path": "extracted/0062_center-block-parser-02.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0063_center-block-parser-03",
+      "deftest": "test-org-element/center-block-parser",
+      "constructs": [],
+      "path": "extracted/0063_center-block-parser-03.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0064_citation-parser",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0064_citation-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0065_citation-parser-01",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0065_citation-parser-01.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0066_citation-parser-02",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0066_citation-parser-02.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0067_citation-parser-03",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0067_citation-parser-03.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0068_citation-parser-04",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0068_citation-parser-04.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0069_citation-parser-05",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0069_citation-parser-05.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0070_citation-parser-06",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0070_citation-parser-06.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0071_citation-parser-07",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0071_citation-parser-07.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0072_citation-parser-08",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0072_citation-parser-08.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0073_citation-parser-09",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0073_citation-parser-09.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0074_citation-parser-10",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0074_citation-parser-10.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0075_citation-parser-11",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0075_citation-parser-11.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0076_citation-parser-12",
+      "deftest": "test-org-element/citation-parser",
+      "constructs": [
+        "table",
+        "citation"
+      ],
+      "path": "extracted/0076_citation-parser-12.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0077_citation-reference-parser",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0077_citation-reference-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0078_citation-reference-parser-01",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0078_citation-reference-parser-01.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0079_citation-reference-parser-02",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0079_citation-reference-parser-02.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0080_citation-reference-parser-03",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0080_citation-reference-parser-03.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0081_citation-reference-parser-04",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0081_citation-reference-parser-04.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0082_citation-reference-parser-05",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0082_citation-reference-parser-05.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0083_citation-reference-parser-06",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0083_citation-reference-parser-06.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0084_citation-reference-parser-07",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0084_citation-reference-parser-07.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0085_citation-reference-parser-08",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0085_citation-reference-parser-08.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0086_citation-reference-parser-09",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0086_citation-reference-parser-09.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0087_citation-reference-parser-10",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0087_citation-reference-parser-10.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0088_citation-reference-parser-11",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0088_citation-reference-parser-11.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0089_citation-reference-parser-12",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0089_citation-reference-parser-12.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0090_citation-reference-parser-13",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0090_citation-reference-parser-13.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0091_citation-reference-parser-14",
+      "deftest": "test-org-element/citation-reference-parser",
+      "constructs": [
+        "citation"
+      ],
+      "path": "extracted/0091_citation-reference-parser-14.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0092_clock-parser",
+      "deftest": "test-org-element/clock-parser",
+      "constructs": [
+        "clock"
+      ],
+      "path": "extracted/0092_clock-parser.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0093_clock-parser-01",
+      "deftest": "test-org-element/clock-parser",
+      "constructs": [],
+      "path": "extracted/0093_clock-parser-01.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0094_clock-parser-02",
+      "deftest": "test-org-element/clock-parser",
+      "constructs": [
+        "clock"
+      ],
+      "path": "extracted/0094_clock-parser-02.org",
+      "byte_len": 64
+    },
+    {
+      "id": "extracted/0095_clock-parser-03",
+      "deftest": "test-org-element/clock-parser",
+      "constructs": [],
+      "path": "extracted/0095_clock-parser-03.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0096_code-parser",
+      "deftest": "test-org-element/code-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0096_code-parser.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0097_code-parser-01",
+      "deftest": "test-org-element/code-parser",
+      "constructs": [],
+      "path": "extracted/0097_code-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0098_comment-parser",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0098_comment-parser.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0099_comment-parser-01",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0099_comment-parser-01.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0100_comment-parser-02",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0100_comment-parser-02.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0101_comment-parser-03",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0101_comment-parser-03.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0102_comment-parser-04",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0102_comment-parser-04.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0103_comment-parser-05",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0103_comment-parser-05.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0104_comment-parser-06",
+      "deftest": "test-org-element/comment-parser",
+      "constructs": [],
+      "path": "extracted/0104_comment-parser-06.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0105_comment-block-parser",
+      "deftest": "test-org-element/comment-block-parser",
+      "constructs": [],
+      "path": "extracted/0105_comment-block-parser.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0106_comment-block-parser-01",
+      "deftest": "test-org-element/comment-block-parser",
+      "constructs": [],
+      "path": "extracted/0106_comment-block-parser-01.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0107_comment-block-parser-02",
+      "deftest": "test-org-element/comment-block-parser",
+      "constructs": [],
+      "path": "extracted/0107_comment-block-parser-02.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0108_comment-block-parser-03",
+      "deftest": "test-org-element/comment-block-parser",
+      "constructs": [],
+      "path": "extracted/0108_comment-block-parser-03.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0109_diary-sexp-parser",
+      "deftest": "test-org-element/diary-sexp-parser",
+      "constructs": [],
+      "path": "extracted/0109_diary-sexp-parser.org",
+      "byte_len": 61
+    },
+    {
+      "id": "extracted/0110_diary-sexp-parser-01",
+      "deftest": "test-org-element/diary-sexp-parser",
+      "constructs": [],
+      "path": "extracted/0110_diary-sexp-parser-01.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0111_diary-sexp-parser-02",
+      "deftest": "test-org-element/diary-sexp-parser",
+      "constructs": [],
+      "path": "extracted/0111_diary-sexp-parser-02.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0112_drawer-parser",
+      "deftest": "test-org-element/drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0112_drawer-parser.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0113_drawer-parser-01",
+      "deftest": "test-org-element/drawer-parser",
+      "constructs": [],
+      "path": "extracted/0113_drawer-parser-01.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0114_drawer-parser-02",
+      "deftest": "test-org-element/drawer-parser",
+      "constructs": [],
+      "path": "extracted/0114_drawer-parser-02.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0115_drawer-parser-03",
+      "deftest": "test-org-element/drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0115_drawer-parser-03.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0116_dynamic-block-parser",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0116_dynamic-block-parser.org",
+      "byte_len": 54
+    },
+    {
+      "id": "extracted/0117_dynamic-block-parser-01",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0117_dynamic-block-parser-01.org",
+      "byte_len": 64
+    },
+    {
+      "id": "extracted/0118_dynamic-block-parser-02",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0118_dynamic-block-parser-02.org",
+      "byte_len": 54
+    },
+    {
+      "id": "extracted/0119_dynamic-block-parser-03",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0119_dynamic-block-parser-03.org",
+      "byte_len": 42
+    },
+    {
+      "id": "extracted/0120_dynamic-block-parser-04",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0120_dynamic-block-parser-04.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0121_dynamic-block-parser-05",
+      "deftest": "test-org-element/dynamic-block-parser",
+      "constructs": [],
+      "path": "extracted/0121_dynamic-block-parser-05.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0122_entity-parser",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [],
+      "path": "extracted/0122_entity-parser.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0123_entity-parser-01",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [],
+      "path": "extracted/0123_entity-parser-01.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0124_entity-parser-02",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [],
+      "path": "extracted/0124_entity-parser-02.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0125_entity-parser-03",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [],
+      "path": "extracted/0125_entity-parser-03.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0126_entity-parser-04",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [],
+      "path": "extracted/0126_entity-parser-04.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0127_entity-parser-05",
+      "deftest": "test-org-element/entity-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0127_entity-parser-05.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0128_example-block-parser",
+      "deftest": "test-org-element/example-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0128_example-block-parser.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0129_example-block-parser-01",
+      "deftest": "test-org-element/example-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0129_example-block-parser-01.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0130_example-block-parser-02",
+      "deftest": "test-org-element/example-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0130_example-block-parser-02.org",
+      "byte_len": 59
+    },
+    {
+      "id": "extracted/0131_example-block-parser-03",
+      "deftest": "test-org-element/example-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0131_example-block-parser-03.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0132_block-switches",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0132_block-switches.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0133_block-switches-01",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0133_block-switches-01.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0134_block-switches-02",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0134_block-switches-02.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0135_block-switches-03",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0135_block-switches-03.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0136_block-switches-04",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0136_block-switches-04.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0137_block-switches-05",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0137_block-switches-05.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0138_block-switches-06",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0138_block-switches-06.org",
+      "byte_len": 41
+    },
+    {
+      "id": "extracted/0139_block-switches-07",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0139_block-switches-07.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0140_block-switches-08",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0140_block-switches-08.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0141_block-switches-09",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0141_block-switches-09.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0142_block-switches-10",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0142_block-switches-10.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0143_block-switches-11",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0143_block-switches-11.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0144_block-switches-12",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0144_block-switches-12.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0145_block-switches-13",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0145_block-switches-13.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0146_block-switches-14",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0146_block-switches-14.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0147_block-switches-15",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0147_block-switches-15.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0148_block-switches-16",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0148_block-switches-16.org",
+      "byte_len": 59
+    },
+    {
+      "id": "extracted/0149_block-switches-17",
+      "deftest": "test-org-element/block-switches",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0149_block-switches-17.org",
+      "byte_len": 65
+    },
+    {
+      "id": "extracted/0150_export-block-parser",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0150_export-block-parser.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0151_export-block-parser-01",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0151_export-block-parser-01.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0152_export-block-parser-02",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0152_export-block-parser-02.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0153_export-block-parser-03",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0153_export-block-parser-03.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0154_export-block-parser-04",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0154_export-block-parser-04.org",
+      "byte_len": 37
+    },
+    {
+      "id": "extracted/0155_export-block-parser-05",
+      "deftest": "test-org-element/export-block-parser",
+      "constructs": [],
+      "path": "extracted/0155_export-block-parser-05.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0156_export-snippet-parser",
+      "deftest": "test-org-element/export-snippet-parser",
+      "constructs": [],
+      "path": "extracted/0156_export-snippet-parser.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0157_fixed-width-parser",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0157_fixed-width-parser.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0158_fixed-width-parser-01",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0158_fixed-width-parser-01.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0159_fixed-width-parser-02",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0159_fixed-width-parser-02.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0160_fixed-width-parser-03",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0160_fixed-width-parser-03.org",
+      "byte_len": 52
+    },
+    {
+      "id": "extracted/0161_fixed-width-parser-04",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0161_fixed-width-parser-04.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0162_fixed-width-parser-05",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0162_fixed-width-parser-05.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0163_fixed-width-parser-06",
+      "deftest": "test-org-element/fixed-width-parser",
+      "constructs": [],
+      "path": "extracted/0163_fixed-width-parser-06.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0164_footnote-definition-parser",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0164_footnote-definition-parser.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0165_footnote-definition-parser-01",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "table",
+        "footnote"
+      ],
+      "path": "extracted/0165_footnote-definition-parser-01.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0166_footnote-definition-parser-02",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0166_footnote-definition-parser-02.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0167_footnote-definition-parser-03",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0167_footnote-definition-parser-03.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0168_footnote-definition-parser-04",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0168_footnote-definition-parser-04.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0169_footnote-definition-parser-05",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0169_footnote-definition-parser-05.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0170_footnote-definition-parser-06",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0170_footnote-definition-parser-06.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0171_footnote-definition-parser-07",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0171_footnote-definition-parser-07.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0172_footnote-definition-parser-08",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0172_footnote-definition-parser-08.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0173_footnote-definition-parser-09",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0173_footnote-definition-parser-09.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0174_footnote-definition-parser-10",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0174_footnote-definition-parser-10.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0175_footnote-definition-parser-11",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0175_footnote-definition-parser-11.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0176_footnote-definition-parser-12",
+      "deftest": "test-org-element/footnote-definition-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0176_footnote-definition-parser-12.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0177_footnote-reference-parser",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0177_footnote-reference-parser.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0178_footnote-reference-parser-01",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0178_footnote-reference-parser-01.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0179_footnote-reference-parser-02",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0179_footnote-reference-parser-02.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0180_footnote-reference-parser-03",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0180_footnote-reference-parser-03.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0181_footnote-reference-parser-04",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0181_footnote-reference-parser-04.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0182_footnote-reference-parser-05",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0182_footnote-reference-parser-05.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0183_footnote-reference-parser-06",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0183_footnote-reference-parser-06.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0184_footnote-reference-parser-07",
+      "deftest": "test-org-element/footnote-reference-parser",
+      "constructs": [
+        "footnote"
+      ],
+      "path": "extracted/0184_footnote-reference-parser-07.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0185_headline-todo-keyword",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [
+        "heading-todo"
+      ],
+      "path": "extracted/0185_headline-todo-keyword.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0186_headline-todo-keyword-01",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [],
+      "path": "extracted/0186_headline-todo-keyword-01.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0187_headline-todo-keyword-02",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [
+        "heading-todo"
+      ],
+      "path": "extracted/0187_headline-todo-keyword-02.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0188_headline-todo-keyword-03",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [],
+      "path": "extracted/0188_headline-todo-keyword-03.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0189_headline-todo-keyword-04",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [],
+      "path": "extracted/0189_headline-todo-keyword-04.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0190_headline-todo-keyword-05",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [],
+      "path": "extracted/0190_headline-todo-keyword-05.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0191_headline-todo-keyword-06",
+      "deftest": "test-org-element/headline-todo-keyword",
+      "constructs": [],
+      "path": "extracted/0191_headline-todo-keyword-06.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0192_headline-tags",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [],
+      "path": "extracted/0192_headline-tags.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0193_headline-tags-01",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [],
+      "path": "extracted/0193_headline-tags-01.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0194_headline-tags-02",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0194_headline-tags-02.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0195_headline-tags-03",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0195_headline-tags-03.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0196_headline-tags-04",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0196_headline-tags-04.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0197_headline-tags-05",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0197_headline-tags-05.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0198_headline-tags-06",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [],
+      "path": "extracted/0198_headline-tags-06.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0199_headline-tags-07",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [],
+      "path": "extracted/0199_headline-tags-07.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0200_headline-tags-08",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0200_headline-tags-08.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0201_headline-tags-09",
+      "deftest": "test-org-element/headline-tags",
+      "constructs": [],
+      "path": "extracted/0201_headline-tags-09.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0202_headline-comment-keyword",
+      "deftest": "test-org-element/headline-comment-keyword",
+      "constructs": [],
+      "path": "extracted/0202_headline-comment-keyword.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0203_headline-comment-keyword-01",
+      "deftest": "test-org-element/headline-comment-keyword",
+      "constructs": [],
+      "path": "extracted/0203_headline-comment-keyword-01.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0204_headline-comment-keyword-02",
+      "deftest": "test-org-element/headline-comment-keyword",
+      "constructs": [],
+      "path": "extracted/0204_headline-comment-keyword-02.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0205_headline-comment-keyword-03",
+      "deftest": "test-org-element/headline-comment-keyword",
+      "constructs": [
+        "heading-todo"
+      ],
+      "path": "extracted/0205_headline-comment-keyword-03.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0206_headline-comment-keyword-04",
+      "deftest": "test-org-element/headline-comment-keyword",
+      "constructs": [],
+      "path": "extracted/0206_headline-comment-keyword-04.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0207_headline-archive-tag",
+      "deftest": "test-org-element/headline-archive-tag",
+      "constructs": [],
+      "path": "extracted/0207_headline-archive-tag.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0208_headline-archive-tag-01",
+      "deftest": "test-org-element/headline-archive-tag",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0208_headline-archive-tag-01.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0209_headline-archive-tag-02",
+      "deftest": "test-org-element/headline-archive-tag",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0209_headline-archive-tag-02.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0210_headline-archive-tag-03",
+      "deftest": "test-org-element/headline-archive-tag",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0210_headline-archive-tag-03.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0211_headline-properties",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0211_headline-properties.org",
+      "byte_len": 39
+    },
+    {
+      "id": "extracted/0212_headline-properties-01",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0212_headline-properties-01.org",
+      "byte_len": 39
+    },
+    {
+      "id": "extracted/0213_headline-properties-02",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0213_headline-properties-02.org",
+      "byte_len": 75
+    },
+    {
+      "id": "extracted/0214_headline-properties-03",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [
+        "drawer",
+        "block"
+      ],
+      "path": "extracted/0214_headline-properties-03.org",
+      "byte_len": 69
+    },
+    {
+      "id": "extracted/0215_headline-properties-04",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0215_headline-properties-04.org",
+      "byte_len": 86
+    },
+    {
+      "id": "extracted/0216_headline-properties-05",
+      "deftest": "test-org-element/headline-properties",
+      "constructs": [],
+      "path": "extracted/0216_headline-properties-05.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0217_horizontal-rule-parser",
+      "deftest": "test-org-element/horizontal-rule-parser",
+      "constructs": [],
+      "path": "extracted/0217_horizontal-rule-parser.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0218_horizontal-rule-parser-01",
+      "deftest": "test-org-element/horizontal-rule-parser",
+      "constructs": [],
+      "path": "extracted/0218_horizontal-rule-parser-01.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0219_horizontal-rule-parser-02",
+      "deftest": "test-org-element/horizontal-rule-parser",
+      "constructs": [],
+      "path": "extracted/0219_horizontal-rule-parser-02.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0220_horizontal-rule-parser-03",
+      "deftest": "test-org-element/horizontal-rule-parser",
+      "constructs": [],
+      "path": "extracted/0220_horizontal-rule-parser-03.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0221_horizontal-rule-parser-04",
+      "deftest": "test-org-element/horizontal-rule-parser",
+      "constructs": [],
+      "path": "extracted/0221_horizontal-rule-parser-04.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0222_inline-babel-call-parser",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0222_inline-babel-call-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0223_inline-babel-call-parser-01",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0223_inline-babel-call-parser-01.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0224_inline-babel-call-parser-02",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0224_inline-babel-call-parser-02.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0225_inline-babel-call-parser-03",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0225_inline-babel-call-parser-03.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0226_inline-babel-call-parser-04",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0226_inline-babel-call-parser-04.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0227_inline-babel-call-parser-05",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0227_inline-babel-call-parser-05.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0228_inline-babel-call-parser-06",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0228_inline-babel-call-parser-06.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0229_inline-babel-call-parser-07",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0229_inline-babel-call-parser-07.org",
+      "byte_len": 50
+    },
+    {
+      "id": "extracted/0230_inline-babel-call-parser-08",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0230_inline-babel-call-parser-08.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0231_inline-babel-call-parser-09",
+      "deftest": "test-org-element/inline-babel-call-parser",
+      "constructs": [],
+      "path": "extracted/0231_inline-babel-call-parser-09.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0232_inline-src-block-parser",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0232_inline-src-block-parser.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0233_inline-src-block-parser-01",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0233_inline-src-block-parser-01.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0234_inline-src-block-parser-02",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0234_inline-src-block-parser-02.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0235_inline-src-block-parser-03",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0235_inline-src-block-parser-03.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0236_inline-src-block-parser-04",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0236_inline-src-block-parser-04.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0237_inline-src-block-parser-05",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0237_inline-src-block-parser-05.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0238_inline-src-block-parser-06",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0238_inline-src-block-parser-06.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0239_inline-src-block-parser-07",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0239_inline-src-block-parser-07.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0240_inline-src-block-parser-08",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0240_inline-src-block-parser-08.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0241_inline-src-block-parser-09",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0241_inline-src-block-parser-09.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0242_inline-src-block-parser-10",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0242_inline-src-block-parser-10.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0243_inline-src-block-parser-11",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0243_inline-src-block-parser-11.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0244_inline-src-block-parser-12",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0244_inline-src-block-parser-12.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0245_inline-src-block-parser-13",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0245_inline-src-block-parser-13.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0246_inline-src-block-parser-14",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0246_inline-src-block-parser-14.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0247_inline-src-block-parser-15",
+      "deftest": "test-org-element/inline-src-block-parser",
+      "constructs": [],
+      "path": "extracted/0247_inline-src-block-parser-15.org",
+      "byte_len": 42
+    },
+    {
+      "id": "extracted/0248_inlinetask-parser",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0248_inlinetask-parser.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0249_inlinetask-parser-01",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0249_inlinetask-parser-01.org",
+      "byte_len": 47
+    },
+    {
+      "id": "extracted/0250_inlinetask-parser-02",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0250_inlinetask-parser-02.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0251_inlinetask-parser-03",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0251_inlinetask-parser-03.org",
+      "byte_len": 72
+    },
+    {
+      "id": "extracted/0252_inlinetask-parser-04",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0252_inlinetask-parser-04.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0253_inlinetask-parser-05",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0253_inlinetask-parser-05.org",
+      "byte_len": 69
+    },
+    {
+      "id": "extracted/0254_inlinetask-parser-06",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0254_inlinetask-parser-06.org",
+      "byte_len": 69
+    },
+    {
+      "id": "extracted/0255_inlinetask-parser-07",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0255_inlinetask-parser-07.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0256_inlinetask-parser-08",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0256_inlinetask-parser-08.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0257_inlinetask-parser-09",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0257_inlinetask-parser-09.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0258_inlinetask-parser-10",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0258_inlinetask-parser-10.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0259_inlinetask-parser-11",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0259_inlinetask-parser-11.org",
+      "byte_len": 70
+    },
+    {
+      "id": "extracted/0260_inlinetask-parser-12",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0260_inlinetask-parser-12.org",
+      "byte_len": 70
+    },
+    {
+      "id": "extracted/0261_inlinetask-parser-13",
+      "deftest": "test-org-element/inlinetask-parser",
+      "constructs": [],
+      "path": "extracted/0261_inlinetask-parser-13.org",
+      "byte_len": 42
+    },
+    {
+      "id": "extracted/0262_italic-parser",
+      "deftest": "test-org-element/italic-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0262_italic-parser.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0263_italic-parser-01",
+      "deftest": "test-org-element/italic-parser",
+      "constructs": [],
+      "path": "extracted/0263_italic-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0264_item-parser",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0264_item-parser.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0265_item-parser-01",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0265_item-parser-01.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0266_item-parser-02",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0266_item-parser-02.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0267_item-parser-03",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0267_item-parser-03.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0268_item-parser-04",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0268_item-parser-04.org",
+      "byte_len": 47
+    },
+    {
+      "id": "extracted/0269_item-parser-05",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0269_item-parser-05.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0270_item-parser-06",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list",
+        "block"
+      ],
+      "path": "extracted/0270_item-parser-06.org",
+      "byte_len": 51
+    },
+    {
+      "id": "extracted/0271_item-parser-07",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0271_item-parser-07.org",
+      "byte_len": 3
+    },
+    {
+      "id": "extracted/0272_item-parser-08",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [],
+      "path": "extracted/0272_item-parser-08.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0273_item-parser-09",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [],
+      "path": "extracted/0273_item-parser-09.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0274_item-parser-10",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0274_item-parser-10.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0275_item-parser-11",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0275_item-parser-11.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0276_item-parser-12",
+      "deftest": "test-org-element/item-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0276_item-parser-12.org",
+      "byte_len": 42
+    },
+    {
+      "id": "extracted/0277_keyword-parser",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0277_keyword-parser.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0278_keyword-parser-01",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0278_keyword-parser-01.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0279_keyword-parser-02",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0279_keyword-parser-02.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0280_keyword-parser-03",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0280_keyword-parser-03.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0281_keyword-parser-04",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0281_keyword-parser-04.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0282_keyword-parser-05",
+      "deftest": "test-org-element/keyword-parser",
+      "constructs": [],
+      "path": "extracted/0282_keyword-parser-05.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0283_latex-environment-parser",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0283_latex-environment-parser.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0284_latex-environment-parser-01",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0284_latex-environment-parser-01.org",
+      "byte_len": 65
+    },
+    {
+      "id": "extracted/0285_latex-environment-parser-02",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0285_latex-environment-parser-02.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0286_latex-environment-parser-03",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0286_latex-environment-parser-03.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0287_latex-environment-parser-04",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0287_latex-environment-parser-04.org",
+      "byte_len": 41
+    },
+    {
+      "id": "extracted/0288_latex-environment-parser-05",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0288_latex-environment-parser-05.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0289_latex-environment-parser-06",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0289_latex-environment-parser-06.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0290_latex-environment-parser-07",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0290_latex-environment-parser-07.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0291_latex-environment-parser-08",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0291_latex-environment-parser-08.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0292_latex-environment-parser-09",
+      "deftest": "test-org-element/latex-environment-parser",
+      "constructs": [],
+      "path": "extracted/0292_latex-environment-parser-09.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0293_latex-fragment-parser",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0293_latex-fragment-parser.org",
+      "byte_len": 3
+    },
+    {
+      "id": "extracted/0294_latex-fragment-parser-01",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0294_latex-fragment-parser-01.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0295_latex-fragment-parser-02",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0295_latex-fragment-parser-02.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0296_latex-fragment-parser-03",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0296_latex-fragment-parser-03.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0297_latex-fragment-parser-04",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0297_latex-fragment-parser-04.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0298_latex-fragment-parser-05",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0298_latex-fragment-parser-05.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0299_latex-fragment-parser-06",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0299_latex-fragment-parser-06.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0300_latex-fragment-parser-07",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0300_latex-fragment-parser-07.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0301_latex-fragment-parser-08",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0301_latex-fragment-parser-08.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0302_latex-fragment-parser-09",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0302_latex-fragment-parser-09.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0303_latex-fragment-parser-10",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0303_latex-fragment-parser-10.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0304_latex-fragment-parser-11",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0304_latex-fragment-parser-11.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0305_latex-fragment-parser-12",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0305_latex-fragment-parser-12.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0306_latex-fragment-parser-13",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0306_latex-fragment-parser-13.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0307_latex-fragment-parser-14",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0307_latex-fragment-parser-14.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0308_latex-fragment-parser-15",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0308_latex-fragment-parser-15.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0309_latex-fragment-parser-16",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0309_latex-fragment-parser-16.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0310_latex-fragment-parser-17",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "inline-latex"
+      ],
+      "path": "extracted/0310_latex-fragment-parser-17.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0311_latex-fragment-parser-18",
+      "deftest": "test-org-element/latex-fragment-parser",
+      "constructs": [
+        "list",
+        "inline-latex"
+      ],
+      "path": "extracted/0311_latex-fragment-parser-18.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0312_line-break-parser",
+      "deftest": "test-org-element/line-break-parser",
+      "constructs": [],
+      "path": "extracted/0312_line-break-parser.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0313_line-break-parser-01",
+      "deftest": "test-org-element/line-break-parser",
+      "constructs": [],
+      "path": "extracted/0313_line-break-parser-01.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0314_line-break-parser-02",
+      "deftest": "test-org-element/line-break-parser",
+      "constructs": [],
+      "path": "extracted/0314_line-break-parser-02.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0315_link-parser",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0315_link-parser.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0316_link-parser-01",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0316_link-parser-01.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0317_link-parser-02",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0317_link-parser-02.org",
+      "byte_len": 44
+    },
+    {
+      "id": "extracted/0318_link-parser-03",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0318_link-parser-03.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0319_link-parser-04",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0319_link-parser-04.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0320_link-parser-05",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0320_link-parser-05.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0321_link-parser-06",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0321_link-parser-06.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0322_link-parser-07",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0322_link-parser-07.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0323_link-parser-08",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0323_link-parser-08.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0324_link-parser-09",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0324_link-parser-09.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0325_link-parser-10",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0325_link-parser-10.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0326_link-parser-11",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0326_link-parser-11.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0327_link-parser-12",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0327_link-parser-12.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0328_link-parser-13",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0328_link-parser-13.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0329_link-parser-14",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0329_link-parser-14.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0330_link-parser-15",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0330_link-parser-15.org",
+      "byte_len": 0
+    },
+    {
+      "id": "extracted/0331_link-parser-16",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0331_link-parser-16.org",
+      "byte_len": 0
+    },
+    {
+      "id": "extracted/0332_link-parser-17",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [],
+      "path": "extracted/0332_link-parser-17.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0333_link-parser-18",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0333_link-parser-18.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0334_link-parser-19",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0334_link-parser-19.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0335_link-parser-20",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0335_link-parser-20.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0336_link-parser-21",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0336_link-parser-21.org",
+      "byte_len": 58
+    },
+    {
+      "id": "extracted/0337_link-parser-22",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0337_link-parser-22.org",
+      "byte_len": 100
+    },
+    {
+      "id": "extracted/0338_link-parser-23",
+      "deftest": "test-org-element/link-parser",
+      "constructs": [
+        "link"
+      ],
+      "path": "extracted/0338_link-parser-23.org",
+      "byte_len": 62
+    },
+    {
+      "id": "extracted/0339_macro-parser",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0339_macro-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0340_macro-parser-01",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0340_macro-parser-01.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0341_macro-parser-02",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0341_macro-parser-02.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0342_macro-parser-03",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0342_macro-parser-03.org",
+      "byte_len": 17
+    },
+    {
+      "id": "extracted/0343_macro-parser-04",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0343_macro-parser-04.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0344_macro-parser-05",
+      "deftest": "test-org-element/macro-parser",
+      "constructs": [],
+      "path": "extracted/0344_macro-parser-05.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0345_node-property",
+      "deftest": "test-org-element/node-property",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0345_node-property.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0346_node-property-01",
+      "deftest": "test-org-element/node-property",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0346_node-property-01.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0347_node-property-02",
+      "deftest": "test-org-element/node-property",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0347_node-property-02.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0348_node-property-03",
+      "deftest": "test-org-element/node-property",
+      "constructs": [],
+      "path": "extracted/0348_node-property-03.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0349_node-property-04",
+      "deftest": "test-org-element/node-property",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0349_node-property-04.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0350_paragraph-parser",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0350_paragraph-parser.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0351_paragraph-parser-01",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0351_paragraph-parser-01.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0352_paragraph-parser-02",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0352_paragraph-parser-02.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0353_paragraph-parser-03",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0353_paragraph-parser-03.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0354_paragraph-parser-04",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0354_paragraph-parser-04.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0355_paragraph-parser-05",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0355_paragraph-parser-05.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0356_paragraph-parser-06",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0356_paragraph-parser-06.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0357_paragraph-parser-07",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0357_paragraph-parser-07.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0358_paragraph-parser-08",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0358_paragraph-parser-08.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0359_paragraph-parser-09",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0359_paragraph-parser-09.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0360_paragraph-parser-10",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0360_paragraph-parser-10.org",
+      "byte_len": 55
+    },
+    {
+      "id": "extracted/0361_paragraph-parser-11",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0361_paragraph-parser-11.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0362_paragraph-parser-12",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0362_paragraph-parser-12.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0363_paragraph-parser-13",
+      "deftest": "test-org-element/paragraph-parser",
+      "constructs": [],
+      "path": "extracted/0363_paragraph-parser-13.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0364_plain-list-parser",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0364_plain-list-parser.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0365_plain-list-parser-01",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0365_plain-list-parser-01.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0366_plain-list-parser-02",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0366_plain-list-parser-02.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0367_plain-list-parser-03",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0367_plain-list-parser-03.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0368_plain-list-parser-04",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0368_plain-list-parser-04.org",
+      "byte_len": 14
+    },
+    {
+      "id": "extracted/0369_plain-list-parser-05",
+      "deftest": "test-org-element/plain-list-parser",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0369_plain-list-parser-05.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0370_planning-parser",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [],
+      "path": "extracted/0370_planning-parser.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0371_planning-parser-01",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0371_planning-parser-01.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0372_planning-parser-02",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [
+        "scheduled"
+      ],
+      "path": "extracted/0372_planning-parser-02.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0373_planning-parser-03",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0373_planning-parser-03.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0374_planning-parser-04",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0374_planning-parser-04.org",
+      "byte_len": 41
+    },
+    {
+      "id": "extracted/0375_planning-parser-05",
+      "deftest": "test-org-element/planning-parser",
+      "constructs": [
+        "deadline"
+      ],
+      "path": "extracted/0375_planning-parser-05.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0376_property-drawer-parser",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0376_property-drawer-parser.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0377_property-drawer-parser-01",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "deadline",
+        "drawer"
+      ],
+      "path": "extracted/0377_property-drawer-parser-01.org",
+      "byte_len": 63
+    },
+    {
+      "id": "extracted/0378_property-drawer-parser-02",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0378_property-drawer-parser-02.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0379_property-drawer-parser-03",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0379_property-drawer-parser-03.org",
+      "byte_len": 39
+    },
+    {
+      "id": "extracted/0380_property-drawer-parser-04",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0380_property-drawer-parser-04.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0381_property-drawer-parser-05",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0381_property-drawer-parser-05.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0382_property-drawer-parser-06",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0382_property-drawer-parser-06.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0383_property-drawer-parser-07",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0383_property-drawer-parser-07.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0384_property-drawer-parser-08",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [],
+      "path": "extracted/0384_property-drawer-parser-08.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0385_property-drawer-parser-09",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0385_property-drawer-parser-09.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0386_property-drawer-parser-10",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0386_property-drawer-parser-10.org",
+      "byte_len": 42
+    },
+    {
+      "id": "extracted/0387_property-drawer-parser-11",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0387_property-drawer-parser-11.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0388_property-drawer-parser-12",
+      "deftest": "test-org-element/property-drawer-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0388_property-drawer-parser-12.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0389_quote-block-parser",
+      "deftest": "test-org-element/quote-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0389_quote-block-parser.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0390_quote-block-parser-01",
+      "deftest": "test-org-element/quote-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0390_quote-block-parser-01.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0391_quote-block-parser-02",
+      "deftest": "test-org-element/quote-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0391_quote-block-parser-02.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0392_radio-target-parser",
+      "deftest": "test-org-element/radio-target-parser",
+      "constructs": [],
+      "path": "extracted/0392_radio-target-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0393_radio-target-parser-01",
+      "deftest": "test-org-element/radio-target-parser",
+      "constructs": [],
+      "path": "extracted/0393_radio-target-parser-01.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0394_radio-target-parser-02",
+      "deftest": "test-org-element/radio-target-parser",
+      "constructs": [],
+      "path": "extracted/0394_radio-target-parser-02.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0395_radio-target-parser-03",
+      "deftest": "test-org-element/radio-target-parser",
+      "constructs": [],
+      "path": "extracted/0395_radio-target-parser-03.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0396_radio-target-parser-04",
+      "deftest": "test-org-element/radio-target-parser",
+      "constructs": [],
+      "path": "extracted/0396_radio-target-parser-04.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0397_section-parser",
+      "deftest": "test-org-element/section-parser",
+      "constructs": [],
+      "path": "extracted/0397_section-parser.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0398_section-parser-01",
+      "deftest": "test-org-element/section-parser",
+      "constructs": [],
+      "path": "extracted/0398_section-parser-01.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0399_section-parser-02",
+      "deftest": "test-org-element/section-parser",
+      "constructs": [],
+      "path": "extracted/0399_section-parser-02.org",
+      "byte_len": 25
+    },
+    {
+      "id": "extracted/0400_section-parser-03",
+      "deftest": "test-org-element/section-parser",
+      "constructs": [],
+      "path": "extracted/0400_section-parser-03.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0401_special-block-parser",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0401_special-block-parser.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0402_special-block-parser-01",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0402_special-block-parser-01.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0403_special-block-parser-02",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0403_special-block-parser-02.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0404_special-block-parser-03",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0404_special-block-parser-03.org",
+      "byte_len": 15
+    },
+    {
+      "id": "extracted/0405_special-block-parser-04",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0405_special-block-parser-04.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0406_special-block-parser-05",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0406_special-block-parser-05.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0407_special-block-parser-06",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0407_special-block-parser-06.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0408_special-block-parser-07",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0408_special-block-parser-07.org",
+      "byte_len": 55
+    },
+    {
+      "id": "extracted/0409_special-block-parser-08",
+      "deftest": "test-org-element/special-block-parser",
+      "constructs": [],
+      "path": "extracted/0409_special-block-parser-08.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0410_src-block-parser",
+      "deftest": "test-org-element/src-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0410_src-block-parser.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0411_src-block-parser-01",
+      "deftest": "test-org-element/src-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0411_src-block-parser-01.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0412_src-block-parser-02",
+      "deftest": "test-org-element/src-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0412_src-block-parser-02.org",
+      "byte_len": 54
+    },
+    {
+      "id": "extracted/0413_src-block-parser-03",
+      "deftest": "test-org-element/src-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0413_src-block-parser-03.org",
+      "byte_len": 36
+    },
+    {
+      "id": "extracted/0414_statistics-cookie",
+      "deftest": "test-org-element/statistics-cookie",
+      "constructs": [],
+      "path": "extracted/0414_statistics-cookie.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0415_statistics-cookie-01",
+      "deftest": "test-org-element/statistics-cookie",
+      "constructs": [],
+      "path": "extracted/0415_statistics-cookie-01.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0416_strike-through-parser",
+      "deftest": "test-org-element/strike-through-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0416_strike-through-parser.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0417_strike-through-parser-01",
+      "deftest": "test-org-element/strike-through-parser",
+      "constructs": [],
+      "path": "extracted/0417_strike-through-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0418_subscript-parser",
+      "deftest": "test-org-element/subscript-parser",
+      "constructs": [],
+      "path": "extracted/0418_subscript-parser.org",
+      "byte_len": 3
+    },
+    {
+      "id": "extracted/0419_subscript-parser-01",
+      "deftest": "test-org-element/subscript-parser",
+      "constructs": [],
+      "path": "extracted/0419_subscript-parser-01.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0420_subscript-parser-02",
+      "deftest": "test-org-element/subscript-parser",
+      "constructs": [],
+      "path": "extracted/0420_subscript-parser-02.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0421_superscript-parser",
+      "deftest": "test-org-element/superscript-parser",
+      "constructs": [],
+      "path": "extracted/0421_superscript-parser.org",
+      "byte_len": 3
+    },
+    {
+      "id": "extracted/0422_superscript-parser-01",
+      "deftest": "test-org-element/superscript-parser",
+      "constructs": [],
+      "path": "extracted/0422_superscript-parser-01.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0423_superscript-parser-02",
+      "deftest": "test-org-element/superscript-parser",
+      "constructs": [],
+      "path": "extracted/0423_superscript-parser-02.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0424_table-parser",
+      "deftest": "test-org-element/table-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0424_table-parser.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0425_table-parser-01",
+      "deftest": "test-org-element/table-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0425_table-parser-01.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0426_table-parser-02",
+      "deftest": "test-org-element/table-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0426_table-parser-02.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0427_table-parser-03",
+      "deftest": "test-org-element/table-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0427_table-parser-03.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0428_table-cell-parser",
+      "deftest": "test-org-element/table-cell-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0428_table-cell-parser.org",
+      "byte_len": 5
+    },
+    {
+      "id": "extracted/0429_table-cell-parser-01",
+      "deftest": "test-org-element/table-cell-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0429_table-cell-parser-01.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0430_table-row-parser",
+      "deftest": "test-org-element/table-row-parser",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0430_table-row-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0431_target-parser",
+      "deftest": "test-org-element/target-parser",
+      "constructs": [],
+      "path": "extracted/0431_target-parser.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0432_timestamp-parser",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0432_timestamp-parser.org",
+      "byte_len": 18
+    },
+    {
+      "id": "extracted/0433_timestamp-parser-01",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0433_timestamp-parser-01.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0434_timestamp-parser-02",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0434_timestamp-parser-02.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0435_timestamp-parser-03",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0435_timestamp-parser-03.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0436_timestamp-parser-04",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0436_timestamp-parser-04.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0437_timestamp-parser-05",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0437_timestamp-parser-05.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0438_timestamp-parser-06",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0438_timestamp-parser-06.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0439_timestamp-parser-07",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0439_timestamp-parser-07.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0440_timestamp-parser-08",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [
+        "recurring-timestamp"
+      ],
+      "path": "extracted/0440_timestamp-parser-08.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0441_timestamp-parser-09",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [
+        "recurring-timestamp"
+      ],
+      "path": "extracted/0441_timestamp-parser-09.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0442_timestamp-parser-10",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0442_timestamp-parser-10.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0443_timestamp-parser-11",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [
+        "recurring-timestamp"
+      ],
+      "path": "extracted/0443_timestamp-parser-11.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0444_timestamp-parser-12",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [
+        "recurring-timestamp"
+      ],
+      "path": "extracted/0444_timestamp-parser-12.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0445_timestamp-parser-13",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0445_timestamp-parser-13.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0446_timestamp-parser-14",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0446_timestamp-parser-14.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0447_timestamp-parser-15",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0447_timestamp-parser-15.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0448_timestamp-parser-16",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0448_timestamp-parser-16.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0449_timestamp-parser-17",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0449_timestamp-parser-17.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0450_timestamp-parser-18",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0450_timestamp-parser-18.org",
+      "byte_len": 34
+    },
+    {
+      "id": "extracted/0451_timestamp-parser-19",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0451_timestamp-parser-19.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0452_timestamp-parser-20",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0452_timestamp-parser-20.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0453_timestamp-parser-21",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0453_timestamp-parser-21.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0454_timestamp-parser-22",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0454_timestamp-parser-22.org",
+      "byte_len": 40
+    },
+    {
+      "id": "extracted/0455_timestamp-parser-23",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [],
+      "path": "extracted/0455_timestamp-parser-23.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0456_timestamp-parser-24",
+      "deftest": "test-org-element/timestamp-parser",
+      "constructs": [
+        "recurring-timestamp"
+      ],
+      "path": "extracted/0456_timestamp-parser-24.org",
+      "byte_len": 50
+    },
+    {
+      "id": "extracted/0457_underline-parser",
+      "deftest": "test-org-element/underline-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0457_underline-parser.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0458_underline-parser-01",
+      "deftest": "test-org-element/underline-parser",
+      "constructs": [],
+      "path": "extracted/0458_underline-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0459_underline-parser-02",
+      "deftest": "test-org-element/underline-parser",
+      "constructs": [],
+      "path": "extracted/0459_underline-parser-02.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0460_underline-parser-03",
+      "deftest": "test-org-element/underline-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0460_underline-parser-03.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0461_underline-parser-04",
+      "deftest": "test-org-element/underline-parser",
+      "constructs": [],
+      "path": "extracted/0461_underline-parser-04.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0462_verbatim-parser",
+      "deftest": "test-org-element/verbatim-parser",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0462_verbatim-parser.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0463_verbatim-parser-01",
+      "deftest": "test-org-element/verbatim-parser",
+      "constructs": [],
+      "path": "extracted/0463_verbatim-parser-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0464_verse-block-parser",
+      "deftest": "test-org-element/verse-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0464_verse-block-parser.org",
+      "byte_len": 37
+    },
+    {
+      "id": "extracted/0465_verse-block-parser-01",
+      "deftest": "test-org-element/verse-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0465_verse-block-parser-01.org",
+      "byte_len": 37
+    },
+    {
+      "id": "extracted/0466_verse-block-parser-02",
+      "deftest": "test-org-element/verse-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0466_verse-block-parser-02.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0467_verse-block-parser-03",
+      "deftest": "test-org-element/verse-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0467_verse-block-parser-03.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0468_verse-block-parser-04",
+      "deftest": "test-org-element/verse-block-parser",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0468_verse-block-parser-04.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0469_org-data-parser",
+      "deftest": "test-org-element/org-data-parser",
+      "constructs": [],
+      "path": "extracted/0469_org-data-parser.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0470_org-data-parser-01",
+      "deftest": "test-org-element/org-data-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0470_org-data-parser-01.org",
+      "byte_len": 28
+    },
+    {
+      "id": "extracted/0471_org-data-parser-02",
+      "deftest": "test-org-element/org-data-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0471_org-data-parser-02.org",
+      "byte_len": 38
+    },
+    {
+      "id": "extracted/0472_org-data-parser-03",
+      "deftest": "test-org-element/org-data-parser",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0472_org-data-parser-03.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0473_timestamp-interpreter",
+      "deftest": "test-org-element/timestamp-interpreter",
+      "constructs": [],
+      "path": "extracted/0473_timestamp-interpreter.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0474_timestamp-interpreter-01",
+      "deftest": "test-org-element/timestamp-interpreter",
+      "constructs": [],
+      "path": "extracted/0474_timestamp-interpreter-01.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0475_granularity",
+      "deftest": "test-org-element/granularity",
+      "constructs": [],
+      "path": "extracted/0475_granularity.org",
+      "byte_len": 84
+    },
+    {
+      "id": "extracted/0476_secondary-string-parsing",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [],
+      "path": "extracted/0476_secondary-string-parsing.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0477_secondary-string-parsing-01",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0477_secondary-string-parsing-01.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0478_secondary-string-parsing-02",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [],
+      "path": "extracted/0478_secondary-string-parsing-02.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0479_secondary-string-parsing-03",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [],
+      "path": "extracted/0479_secondary-string-parsing-03.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0480_secondary-string-parsing-04",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [],
+      "path": "extracted/0480_secondary-string-parsing-04.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0481_secondary-string-parsing-05",
+      "deftest": "test-org-element/secondary-string-parsing",
+      "constructs": [],
+      "path": "extracted/0481_secondary-string-parsing-05.org",
+      "byte_len": 78
+    },
+    {
+      "id": "extracted/0482_parse-buffer-visible",
+      "deftest": "test-org-element/parse-buffer-visible",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0482_parse-buffer-visible.org",
+      "byte_len": 48
+    },
+    {
+      "id": "extracted/0483_parent-property",
+      "deftest": "test-org-element/parent-property",
+      "constructs": [],
+      "path": "extracted/0483_parent-property.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0484_parent-property-01",
+      "deftest": "test-org-element/parent-property",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0484_parent-property-01.org",
+      "byte_len": 7
+    },
+    {
+      "id": "extracted/0485_parent-property-02",
+      "deftest": "test-org-element/parent-property",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0485_parent-property-02.org",
+      "byte_len": 10
+    },
+    {
+      "id": "extracted/0486_at-point",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0486_at-point.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0487_at-point-01",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0487_at-point-01.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0488_at-point-02",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0488_at-point-02.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0489_at-point-03",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0489_at-point-03.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0490_at-point-04",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0490_at-point-04.org",
+      "byte_len": 9
+    },
+    {
+      "id": "extracted/0491_at-point-05",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0491_at-point-05.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0492_at-point-06",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0492_at-point-06.org",
+      "byte_len": 37
+    },
+    {
+      "id": "extracted/0493_at-point-07",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0493_at-point-07.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0494_at-point-08",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0494_at-point-08.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0495_at-point-09",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0495_at-point-09.org",
+      "byte_len": 52
+    },
+    {
+      "id": "extracted/0496_at-point-10",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0496_at-point-10.org",
+      "byte_len": 3
+    },
+    {
+      "id": "extracted/0497_at-point-11",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0497_at-point-11.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0498_at-point-12",
+      "deftest": "test-org-element/at-point",
+      "constructs": [],
+      "path": "extracted/0498_at-point-12.org",
+      "byte_len": 4
+    },
+    {
+      "id": "extracted/0499_at-point-13",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0499_at-point-13.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0500_at-point-14",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0500_at-point-14.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0501_at-point-15",
+      "deftest": "test-org-element/at-point",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0501_at-point-15.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0502_context",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0502_context.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0503_context-01",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0503_context-01.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0504_context-02",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0504_context-02.org",
+      "byte_len": 37
+    },
+    {
+      "id": "extracted/0505_context-03",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0505_context-03.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0506_context-04",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0506_context-04.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0507_context-05",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup",
+        "list"
+      ],
+      "path": "extracted/0507_context-05.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0508_context-06",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup",
+        "list"
+      ],
+      "path": "extracted/0508_context-06.org",
+      "byte_len": 11
+    },
+    {
+      "id": "extracted/0509_context-07",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup",
+        "list"
+      ],
+      "path": "extracted/0509_context-07.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0510_context-08",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0510_context-08.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0511_context-09",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0511_context-09.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0512_context-10",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0512_context-10.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0513_context-11",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0513_context-11.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0514_context-12",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0514_context-12.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0515_context-13",
+      "deftest": "test-org-element/context",
+      "constructs": [],
+      "path": "extracted/0515_context-13.org",
+      "byte_len": 20
+    },
+    {
+      "id": "extracted/0516_context-14",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0516_context-14.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0517_context-15",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0517_context-15.org",
+      "byte_len": 8
+    },
+    {
+      "id": "extracted/0518_context-16",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0518_context-16.org",
+      "byte_len": 6
+    },
+    {
+      "id": "extracted/0519_context-17",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "link",
+        "footnote"
+      ],
+      "path": "extracted/0519_context-17.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0520_context-18",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0520_context-18.org",
+      "byte_len": 22
+    },
+    {
+      "id": "extracted/0521_context-19",
+      "deftest": "test-org-element/context",
+      "constructs": [
+        "tag"
+      ],
+      "path": "extracted/0521_context-19.org",
+      "byte_len": 33
+    },
+    {
+      "id": "extracted/0522_context-20",
+      "deftest": "test-org-element/context",
+      "constructs": [],
+      "path": "extracted/0522_context-20.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0523_lineage",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0523_lineage.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0524_lineage-01",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0524_lineage-01.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0525_lineage-02",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0525_lineage-02.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0526_lineage-03",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0526_lineage-03.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0527_lineage-04",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0527_lineage-04.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0528_lineage-05",
+      "deftest": "test-org-element/lineage",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0528_lineage-05.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0529_lineage-map",
+      "deftest": "test-org-element/lineage-map",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0529_lineage-map.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0530_lineage-map-01",
+      "deftest": "test-org-element/lineage-map",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0530_lineage-map-01.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0531_lineage-map-02",
+      "deftest": "test-org-element/lineage-map",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0531_lineage-map-02.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0532_lineage-map-03",
+      "deftest": "test-org-element/lineage-map",
+      "constructs": [
+        "inline-markup"
+      ],
+      "path": "extracted/0532_lineage-map-03.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0533_cache-map",
+      "deftest": "test-org-element/cache-map",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0533_cache-map.org",
+      "byte_len": 48
+    },
+    {
+      "id": "extracted/0534_cache-map-01",
+      "deftest": "test-org-element/cache-map",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0534_cache-map-01.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0535_cache",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0535_cache.org",
+      "byte_len": 19
+    },
+    {
+      "id": "extracted/0536_cache-01",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0536_cache-01.org",
+      "byte_len": 47
+    },
+    {
+      "id": "extracted/0537_cache-02",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0537_cache-02.org",
+      "byte_len": 24
+    },
+    {
+      "id": "extracted/0538_cache-03",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0538_cache-03.org",
+      "byte_len": 62
+    },
+    {
+      "id": "extracted/0539_cache-04",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0539_cache-04.org",
+      "byte_len": 50
+    },
+    {
+      "id": "extracted/0540_cache-05",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "list"
+      ],
+      "path": "extracted/0540_cache-05.org",
+      "byte_len": 16
+    },
+    {
+      "id": "extracted/0541_cache-06",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0541_cache-06.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0542_cache-07",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0542_cache-07.org",
+      "byte_len": 30
+    },
+    {
+      "id": "extracted/0543_cache-08",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0543_cache-08.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0544_cache-09",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0544_cache-09.org",
+      "byte_len": 29
+    },
+    {
+      "id": "extracted/0545_cache-10",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0545_cache-10.org",
+      "byte_len": 26
+    },
+    {
+      "id": "extracted/0546_cache-11",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0546_cache-11.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0547_cache-12",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "block"
+      ],
+      "path": "extracted/0547_cache-12.org",
+      "byte_len": 43
+    },
+    {
+      "id": "extracted/0548_cache-13",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0548_cache-13.org",
+      "byte_len": 32
+    },
+    {
+      "id": "extracted/0549_cache-14",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0549_cache-14.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0550_cache-15",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0550_cache-15.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0551_cache-16",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0551_cache-16.org",
+      "byte_len": 12
+    },
+    {
+      "id": "extracted/0552_cache-17",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0552_cache-17.org",
+      "byte_len": 21
+    },
+    {
+      "id": "extracted/0553_cache-18",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0553_cache-18.org",
+      "byte_len": 13
+    },
+    {
+      "id": "extracted/0554_cache-19",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0554_cache-19.org",
+      "byte_len": 31
+    },
+    {
+      "id": "extracted/0555_cache-20",
+      "deftest": "test-org-element/cache",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0555_cache-20.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0556_cache-21",
+      "deftest": "test-org-element/cache",
+      "constructs": [],
+      "path": "extracted/0556_cache-21.org",
+      "byte_len": 49
+    },
+    {
+      "id": "extracted/0557_cache-affiliated",
+      "deftest": "test-org-element/cache-affiliated",
+      "constructs": [],
+      "path": "extracted/0557_cache-affiliated.org",
+      "byte_len": 35
+    },
+    {
+      "id": "extracted/0558_cache-table",
+      "deftest": "test-org-element/cache-table",
+      "constructs": [
+        "table"
+      ],
+      "path": "extracted/0558_cache-table.org",
+      "byte_len": 60
+    },
+    {
+      "id": "extracted/0559_cache-table-01",
+      "deftest": "test-org-element/cache-table",
+      "constructs": [
+        "list",
+        "table"
+      ],
+      "path": "extracted/0559_cache-table-01.org",
+      "byte_len": 46
+    },
+    {
+      "id": "extracted/0560_cache-table-02",
+      "deftest": "test-org-element/cache-table",
+      "constructs": [
+        "list",
+        "table"
+      ],
+      "path": "extracted/0560_cache-table-02.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0561_cache-headline",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0561_cache-headline.org",
+      "byte_len": 118
+    },
+    {
+      "id": "extracted/0562_cache-headline-01",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [],
+      "path": "extracted/0562_cache-headline-01.org",
+      "byte_len": 97
+    },
+    {
+      "id": "extracted/0563_cache-headline-02",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [],
+      "path": "extracted/0563_cache-headline-02.org",
+      "byte_len": 27
+    },
+    {
+      "id": "extracted/0564_cache-headline-03",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [],
+      "path": "extracted/0564_cache-headline-03.org",
+      "byte_len": 64
+    },
+    {
+      "id": "extracted/0565_cache-headline-04",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [
+        "drawer"
+      ],
+      "path": "extracted/0565_cache-headline-04.org",
+      "byte_len": 45
+    },
+    {
+      "id": "extracted/0566_cache-headline-05",
+      "deftest": "test-org-element/cache-headline",
+      "constructs": [],
+      "path": "extracted/0566_cache-headline-05.org",
+      "byte_len": 23
+    },
+    {
+      "id": "extracted/0567_cache-get-key",
+      "deftest": "test-org-element/cache-get-key",
+      "constructs": [],
+      "path": "extracted/0567_cache-get-key.org",
+      "byte_len": 50
+    },
+    {
+      "id": "extracted/0568_cache-get-key-01",
+      "deftest": "test-org-element/cache-get-key",
+      "constructs": [],
+      "path": "extracted/0568_cache-get-key-01.org",
+      "byte_len": 49
+    }
+  ]
+}

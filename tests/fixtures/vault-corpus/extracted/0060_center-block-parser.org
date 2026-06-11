@@ -1,0 +1,3 @@
+#+BEGIN_CENTER
+Text
+#+END_CENTER

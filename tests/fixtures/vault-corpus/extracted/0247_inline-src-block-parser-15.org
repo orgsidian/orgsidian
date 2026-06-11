@@ -1,0 +1,1 @@
+src_emacs-lisp[:var table=t[1,1]]{(+ 1 1)}

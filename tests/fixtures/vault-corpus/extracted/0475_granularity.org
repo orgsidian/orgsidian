@@ -1,0 +1,6 @@
+* Head 1
+** Head 2
+#+BEGIN_CENTER
+Centered paragraph.
+#+END_CENTER
+Paragraph \alpha.

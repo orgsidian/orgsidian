@@ -26,10 +26,10 @@ pnpm tauri dev                        # launches the Tauri window
 Run this one-liner locally to exercise the exact per-PR gate set (Story 1.8 `pr.yml`):
 
 ```sh
-cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked && pnpm typecheck && pnpm test && pnpm a11y
+cargo fmt --all -- --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked && cargo test --manifest-path tools/issues-sync/Cargo.toml --locked && cargo test --manifest-path tools/corpus-extractor/Cargo.toml --locked && pnpm typecheck && pnpm test && pnpm a11y
 ```
 
-If this command passes locally, the per-PR CI matrix on macOS-arm64 + Ubuntu-LTS will pass too (modulo platform-specific differences caught by the nightly Windows + Arch sweep).
+If this command passes locally, the per-PR CI matrix on macOS-arm64 + Ubuntu-LTS will pass too (modulo platform-specific differences caught by the nightly Windows + Arch sweep). (The L0 round-trip subset gate — the dedicated `L0 round-trip subset gate (LD-32/LD-44, <60s)` step in `pr.yml` — is a filtered subset of `cargo test --workspace`, so parity-wise the one-liner already covers it.)
 
 ## 2. Conventional Commits (LD-54)
 
@@ -126,9 +126,39 @@ grep -r "Implements FR-" crates/ shell-ui/src/
 
 **Default: co-located per crate.** Test fixtures live alongside the consuming crate, e.g., `crates/orgsidian-parser/tests/fixtures/anchor.org` (the Story 1.9 anchor fixture). One crate consumes → fixture is per-crate.
 
-**Promotion to root `fixtures/`: only when ≥2 crates consume the same fixture.** The root `fixtures/` directory does not exist yet — the first promotion will create it. When promoting, add a short `README.md` inside the promoted folder naming the consumers so a future contributor can see why it's shared.
+**Promotion to root `fixtures/`: only when ≥2 crates consume the same fixture.** The first promotion (Story 2.5: the LD-44 corpus manifests) created the root `fixtures/` directory. When promoting, add a short `README.md` inside the promoted folder naming the consumers so a future contributor can see why it's shared.
 
 Solo fixtures stay per-crate; cross-crate fixtures only at root.
+
+### Fixture governance (LD-44 / test-design §5)
+
+Every fixture set is declared in [`fixtures/fixtures.toml`](./fixtures/fixtures.toml) and **owned by exactly one epic**. The rules:
+
+- **Mutation requires PR review naming the owning epic.** Tag the commit message `[fixture:epic-N]` (e.g. `[fixture:epic-2]` for corpus changes). On GitHub Free, branch protection is unenforceable, so this is a documented convention checked by the maintainer pre-merge — the same advisory posture as the commitlint gates (§2).
+- **Generated fixtures are never hand-edited.** `fixtures/subset-pr.json`, `fixtures/full-nightly.json`, and everything under `tests/fixtures/vault-corpus/{extracted,synthesized}/` are emitted by `tools/corpus-extractor`. Regeneration PRs must quote the generator invocation and the org-mode pin (tag + SHA-256):
+
+  ```sh
+  cargo run --manifest-path tools/corpus-extractor/Cargo.toml --locked -- fetch
+  cargo run --manifest-path tools/corpus-extractor/Cargo.toml --locked -- extract
+  cargo run --manifest-path tools/corpus-extractor/Cargo.toml --locked -- verify
+  ```
+
+- New fixture sets are added to `fixtures.toml` by the story that creates them; do not pre-declare paths that don't exist.
+
+### git-LFS setup (vault corpus)
+
+`tests/fixtures/vault-corpus/**/*.org` is designed to be versioned through git-LFS.
+
+> **Current state (Story 2.5 fallback):** git-lfs was unavailable on the machine that generated the corpus, so the ~2.3 MB corpus is committed as **raw git objects** for now — the LFS stanza in `.gitattributes` is commented out with a `FOLLOWUP(LFS-migration)` marker (a scoped `-text` rule keeps the EOL-sensitive bytes intact), and the migration is tracked in deferred-work (owner: the first maintainer machine with git-lfs, after the Epic-2 story stack merges — no history rewrite while stacked PRs are open). Until that migration lands, no LFS setup is needed to read the corpus.
+
+Once the migration lands, the one-time setup (only if you work on nightly/L2 gates or corpus regeneration) is:
+
+```sh
+git lfs install   # once per machine
+git lfs pull      # materialize the corpus files
+```
+
+**The per-PR workflow does not require LFS.** The L0 subset is embedded in `fixtures/subset-pr.json` (regular git), so PR checkouts and the Story 2.6 gate never smudge LFS content. Tooling that does need real corpus bytes detects LFS pointer stubs and reports these setup steps instead of failing with a parse error.
 
 ## 6. MSRV policy
 
@@ -176,7 +206,7 @@ When the parser owner wants to bump the pin:
 3. **Open a PR** titled `chore(parser): bump tree-sitter-org to <SHA>`. The PR description includes:
    - The upstream commit-range diff link.
    - Which node-type strings were added / renamed / removed.
-   - Whether the L0 round-trip subset (Story 2.6 — flag as "future" until that story ships) still passes.
+   - Whether the L0 round-trip subset (the `L0 round-trip subset gate` step in `pr.yml`) still passes.
 4. **Sign-off**: the bump lands only after the parser owner's explicit approval in the PR. **No auto-bump** — Dependabot / Renovate MUST NOT be configured for this submodule.
 
 ### Fork-and-maintain dry run

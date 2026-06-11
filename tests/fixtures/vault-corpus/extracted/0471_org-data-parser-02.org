@@ -1,0 +1,4 @@
+# comment
+:PROPERTIES:
+:FOO: bar
+:END:

@@ -41,3 +41,8 @@ cc = { workspace = true }
 # already resolved in Cargo.lock via orgsidian-core — a dependency edge only,
 # zero new crates.
 proptest = { workspace = true }
+# Story 2.6 (FR-2 enforcement, LD-44): serde_json to load the per-PR subset
+# manifest `fixtures/subset-pr.json` in tests/round_trip.rs. Workspace-pinned,
+# already resolved in Cargo.lock via orgsidian-core — a dependency edge only,
+# zero new crates.
+serde_json = { workspace = true }

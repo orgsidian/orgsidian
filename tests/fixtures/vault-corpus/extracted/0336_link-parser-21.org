@@ -1,0 +1,2 @@
+#+LINK: orgmode https://www.orgmode.org/
+[[orgmode:#docs]]

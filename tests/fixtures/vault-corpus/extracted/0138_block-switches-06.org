@@ -1,0 +1,3 @@
+#+BEGIN_EXAMPLE -n -r
+Text.
+#+END_EXAMPLE

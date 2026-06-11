@@ -1,0 +1,2 @@
+#+attr_latex: :offset 0in
+[fn:1] A footnote.

@@ -1,0 +1,4 @@
+#+BEGIN_CENTER
+C
+#+END_CENTER
+  

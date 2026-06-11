@@ -1,0 +1,3 @@
+#+BEGIN_EXAMPLE -l "[ref:%s]"
+Text [ref:text]
+#+END_EXAMPLE
