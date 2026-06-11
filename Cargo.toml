@@ -83,6 +83,13 @@ tree-sitter = "0.26"
 # Story 2.1: C compiler driver for build.rs — compiles vendored parser.c +
 # scanner.c through the host's cc/cl/clang. MIT/Apache-2.0. Pre-allowed.
 cc = "1"
+# Story 2.3 (FR-1 semantic layer): chrono for org timestamp date/time values
+# (NaiveDate/NaiveTime) per the architecture date/time convention — only the
+# parser/serializer touch the native org `<YYYY-MM-DD Day HH:MM>` form.
+# Already in Cargo.lock as a transitive dep (0.4.44), so this adds a dependency
+# *edge*, zero new crates. `default-features = false` drops clock/locale/wasm
+# baggage; `std` is all NaiveDate/NaiveTime need. MIT/Apache-2.0.
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

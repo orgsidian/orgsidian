@@ -8,18 +8,28 @@
 //! [`tree_sitter::Tree`], reachable via [`ParseTree::root_node`] /
 //! [`ParseTree::tree`]. The public signature
 //! `parse(&str) -> Result<ParseTree, ParseError>` is the anchor sentinel
-//! (see `tests/anchor.rs`) and is preserved across stories. The semantic
-//! layer (Story 2.3) and the round-trip serializer (Story 2.4, FR-2) build
-//! on this surface.
+//! (see `tests/anchor.rs`) and is preserved across stories. The [`semantic`]
+//! module (Story 2.3) lifts the raw tree into typed, owned semantic structs
+//! via [`analyze`]; the round-trip serializer (Story 2.4, FR-2) builds on
+//! both surfaces.
 
 mod grammar;
+pub mod semantic;
 
 use thiserror::Error;
+
+pub use semantic::analyze;
 
 /// Re-export so downstream crates can name `orgsidian_parser::tree_sitter::Node`
 /// (etc.) without taking their own `tree-sitter` dependency — the version pin
 /// stays single-sourced through this leaf crate.
 pub use tree_sitter;
+
+/// Re-export so downstream crates can name the `chrono` date/time types
+/// carried by [`semantic::Timestamp`] (`NaiveDate`/`NaiveTime`) without
+/// taking their own `chrono` dependency — same single-sourced-pin rationale
+/// as the [`tree_sitter`] re-export.
+pub use chrono;
 
 /// Parse result wrapping the raw [`tree_sitter::Tree`]. The newtype is the
 /// stable API surface (LD-5 crate-API-barrier), but the wrapped tree is
