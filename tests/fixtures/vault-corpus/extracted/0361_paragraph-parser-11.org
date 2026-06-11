@@ -1,0 +1,2 @@
+#+ATTR_LATEX: test
+- item 1

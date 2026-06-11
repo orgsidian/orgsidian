@@ -1,0 +1,3 @@
+#+BEGIN_SRC emacs-lisp -l "[ref:%s]"
+(+ 1 1) [ref:text]
+#+END_SRC

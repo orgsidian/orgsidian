@@ -1,0 +1,4 @@
+#+BEGIN: myblock :param val1
+C
+#+END:
+  

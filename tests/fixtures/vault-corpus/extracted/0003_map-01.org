@@ -1,0 +1,2 @@
+* Some \alpha headline
+\beta entity.

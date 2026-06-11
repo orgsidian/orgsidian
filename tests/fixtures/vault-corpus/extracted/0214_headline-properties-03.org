@@ -1,0 +1,6 @@
+* Headline
+#+BEGIN_EXAMPLE
+:PROPERTIES:
+:foo: bar
+:END:
+#+END_EXAMPLE

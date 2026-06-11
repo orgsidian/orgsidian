@@ -15,3 +15,22 @@ tests/perf-baselines/*.json text eol=lf
 # bytes and turn the gate into a liar. Scoping kept narrow on purpose
 # (mirrors the perf-baselines rule above).
 crates/orgsidian-parser/tests/fixtures/round_trip/*.org -text
+
+# Story 2.5 (LD-44): generated corpus manifests are regular git files (NOT
+# LFS — the Story 2.6 per-PR gate must work on an LFS-free checkout; embedded
+# content is JSON-escaped so EOL-sensitive bytes live inside string literals).
+# The JSON files' own line endings stay LF like perf-baselines above.
+fixtures/*.json text eol=lf
+
+# Story 2.5 (LD-44): the materialized vault corpus goes through git-LFS —
+# ~2k+ generated .org files consumed only by nightly/L2 jobs and tooling
+# (the per-PR subset is embedded in fixtures/subset-pr.json instead).
+# `-text` rides along: corpus bytes are EOL-sensitive by design (CRLF/mixed
+# edge bucket). Markdown (README.md provenance note) stays regular git —
+# the pattern matches *.org only.
+# FOLLOWUP(Story-2.6): git-lfs was unavailable on the machine that generated
+# the corpus (AC6 documented fallback) — corpus committed as raw git objects;
+# re-enable the stanza below and run `git lfs migrate import
+# --include="tests/fixtures/vault-corpus/**/*.org"` before the corpus grows.
+# tests/fixtures/vault-corpus/**/*.org filter=lfs diff=lfs merge=lfs -text
+tests/fixtures/vault-corpus/**/*.org -text

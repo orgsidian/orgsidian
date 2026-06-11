@@ -1,0 +1,6 @@
+
+*************** Task
+:PROPERTIES:
+:foo: bar
+:END:
+*************** END

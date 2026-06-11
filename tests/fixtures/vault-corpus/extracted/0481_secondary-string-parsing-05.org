@@ -1,0 +1,6 @@
+
+#+CAPTION: \foo
+Text
+# Local Variables:
+# org-entities-user: (("foo"))
+# End:
