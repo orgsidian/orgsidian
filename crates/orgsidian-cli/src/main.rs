@@ -11,6 +11,7 @@
 mod cli;
 mod render;
 
+use std::io::Write as _;
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -28,8 +29,10 @@ fn main() -> ExitCode {
 ///
 /// Error posture: I/O failures (and the parser's defensive, in-practice
 /// unreachable errors) print to stderr and exit non-zero — distinct from
-/// clap's own usage-error exit 2. Org *content* never fails: malformed
-/// constructs degrade leniently inside the AST (LD-41).
+/// clap's own usage-error exit 2. A failed stdout write also exits non-zero
+/// (quietly for a closed pipe — a normal scripting event, never a panic).
+/// Org *content* never fails: malformed constructs degrade leniently inside
+/// the AST (LD-41).
 fn run_parse(file: &Path, json: bool) -> ExitCode {
     let source = match std::fs::read_to_string(file) {
         Ok(source) => source,
@@ -56,6 +59,18 @@ fn run_parse(file: &Path, json: bool) -> ExitCode {
     } else {
         render::render_document(&document)
     };
-    println!("{rendered}");
-    ExitCode::SUCCESS
+    // Review fix (Story 2.8): write explicitly instead of `println!` — the
+    // macro panics on write failure, and a closed pipe (`orgsidian parse
+    // f.org --json | head`) is a normal scripting event, not a bug (Rust
+    // ignores SIGPIPE). Broken pipe exits non-zero quietly (the reader went
+    // away by design); any other write failure is reported on stderr.
+    let mut stdout = std::io::stdout().lock();
+    match writeln!(stdout, "{rendered}").and_then(|()| stdout.flush()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) if err.kind() == std::io::ErrorKind::BrokenPipe => ExitCode::FAILURE,
+        Err(err) => {
+            eprintln!("error: cannot write to stdout: {err}");
+            ExitCode::FAILURE
+        }
+    }
 }

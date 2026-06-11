@@ -1,6 +1,6 @@
 # Story 2.8: Ship `orgsidian parse <file>` CLI command as early public artifact
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -125,6 +125,18 @@ The deliverable is exactly: workspace + `orgsidian-core` façade wiring (AC1), f
 - [x] **T8** — Gates per AC7 (mind the `--locked` bootstrap order); record test-count + lockfile deltas in Completion Notes; sentinel `git status` check. (AC7)
 - [x] **T9** — deferred-work.md: pre-seed the story-2.8 stanza (AC8 candidates). (AC8)
 - [x] **T10** — Commit + open PR. Commit title: `feat(cli): ship orgsidian parse CLI command (Story 2.8, closes #24)` — Conventional Commits scope `cli` per CONTRIBUTING §2. **NO** `Co-Authored-By` trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body: (a) LEAF-rule wiring rationale (workspace entry + core façade, deny-bans-verified), (b) serde feature posture (opt-in, Serialize-only, camelCase, feature-off baseline untouched), (c) man-page build.rs variance (in-tree `man/`, architecture-mandated, byte-stable), (d) dependency delta + deny/audit verdicts, (e) `Closes #24`. (process — committed locally; PR + issue-label sync deferred to the next pipeline step per the 2.4 deviation precedent, see Completion Notes)
+
+### Review Findings
+
+Adversarial code review 2026-06-10 (Blind Hunter + Edge Case Hunter + Acceptance Auditor, diff 28c3054 vs 2f2db80; layers run in-session — subagents unavailable in the review sandbox). 1 patch (applied), 2 deferred, 7 dismissed as noise.
+
+- [x] [Review][Patch] stdout write failure panicked via `println!` (broken pipe on `--json | head` — Rust ignores SIGPIPE, so the macro's internal panic was a reachable panic path in committed CLI code, violating the AC3 no-panic posture and the advertised scripting-clean usage) [crates/orgsidian-cli/src/main.rs:59] — **fixed**: explicit locked-stdout `writeln!` + `flush` with error handling; `BrokenPipe` → quiet non-zero exit (the reader went away by design), any other write failure → stderr message + non-zero exit. `run_parse` doc updated.
+- [x] [Review][Defer] `render_headline` recursion depth unbounded [crates/orgsidian-cli/src/render.rs:42-96] — deferred, mirrors the established parser/serializer walk posture (existing 2.4-review NIT in deferred-work; bullet appended to the story-2.8 stanza). Real vaults are depth-bounded (LD-42 posture).
+- [x] [Review][Defer] Team-override PR gate (`Closes #24` in PR body, issue-label `status:done` flip) unverifiable — no PR exists yet [process] — deferred to the next pipeline step per the 2.4 deviation precedent already recorded in Completion Notes; pipeline rules forbid PR/issue mutation in this step.
+
+Dismissed (7, recorded for transparency): man-page guard substring "parse" (AC5-compliant — `orgsidian\-parse` is roff-escaped, a stronger assert would be brittle); `.TH` date-field quirk (upstream clap_mangen artifact, byte-stable); theoretical `eprintln!` panic on closed stderr; whole-file `read_to_string` (parse needs the full source); `--version` reporting 0.0.0 (workspace pre-release versioning); relative path in the missing-file test (cargo test cwd = crate root, path nonexistent everywhere); `raw`/`span` fields exposed in JSON (by design — no schema contract yet, documented in `long_about`).
+
+Re-verified gates after the fix: CLI 5/5; parser 77; workspace 127 passed / 0 failed / 11 ignored; clippy clean; `cargo fmt --all --check` clean; `cargo deny check bans` ok (AC1 LEAF edge proven); `cargo doc` — only the pre-existing core warning (Story 1.18, in deferred-work). Man-page byte-stability: dev-verified (Debug Log) + green guard test; the review fix touches neither `cli.rs` nor `build.rs`. deny licenses/advisories + audit verdicts unchanged (no dependency delta from the review fix).
 
 ## Dev Notes
 
@@ -285,3 +297,4 @@ claude-fable-5[1m] (Fable 5, Claude Code)
 
 - 2026-06-10 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; grounded in the real stub CLI crate, the deny.toml LEAF graph rule forcing the core façade + serde-feature design, and crates.io-verified clap 4.6.1 / clap_mangen 0.3.0 / assert_cmd 2.2.2). Status: ready-for-dev.
 - 2026-06-10 — Story 2.8 implemented (T1–T10): LEAF-rule wiring (workspace entry + core `parser` façade), opt-in Serialize-only serde feature on the parser semantic types (camelCase), `orgsidian parse <file> [--json]` via clap derive (cli.rs/main.rs/render.rs), build-time man pages (orgsidian.1 + orgsidian-parse.1, byte-stable), 5 RED-first assert_cmd integration tests + co-located fixture, deferred-work stanza. Gates: parser 77, workspace 127/11 ignored, clippy/fmt/doc clean (one pre-existing core doc warning recorded), deny ok/ok/ok, audit 18-warning baseline. Status: review.
+- 2026-06-10 — Code review passed (adversarial 3-layer review of 28c3054 vs 2f2db80): 1 patch applied (broken-pipe-safe stdout write in `main.rs` — no panic path on closed pipe), 2 deferred (render recursion posture; PR `Closes #24` gate → next pipeline step), 7 dismissed. All gates re-verified green (CLI 5/5, parser 77, workspace 127/0/11, clippy, fmt, deny bans). Status: done.
