@@ -1,0 +1,22 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH orgsidian 1  "orgsidian 0.0.0" 
+.SH NAME
+orgsidian \- Headless CLI for Orgsidian, the org\-mode desktop app
+.SH SYNOPSIS
+\fBorgsidian\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Headless CLI for Orgsidian (LD\-27 command tree). The first public artifact: test Orgsidian\*(Aqs org\-mode parsing fidelity on your own .org files before any GUI ships.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+orgsidian\-parse(1)
+Parse an org file and print its AST
+.SH VERSION
+v0.0.0

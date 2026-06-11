@@ -10,3 +10,23 @@ repository.workspace = true
 [[bin]]
 name = "orgsidian"
 path = "src/main.rs"
+
+[dependencies]
+# Story 2.8 (LD-27/LD-37): the CLI consumes the parser through the
+# `orgsidian-core` façade ONLY — a direct `orgsidian-parser` edge is a hard
+# `cargo deny check bans` failure (deny.toml LEAF graph rule).
+orgsidian-core = { workspace = true }
+# Story 2.8 (LD-27): clap derive — annotations are the primary CLI docs.
+clap = { workspace = true }
+# Story 2.8: `--json` output via `serde_json::to_string_pretty`.
+serde_json = { workspace = true }
+
+[build-dependencies]
+# Story 2.8 (LD-27): build.rs `include!`s src/cli.rs (the crate is not built
+# yet at build-script time) and renders man pages via clap_mangen.
+clap = { workspace = true }
+clap_mangen = { workspace = true }
+
+[dev-dependencies]
+# Story 2.8: CLI integration tests spawn the real `orgsidian` binary.
+assert_cmd = { workspace = true }

@@ -16,6 +16,11 @@ use std::ops::Range;
 /// from the document's [`TodoConfig`] — `true` for keywords after the `|`
 /// in the configured sequence.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct TodoState {
     /// The keyword text exactly as written in the source (e.g. `"TODO"`).
     pub keyword: String,
@@ -30,6 +35,11 @@ pub struct TodoState {
 /// Mirrors one `#+TODO:` line (org allows several per document). Cycling
 /// advances through `active` then `done` in declaration order and wraps.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct TodoSequence {
     /// Keywords before the `|` separator (not-yet-done states), in order.
     pub active: Vec<String>,
@@ -57,6 +67,11 @@ impl TodoSequence {
 /// Multiple directive lines accumulate into multiple sequences (the
 /// org-faithful choice); a keyword cycles within the sequence it belongs to.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct TodoConfig {
     /// The configured sequences, in directive declaration order.
     pub sequences: Vec<TodoSequence>,

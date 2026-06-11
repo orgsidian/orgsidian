@@ -21,6 +21,11 @@ use std::ops::Range;
 
 /// Link classification by target prefix.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub enum LinkKind {
     /// `[[id:abc]]` — org ID link.
     Id,
@@ -36,6 +41,11 @@ pub enum LinkKind {
 
 /// One link found by the inline scanner.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct Link {
     /// Classification by target prefix (see [`LinkKind`]).
     pub kind: LinkKind,

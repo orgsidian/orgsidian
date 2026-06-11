@@ -19,3 +19,10 @@ pub mod test_support;
 // Story 1.18 (LD-40): TOML settings authoritative store. First cross-crate edge
 // from `orgsidian-core` to `orgsidian-vault` (LEAF graph rule per deny.toml).
 pub mod settings;
+
+/// Story 2.8 (LD-27/LD-37): parser façade — `orgsidian-core` is the only
+/// permitted wrapper of the `orgsidian-parser` LEAF (Crate Dependency Graph
+/// "Façade" role; deny.toml LEAF rule), so consumers name
+/// `orgsidian_core::parser::{analyze, serialize_document}` instead of
+/// depending on the leaf directly.
+pub use orgsidian_parser as parser;
