@@ -1,6 +1,6 @@
 # Story 2.6: Light up L0 round-trip CI gate (per-PR ~100 files <60s)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -131,6 +131,19 @@ Deliverables: harness repoint (`tests/round_trip.rs` + dev-dep edge), three `pr.
 - [x] **T8** — deferred-work.md: annotate the three consumed 2.5 items; pre-seed the story-2.6 stanza. (AC8)
 - [x] **T9** — Gates: parser suite, workspace suite, extractor suite, clippy/fmt/deny/audit (+ new scoped audit), YAML sanity, `git status` sentinel sweep. Report exact counts + lockfile delta in Completion Notes. (AC8)
 - [x] **T10** — Commit. Suggested title: `feat(ci): light up L0 round-trip per-PR gate (Story 2.6, closes #22)` (scope `ci` per the Story-1.16 precedent; enum advisory, CONTRIBUTING §2). **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (when the pipeline's PR step runs): gate invocation + measured runtimes + first-run timing confirmation ask + deferred-items closure list + `Closes #22`. (process)
+
+### Review Findings
+
+Adversarial code review of commit `3834fc8` vs `2af292c` (2026-06-11, three layers: Blind Hunter / Edge Case Hunter / Acceptance Auditor — run sequentially in-session, no subagent dispatch available in this environment; layer evidence boundaries respected).
+
+- [x] [Review][Patch] Stale `FOLLOWUP(Story-2.6)` marker reference survived the AC6/AC7 honesty pass [tests/fixtures/vault-corpus/README.md:36] — the hand-written provenance README (explicitly preserved by the extractor's regeneration wipe, `emit.rs:120`; not generated content, so the edit is legal under the same precedent as this story's `fixtures/README.md` honesty edit) still named the old marker and the `git lfs migrate import` follow-up without the re-deferral. FIXED: marker renamed to `FOLLOWUP(LFS-migration)` + re-deferral wording aligned with CONTRIBUTING §5. No corpus *content* touched — `[fixture:epic-2]` governance does not fire.
+- [x] [Review][Patch] CONTRIBUTING §8 pin-bump checklist still flags the L0 gate as "future" [CONTRIBUTING.md:209] — "(Story 2.6 — flag as 'future' until that story ships)" became false the moment this story landed. FIXED: parenthetical now names the live `pr.yml` gate step.
+- [x] [Review][Defer] PR body `Closes #22` gate (project review customization) — no PR exists yet for `story/2.6-l0-round-trip-ci-gate` (stacked pre-PR review; this run is forbidden from creating/editing PRs and issues). The pipeline step that opens the PR MUST include `Closes #22` in the body (and the `status:done` label flip on issue #22 is owned by the orchestrator per the same constraint) — already captured as the T10/AC5 process items; recorded in the deferred-work story-2.6 stanza.
+- [x] [Review][Defer] `dtolnay/rust-toolchain@stable` floating-ref hardening [.github/workflows/pr.yml] — deferred, pre-existing (story-1.16 stanza; already cross-referenced in the story-2.6 stanza — no new entry).
+
+Dismissed as noise (4): `timeout-minutes: 1` recompile risk from `-p` vs `--workspace` feature unification — **empirically disproved** (`cargo test -p orgsidian-parser --no-run` after a workspace build finishes in 0.25s with zero recompilation; a future unification break would fail loudly via the timeout, not silently); duplicate manifest `id`s unguarded in the gate (owned by the extractor's `validate.rs` + TC-3, which runs in the same PR via Step 9.3); rust-cache entry growth + one-time cache bust from the new `workspaces` input (by design, documented in Completion Notes); unquoted `$IGNORES` in the audit step (intentional word-splitting, pre-existing house pattern).
+
+Review verification (post-fix, all green): gate invocation `cargo test -p orgsidian-parser round_trip_subset --locked -- --test-threads=4` → 1 passed, test body **1.63s** (filter matches exactly 1 test, verified via `--list`); parser suite **77/0**; workspace **122 passed / 0 failed / 11 ignored**; extractor suite **65/0**; `cargo clippy --workspace --all-targets --locked -- -D warnings` clean; `cargo fmt --all -- --check` clean; pr.yml YAML-valid (ruby); epic invocation verified verbatim against epics.md:854 (+`--locked`, recorded variance); `timeout-minutes: 1` matches test-design §7.3.13; root Cargo.lock delta = 1 line (`serde_json` dev-dep edge on orgsidian-parser, zero new crates); sentinel sweep clean (diff touches exactly the declared File List). Review fixes are doc-only — no code or workflow-step changes.
 
 ## Dev Notes
 
@@ -306,5 +319,6 @@ claude-fable-5 (Fable 5) — BMad dev-story pipeline, fully autonomous orchestra
 
 ## Change Log
 
+- 2026-06-11 — Adversarial code review (3 layers) of commit 3834fc8: 2 patch findings (both doc-honesty one-liners: stale `FOLLOWUP(Story-2.6)` marker in `tests/fixtures/vault-corpus/README.md`; stale "future" flag in CONTRIBUTING §8) fixed in-review; 2 deferred (PR `Closes #22` body line + issue label flip → pipeline PR step; dtolnay floating ref → pre-existing story-1.16 item); 4 dismissed (incl. the `timeout-minutes: 1` recompile concern, empirically disproved). All gates re-verified green at baseline counts. Status: done.
 - 2026-06-11 — Story implemented (all 10 tasks complete; gate live in pr.yml as Step 9.2 with timeout-minutes: 1; harness consumes fixtures/subset-pr.json + interim dir under the contractual test name; extractor CI step + scoped lockfile audit close the two pre-assigned deferred items; LFS followup re-deferred with documented owner + no-rewrite caveat; all gates green at baseline counts — parser 77, workspace 122/0/11, extractor 65; Cargo.lock delta = serde_json dev-dep edge only). Status: review.
 - 2026-06-11 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; gate runtime grounded empirically: 100-entry round-trip measured at 1.75s vs the 60s budget; LFS re-deferral and audit-only supply-chain scoping pre-decided from specs with variances recorded, not spec-edited). Status: ready-for-dev.

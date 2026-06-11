@@ -206,7 +206,7 @@ When the parser owner wants to bump the pin:
 3. **Open a PR** titled `chore(parser): bump tree-sitter-org to <SHA>`. The PR description includes:
    - The upstream commit-range diff link.
    - Which node-type strings were added / renamed / removed.
-   - Whether the L0 round-trip subset (Story 2.6 — flag as "future" until that story ships) still passes.
+   - Whether the L0 round-trip subset (the `L0 round-trip subset gate` step in `pr.yml`) still passes.
 4. **Sign-off**: the bump lands only after the parser owner's explicit approval in the PR. **No auto-bump** — Dependabot / Renovate MUST NOT be configured for this submodule.
 
 ### Fork-and-maintain dry run
