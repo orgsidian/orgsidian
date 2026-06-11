@@ -1,0 +1,6 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0429_table-cell-parser-01.org",
+  "deftest": "test-org-element/table-cell-parser",
+  "headlines": []
+}

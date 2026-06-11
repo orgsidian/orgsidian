@@ -1,0 +1,17 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0517_context-15.org",
+  "deftest": "test-org-element/context",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "*bold*",
+      "tags": [],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}

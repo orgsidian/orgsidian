@@ -1,0 +1,17 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0338_link-parser-23.org",
+  "deftest": "test-org-element/link-parser",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "H [[orgmode:#docs]]",
+      "tags": [],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}

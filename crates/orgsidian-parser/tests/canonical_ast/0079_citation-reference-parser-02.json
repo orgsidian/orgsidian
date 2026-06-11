@@ -1,0 +1,6 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0079_citation-reference-parser-02.org",
+  "deftest": "test-org-element/citation-reference-parser",
+  "headlines": []
+}

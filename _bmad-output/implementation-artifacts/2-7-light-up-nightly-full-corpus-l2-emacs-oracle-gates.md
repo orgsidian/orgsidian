@@ -1,6 +1,6 @@
 # Story 2.7: Light up nightly full-corpus + L2 Emacs oracle gates
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -133,18 +133,18 @@ Deliverables: `round_trip_full` harness, nightly.yml full-corpus steps (hosted×
 
 ## Tasks / Subtasks
 
-- [ ] **T1** — `round_trip_full` in `tests/round_trip.rs`: manifest loader (floor ≥425 + header presence), per-entry path resolution + byte_len cross-check + LFS-stub guard + `assert_round_trip` with id labels; doc-comment present-tense. RED-first: tamper the floor (or point at a nonexistent corpus dir) to watch diagnostics fire, then finalize. (AC1)
-- [ ] **T2** — Measure: `time cargo test -p orgsidian-parser round_trip_full --locked` warm; record for Completion Notes (story-creation baseline: 569 entries, 0 failures, **0.18s** test body). (AC1/AC2)
-- [ ] **T3** — nightly.yml: full-corpus gate step in `hosted` + `arch-linux` jobs (epic-verbatim + `--locked`, `timeout-minutes: 5`, house comments); header LD-44 line + slot-reservation comment updated. (AC2)
-- [ ] **T4** — `scripts/l2-oracle/projection.el` + `generate-canonical.sh`: schema-v1 projection, `-Q --batch` clean, deterministic pretty-printed output. Verify against the story-creation probe shape. (AC4)
-- [ ] **T5** — Seed designation: pick 12–20 corpus files per the AC3 rule from `fixtures/full-nightly.json` constructs/provenance; run the concordance pre-flight (Rust leg + local emacs 30.2); swap-or-document divergent candidates (KNOWN_DIVERGENCES entries per LD-45); commit `canonical_ast/*.json` + `canonical_ast/README.md`. If emacs exec is denied in-session: pending-commands block for the orchestrator (AC4 fallback). (AC3/AC4)
-- [ ] **T6** — `tests/l2_canonical.rs`: test-local schema-v1 projection over the public semantic API; structural compare vs every canonical file; ≥10-file floor + source-exists + LFS guards; actionable diagnostics. RED-first: tamper one canonical value in memory (or a temp copy) to watch the diff diagnostics fire. (AC5)
-- [ ] **T7** — nightly.yml `l2-emacs-oracle` job: checkout (no submodules), digest logging, per-file `docker run` × {silex/emacs:29.4, silex/emacs:30.2} with `--batch --eval`, comparator with LD-45 triage exit semantics (OK/FAIL/WARN per AC6), evaluate-all-then-fail, `timeout-minutes: 20`. (AC6)
-- [ ] **T8** — `scripts/l2-oracle/compare.py` (or .mjs): canonicalized JSON triple-compare + GitHub annotations; unit-testable pure function if trivially cheap (optional). (AC6)
-- [ ] **T9** — Docs: `docs/parser/l2-oracle.md` runbook; KNOWN_DIVERGENCES header present-tense (+ any seeding entries); fixtures/README row; vault-corpus README consumer line; CONTRIBUTING pointer line; fixtures.toml `[oracle.canonical-ast]`. (AC7/AC3)
-- [ ] **T10** — deferred-work.md: annotate 2.5's L2-designation item + 2.6's LFS item; pre-seed the story-2.7 stanza. (AC8)
-- [ ] **T11** — Gates: parser/workspace/extractor suites, clippy/fmt/deny/audit, YAML sanity, sentinel sweep, zero-lockfile-delta check. Exact counts in Completion Notes. (AC8)
-- [ ] **T12** — Commit. Suggested title: `feat(ci): light up nightly full-corpus + L2 Emacs oracle gates (Story 2.7, closes #23)`. **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (pipeline's PR step): gate invocations + measured runtimes + first-nightly confirmation ask (Emacs-29 leg + docker-pull timing) + deferred-closure list + `Closes #23`. (process)
+- [x] **T1** — `round_trip_full` in `tests/round_trip.rs`: manifest loader (floor ≥425 + header presence), per-entry path resolution + byte_len cross-check + LFS-stub guard + `assert_round_trip` with id labels; doc-comment present-tense. RED-first: tamper the floor (or point at a nonexistent corpus dir) to watch diagnostics fire, then finalize. (AC1)
+- [x] **T2** — Measure: `time cargo test -p orgsidian-parser round_trip_full --locked` warm; record for Completion Notes (story-creation baseline: 569 entries, 0 failures, **0.18s** test body). (AC1/AC2)
+- [x] **T3** — nightly.yml: full-corpus gate step in `hosted` + `arch-linux` jobs (epic-verbatim + `--locked`, `timeout-minutes: 5`, house comments); header LD-44 line + slot-reservation comment updated. (AC2)
+- [x] **T4** — `scripts/l2-oracle/projection.el` + `generate-canonical.sh`: schema-v1 projection, `-Q --batch` clean, deterministic pretty-printed output. Verify against the story-creation probe shape. (AC4)
+- [x] **T5** — Seed designation: pick 12–20 corpus files per the AC3 rule from `fixtures/full-nightly.json` constructs/provenance; run the concordance pre-flight (Rust leg + local emacs 30.2); swap-or-document divergent candidates (KNOWN_DIVERGENCES entries per LD-45); commit `canonical_ast/*.json` + `canonical_ast/README.md`. If emacs exec is denied in-session: pending-commands block for the orchestrator (AC4 fallback). (AC3/AC4)
+- [x] **T6** — `tests/l2_canonical.rs`: test-local schema-v1 projection over the public semantic API; structural compare vs every canonical file; ≥10-file floor + source-exists + LFS guards; actionable diagnostics. RED-first: tamper one canonical value in memory (or a temp copy) to watch the diff diagnostics fire. (AC5)
+- [x] **T7** — nightly.yml `l2-emacs-oracle` job: checkout (no submodules), digest logging, per-file `docker run` × {silex/emacs:29.4, silex/emacs:30.2} with `--batch --eval`, comparator with LD-45 triage exit semantics (OK/FAIL/WARN per AC6), evaluate-all-then-fail, `timeout-minutes: 20`. (AC6)
+- [x] **T8** — `scripts/l2-oracle/compare.py` (or .mjs): canonicalized JSON triple-compare + GitHub annotations; unit-testable pure function if trivially cheap (optional). (AC6)
+- [x] **T9** — Docs: `docs/parser/l2-oracle.md` runbook; KNOWN_DIVERGENCES header present-tense (+ any seeding entries); fixtures/README row; vault-corpus README consumer line; CONTRIBUTING pointer line; fixtures.toml `[oracle.canonical-ast]`. (AC7/AC3)
+- [x] **T10** — deferred-work.md: annotate 2.5's L2-designation item + 2.6's LFS item; pre-seed the story-2.7 stanza. (AC8)
+- [x] **T11** — Gates: parser/workspace/extractor suites, clippy/fmt/deny/audit, YAML sanity, sentinel sweep, zero-lockfile-delta check. Exact counts in Completion Notes. (AC8)
+- [x] **T12** — Commit. Suggested title: `feat(ci): light up nightly full-corpus + L2 Emacs oracle gates (Story 2.7, closes #23)`. **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (pipeline's PR step): gate invocations + measured runtimes + first-nightly confirmation ask (Emacs-29 leg + docker-pull timing) + deferred-closure list + `Closes #23`. (process)
 
 ## Dev Notes
 
@@ -284,12 +284,50 @@ LD-45 case 1 says Orgsidian-vs-ground-truth divergence is PR-blocking. The night
 
 ### Agent Model Used
 
+Fable 5 (claude-fable-5[1m]) — BMad dev-story pipeline, 2026-06-11. (Session resumed a prior stalled run: T1/T3/T4/T6 artifacts plus the 17 canonical JSONs were found in the worktree and validated piece-by-piece against the ACs — RED-first re-runs, idempotency re-generation, full gate sweep — before the remaining tasks landed.)
+
 ### Debug Log References
+
+- RED-first T1: floor tampered to 99999 → `round_trip_full` panics "only 569 entries — below the anti-placebo floor … (FULL_CORPUS_FLOOR, tools/corpus-extractor/src/validate.rs)"; reverted, green.
+- RED-first T6: canonical `title` tampered → `l2_canonical_concordance` panics naming file, JSON path (`headlines[0].title`), both values, and the LD-45 triage hint; reverted, green.
+- Comparator triage validated locally on all four classes: 17/17 OK (exit 0) with real Emacs-30.2 projections; FAIL `e29==e30≠canonical` (`::error`, exit 1); WARN `e29≠e30` (`::warning`, exit 0 when no FAIL present); missing-file → FAIL. Anti-placebo <10-file floor in `compare.py` too.
+- Idempotency: `generate-canonical.sh` re-run over the committed seed → 17/17 byte-identical (shasum-verified) on Emacs 30.2 / Org 9.7.11.
 
 ### Completion Notes List
 
+- **AC1** — `round_trip_full` added to `tests/round_trip.rs` (manifest loader + floor ≥425 + header presence + per-entry byte_len cross-check + LFS-stub guard + `assert_round_trip` labeled by `entries[].id`; module doc-comment now present-tense "Four layers"). All 569 entries round-trip byte-identical. Measured (T2, warm, debug): **0.09s test body / 0.58s wall for the full cargo invocation** — ~3300x headroom under `timeout-minutes: 5`.
+- **AC2** — `L0 full-corpus round-trip gate (LD-32/LD-44)` step (epic-verbatim invocation + `--locked`, `timeout-minutes: 5`, house comments) added after `cargo test` in BOTH the `hosted` matrix (macOS/Ubuntu/Windows) and `arch-linux` jobs; header LD-44 line + slot-reservation comment annotated LANDED; 4.9/8.12 placeholders untouched.
+- **AC3** — 17-file seed designated from the manifest's constructs/provenance (≥1 per construct kind × all 15 kinds + 2 structure-only; smallest representatives), listed in `scripts/l2-oracle/seed-list.txt`, committed as `tests/canonical_ast/*.json` + README (selection rule, schema table, construct→file map). Concordance pre-flight green on both legs for every candidate — **no KNOWN_DIVERGENCES entries needed** (hazard list §6 dodged by selection). `fixtures/fixtures.toml` gained `[oracle.canonical-ast]`.
+- **AC4** — `scripts/l2-oracle/projection.el` (schema-v1 plist → `json-serialize`, `:null-object :null`, de-propertized strings, runs clean under `emacs -Q --batch`) + `generate-canonical.sh` (seed-list-driven, deftest provenance from the manifest, pretty-printed LF+trailing-newline, idempotent — verified byte-identical re-run). Canonical set generated locally on **Emacs 30.2 / Org 9.7.11**; no environment fallback needed (emacs exec allowed in-session).
+- **AC5** — `tests/l2_canonical.rs`: test-local schema-v1 projection over the public `analyze()`/`Headline` API (zero `src/` changes), structural compare with first-differing-JSON-path diagnostics, ≥10-file anti-placebo floor, source-exists/LFS/UTF-8 guards. Rides `cargo test --workspace` → LD-45 case 1 directly PR-blocking.
+- **AC6** — `l2-emacs-oracle` top-level job (ubuntu-24.04, no submodules, `timeout-minutes: 20`): pulls `silex/emacs:29.4` + `:30.2`, logs digests (R-028 audit trail), per-file `docker run … emacs -Q --batch -l projection.el --eval` per image, then `scripts/l2-oracle/compare.py` implements the LD-45 triage (OK / FAIL `::error` / WARN `::warning` / broken-oracle FAIL), evaluate-all-then-fail.
+- **AC7** — `docs/parser/l2-oracle.md` runbook (schema, seed rule, regeneration, triage table, R-028 bump procedure, local-run lines); KNOWN_DIVERGENCES header present-tense (no new entries); fixtures/README full-nightly row present-tense + canonical-AST consumer; vault-corpus README consumer addendum (workspace tests now read the corpus — LFS `lfs: true` note); CONTRIBUTING §7 pointer line. No spec-document edits.
+- **AC8 gates** — parser `cargo test -p orgsidian-parser --locked`: **79 passed** (baseline 77 **+2**: `round_trip_full`, `l2_canonical_concordance`); workspace: **124 passed / 0 failed / 11 ignored** (baseline 122+2); extractor: **65** via `--manifest-path`; `cargo clippy --workspace --all-targets --locked -- -D warnings` clean; `cargo fmt --all -- --check` clean; `cargo deny --locked check all` → advisories/bans/licenses/sources ok; `cargo audit` green on root + extractor lockfiles with the established ignore baseline; **zero `Cargo.lock` delta**; `nightly.yml` YAML-parses (ruby stdlib), 3 jobs (`hosted`, `arch-linux`, `l2-emacs-oracle`); `pr.yml` + all sentinels byte-untouched (`src/`, `build.rs`, `grammar/`, `tests/{anchor,grammar,semantic}.rs`, interim fixtures, `fixtures/*.json`, corpus `.org` files, `deny.toml`, audit-ignore); anchor test green.
+- **Variances 1–8** as pre-recorded in Dev Notes §7 (569-entry corpus vs ~2000 target; `--locked` added to the epic invocation; `silex/emacs` exact-tag realization; Linux-only single L2 job; script-generated+reviewed canonical; schema v1 = Story-2.3 surface; both new tests ride per-PR; Emacs-30.2-only local generation — the 29.4 leg is first exercised by the first nightly run, process note for the PR body).
+- **Process notes for the orchestrator:** issue #23 label flip (`status:in-progress` → `status:review`) and PR body (`Closes #23`, gate runtimes, first-nightly confirmation ask: Emacs-29.4 leg + docker-pull timing + digest log) are owned by the later pipeline steps per the team customization — `gh` mutations were out of scope for this run.
+
 ### File List
+
+- `crates/orgsidian-parser/tests/round_trip.rs` — MODIFIED (round_trip_full + helpers + doc-comment)
+- `crates/orgsidian-parser/tests/l2_canonical.rs` — NEW
+- `crates/orgsidian-parser/tests/canonical_ast/README.md` — NEW
+- `crates/orgsidian-parser/tests/canonical_ast/*.json` — NEW (17 files)
+- `scripts/l2-oracle/projection.el` — NEW
+- `scripts/l2-oracle/generate-canonical.sh` — NEW
+- `scripts/l2-oracle/seed-list.txt` — NEW
+- `scripts/l2-oracle/compare.py` — NEW
+- `.github/workflows/nightly.yml` — MODIFIED (2 gate steps + l2-emacs-oracle job + comment updates)
+- `docs/parser/l2-oracle.md` — NEW
+- `docs/parser/KNOWN_DIVERGENCES.md` — MODIFIED (header present-tense)
+- `fixtures/fixtures.toml` — MODIFIED ([oracle.canonical-ast])
+- `fixtures/README.md` — MODIFIED (consumers row)
+- `tests/fixtures/vault-corpus/README.md` — MODIFIED (consumer addendum)
+- `CONTRIBUTING.md` — MODIFIED (§7 pointer line)
+- `_bmad-output/implementation-artifacts/deferred-work.md` — MODIFIED (2.5 item closed, 2.6 LFS consumer note, 2.7 stanza)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED (2-7 → review)
+- `_bmad-output/implementation-artifacts/2-7-light-up-nightly-full-corpus-l2-emacs-oracle-gates.md` — MODIFIED (this file)
 
 ## Change Log
 
 - 2026-06-11 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; gates grounded empirically: full 569-entry corpus round-trips in 0.18s, emacs-batch schema-v1 projection probe-verified on Emacs 30.2/Org 9.7.11, silex/emacs 29.4+30.2 image tags verified on Docker Hub; canonical-AST pipeline, LD-45 triage exit semantics, and Linux-only L2 placement pre-decided from specs with 8 variances recorded, not spec-edited). Status: ready-for-dev.
+- 2026-06-11 — Implementation complete (T1–T12): `round_trip_full` (569/569 byte-identical, 0.09s warm), nightly full-corpus gate on all 4 OSes, 17-file L2 seed + canonical ASTs (Emacs 30.2/Org 9.7.11, idempotent regeneration), `l2_canonical_concordance` Rust leg, `l2-emacs-oracle` nightly job + LD-45 comparator, runbook + doc touch-ups, deferred-work hygiene. All gates green (79/124/65 tests; clippy/fmt/deny/audit; zero lockfile delta; sentinels untouched). Status: review.

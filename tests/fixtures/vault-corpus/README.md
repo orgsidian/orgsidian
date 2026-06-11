@@ -40,8 +40,11 @@ Epic-2 story stack merges — no history rewrite while stacked PRs are open).
 Until that migration lands, no LFS setup is needed. After it lands:
 `git lfs install` (once) then `git lfs pull`. **The per-PR workflow does
 not need any of this** — the L0 subset is embedded in `fixtures/subset-pr.json`;
-only nightly/L2 work and corpus regeneration read these files. Tooling detects
-LFS pointer stubs and reports the setup steps instead of mis-parsing them.
+only nightly/L2 work and corpus regeneration read these files — and, since
+Story 2.7, `cargo test --workspace` also reads them via the `round_trip_full`
+and `l2_canonical` tests (post-migration CI checkouts will need `lfs: true`).
+Tooling detects LFS pointer stubs and reports the setup steps instead of
+mis-parsing them.
 
 Ownership: `epic-2` (see `fixtures/fixtures.toml`). Mutations require a PR
 tagged `[fixture:epic-2]` quoting the regeneration invocation + pin.

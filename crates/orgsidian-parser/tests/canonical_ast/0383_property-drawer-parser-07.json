@@ -1,0 +1,17 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0383_property-drawer-parser-07.org",
+  "deftest": "test-org-element/property-drawer-parser",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "H",
+      "tags": [],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 //! Story 2.4 — round-trip serializer test surface (FR-2).
 //!
-//! Three layers, per the epic:
+//! Four layers, per the epic:
 //!
 //! 1. `round_trip_subset` — corpus-driven byte-identity over two sources:
 //!    every entry embedded in `fixtures/subset-pr.json` (the LD-44 100-file
@@ -11,10 +11,16 @@
 //!    The test NAME is a public contract: the Story 2.6 per-PR CI gate
 //!    invokes `cargo test -p orgsidian-parser round_trip_subset --locked
 //!    -- --test-threads=4` (epics.md:854 + LD-37).
-//! 2. Inline-literal edge cases — CRLF, mixed endings, missing trailing
+//! 2. `round_trip_full` — byte-identity over the FULL extracted corpus:
+//!    every entry of the `fixtures/full-nightly.json` pointer manifest,
+//!    resolved against `tests/fixtures/vault-corpus/` (Story 2.7, LD-32/
+//!    LD-44). The test NAME is a public contract: the nightly gate invokes
+//!    `cargo test -p orgsidian-parser round_trip_full --locked` on all four
+//!    OSes (epics.md:869 + LD-37).
+//! 3. Inline-literal edge cases — CRLF, mixed endings, missing trailing
 //!    newline, empty input, ERROR-region pathologies. These bytes are not
 //!    safe to commit as fixture files (EOL rewriting), so they live here.
-//! 3. proptest properties (256 cases each): the epic's second-serialization
+//! 4. proptest properties (256 cases each): the epic's second-serialization
 //!    idempotence over generated org documents, and the stronger
 //!    arbitrary-input identity `serialize_document(&analyze(s)?) == s` for
 //!    *any* string (the AC2 tiling-invariant enforcement mechanism —
@@ -48,6 +54,35 @@ fn manifest_path() -> PathBuf {
         .join("fixtures")
         .join("subset-pr.json")
 }
+
+/// The LD-44 full-corpus pointer manifest (Story 2.5; one entry per
+/// harvested assertion, NO embedded content — `entries[].path` resolves
+/// against [`vault_corpus_dir`]). Same `../..` hop as [`manifest_path`].
+fn full_manifest_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("fixtures")
+        .join("full-nightly.json")
+}
+
+/// The materialized corpus root that `full-nightly.json` entry paths
+/// resolve against (Story 2.5; raw git today, designed for git-LFS).
+fn vault_corpus_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("tests")
+        .join("fixtures")
+        .join("vault-corpus")
+}
+
+/// git-LFS pointer-stub signature — same prefix check as
+/// `tools/corpus-extractor/src/emit.rs::is_lfs_pointer`. The corpus is raw
+/// git today; this guard is for the post-LFS-migration future and for
+/// corrupted checkouts (a pointer stub mis-parsed as org would silently
+/// weaken the gate).
+const LFS_POINTER_PREFIX: &[u8] = b"version https://git-lfs.github.com/spec/v1";
 
 /// Byte offset of the first divergence between two strings.
 fn first_divergence(expected: &str, actual: &str) -> usize {
@@ -194,6 +229,152 @@ fn round_trip_subset() {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| path.display().to_string());
         assert_round_trip(&label, &src);
+    }
+}
+
+// --- 1b. Full-corpus nightly gate (name-locked for Story 2.7's CI
+//         invocation: `cargo test -p orgsidian-parser round_trip_full
+//         --locked`, epics.md:869 + LD-37). Naming discipline: this name
+//         must not contain `round_trip_subset` and no other test may
+//         contain `round_trip_full` — both cargo filters stay surgical. ---
+
+#[test]
+fn round_trip_full() {
+    // The LD-44 full corpus: every entry of the fixtures/full-nightly.json
+    // pointer manifest (generated artifact — never hand-edit; regenerate
+    // via tools/corpus-extractor, CONTRIBUTING §5), resolved against the
+    // materialized corpus at tests/fixtures/vault-corpus/.
+    let manifest_file = full_manifest_path();
+    let raw = fs::read_to_string(&manifest_file).unwrap_or_else(|e| {
+        panic!(
+            "cannot read the full-corpus pointer manifest {}: {e}\n\
+             generated artifact — regenerate via the corpus extractor \
+             (CONTRIBUTING §5): cargo run --manifest-path \
+             tools/corpus-extractor/Cargo.toml --locked -- extract",
+            manifest_file.display()
+        )
+    });
+    let manifest: serde_json::Value = serde_json::from_str(&raw).unwrap_or_else(|e| {
+        panic!(
+            "malformed JSON in {}: {e}\n\
+             generated artifact — never hand-edit; regenerate via the corpus \
+             extractor (CONTRIBUTING §5)",
+            manifest_file.display()
+        )
+    });
+
+    // Anti-placebo: the header must be present and non-empty. Presence only —
+    // pin-value sync (org_release_tag/source_sha256) is owned by the
+    // extractor's validate.rs, not duplicated here.
+    let header = manifest
+        .get("header")
+        .and_then(serde_json::Value::as_object);
+    assert!(
+        header.is_some_and(|h| !h.is_empty()),
+        "{}: missing or empty `header` — truncated or hand-edited manifest? \
+         regenerate via the corpus extractor (CONTRIBUTING §5)",
+        manifest_file.display()
+    );
+
+    let entries = manifest
+        .get("entries")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            panic!(
+                "{}: missing `entries` array — regenerate via the corpus \
+                 extractor (CONTRIBUTING §5)",
+                manifest_file.display()
+            )
+        });
+
+    // Anti-placebo floor: the extractor's FULL_CORPUS_FLOOR
+    // (tools/corpus-extractor/src/validate.rs). An exact-count assert would
+    // be wrong here — the count floats with the upstream org-mode pin
+    // (observed 569 at release_9.8.5); the floor is the decision-grade
+    // truncation tripwire.
+    assert!(
+        entries.len() >= 425,
+        "{}: only {} entries — below the anti-placebo floor of 425 \
+         (FULL_CORPUS_FLOOR, tools/corpus-extractor/src/validate.rs). \
+         Truncated manifest? regenerate via the corpus extractor \
+         (CONTRIBUTING §5)",
+        manifest_file.display(),
+        entries.len()
+    );
+
+    let corpus_root = vault_corpus_dir();
+    for (i, entry) in entries.iter().enumerate() {
+        let id = entry
+            .get("id")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}: entries[{i}] has no string `id` — malformed manifest, \
+                     regenerate via the corpus extractor (CONTRIBUTING §5)",
+                    manifest_file.display()
+                )
+            });
+        let rel_path = entry
+            .get("path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}: entry {id} has no string `path` — malformed manifest, \
+                     regenerate via the corpus extractor (CONTRIBUTING §5)",
+                    manifest_file.display()
+                )
+            });
+        let expected_len = entry
+            .get("byte_len")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}: entry {id} has no integer `byte_len` — malformed \
+                     manifest, regenerate via the corpus extractor \
+                     (CONTRIBUTING §5)",
+                    manifest_file.display()
+                )
+            });
+
+        let path = corpus_root.join(rel_path);
+        let bytes = fs::read(&path).unwrap_or_else(|e| {
+            panic!(
+                "{id}: cannot read corpus file {}: {e}\n\
+                 partial checkout or stale corpus? regenerate via the corpus \
+                 extractor (CONTRIBUTING §5)",
+                path.display()
+            )
+        });
+
+        // Anti-mangling guard 1: git-LFS pointer stub instead of content.
+        assert!(
+            !bytes.starts_with(LFS_POINTER_PREFIX),
+            "{id}: {} is a git-LFS pointer stub, not org content — \
+             run `git lfs install && git lfs pull` to materialize the corpus",
+            path.display()
+        );
+
+        // Anti-mangling guard 2: byte-length cross-check against the
+        // manifest (catches EOL rewriting, truncation, partial checkouts).
+        assert_eq!(
+            bytes.len() as u64,
+            expected_len,
+            "{id}: {} is {} bytes on disk but the manifest records {} — \
+             EOL rewriting (autocrlf?), truncation, or a stale corpus; \
+             regenerate via the corpus extractor (CONTRIBUTING §5)",
+            path.display(),
+            bytes.len(),
+            expected_len
+        );
+
+        let src = String::from_utf8(bytes).unwrap_or_else(|e| {
+            panic!(
+                "{id}: {} is not valid UTF-8: {e} — corrupted corpus file? \
+                 regenerate via the corpus extractor (CONTRIBUTING §5)",
+                path.display()
+            )
+        });
+        assert_round_trip(id, &src);
     }
 }
 

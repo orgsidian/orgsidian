@@ -50,6 +50,12 @@ owner = "epic-2"
 ld_reference = "LD-44"
 notes = "Story 2.4 interim 18-file corpus for the round_trip_subset harness. Stays in place: since Story 2.6 the harness consumes fixtures/subset-pr.json (100 embedded entries) PLUS this interim dir (curated shapes + byte-sensitivity tripwires not in the extracted subset)."
 
+[oracle.canonical-ast]
+path = "crates/orgsidian-parser/tests/canonical_ast/"
+owner = "epic-2"
+ld_reference = "LD-45"
+notes = "L2 seed canonical ASTs (schema l2-projection-v1, Story 2.7): compared against Orgsidian per-PR (tests/l2_canonical.rs) and against pinned Emacs 29.4/30.2 nightly (l2-emacs-oracle job). Script-generated via scripts/l2-oracle, human-reviewed; mutation requires PR review. Runbook: docs/parser/l2-oracle.md."
+
 [perf.baselines]
 path = "tests/perf-baselines/"
 owner = "epic-1"
