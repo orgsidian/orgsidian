@@ -46,6 +46,19 @@ fn vault_corpus_dir() -> PathBuf {
         .join("vault-corpus")
 }
 
+/// The designated L2 seed list that the nightly `l2-emacs-oracle` job
+/// projects (corpus-relative paths; same `../..` hop as
+/// [`vault_corpus_dir`]). Kept in 1:1 lockstep with [`canonical_dir`] by
+/// the assertion in [`l2_canonical_concordance`].
+fn seed_list_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("scripts")
+        .join("l2-oracle")
+        .join("seed-list.txt")
+}
+
 /// git-LFS pointer-stub signature — same prefix check as
 /// `tools/corpus-extractor/src/emit.rs::is_lfs_pointer`.
 const LFS_POINTER_PREFIX: &[u8] = b"version https://git-lfs.github.com/spec/v1";
@@ -144,6 +157,43 @@ fn l2_canonical_concordance() {
          (docs/parser/l2-oracle.md)",
         dir.display(),
         files.len()
+    );
+
+    // Seed-list ↔ canonical 1:1 (AC3: one `{stem}.json` per designated
+    // corpus file). A seed-list entry without a committed canonical AST
+    // would be projected by the nightly job but compared by nothing — a
+    // silent coverage gap; the reverse (canonical without seed entry)
+    // would surface only at nightly runtime. Catch both directions per-PR.
+    let seed_list_file = seed_list_path();
+    let seed_raw = fs::read_to_string(&seed_list_file).unwrap_or_else(|e| {
+        panic!(
+            "cannot read the L2 seed list {}: {e}\n\
+             it designates the nightly oracle inputs and must stay in \
+             lockstep with {} (docs/parser/l2-oracle.md)",
+            seed_list_file.display(),
+            dir.display()
+        )
+    });
+    let mut seed_stems: Vec<String> = seed_raw
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(|line| {
+            let name = line.rsplit('/').next().unwrap_or(line);
+            format!("{}.json", name.strip_suffix(".org").unwrap_or(name))
+        })
+        .collect();
+    seed_stems.sort();
+    let canonical_names: Vec<String> = files
+        .iter()
+        .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .collect();
+    assert_eq!(
+        canonical_names, seed_stems,
+        "scripts/l2-oracle/seed-list.txt and tests/canonical_ast/ have \
+         drifted — every designated seed needs exactly one committed \
+         canonical AST (AC3): run scripts/l2-oracle/generate-canonical.sh, \
+         review, and commit (docs/parser/l2-oracle.md)"
     );
 
     let corpus_root = vault_corpus_dir();

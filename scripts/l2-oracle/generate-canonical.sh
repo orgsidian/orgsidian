@@ -34,6 +34,10 @@ command -v "$EMACS" >/dev/null 2>&1 || {
   echo "error: emacs not found (set EMACS=/path/to/emacs)" >&2
   exit 1
 }
+command -v python3 >/dev/null 2>&1 || {
+  echo "error: python3 not found (needed to wrap projections with manifest metadata)" >&2
+  exit 1
+}
 
 mkdir -p "$OUT_DIR"
 

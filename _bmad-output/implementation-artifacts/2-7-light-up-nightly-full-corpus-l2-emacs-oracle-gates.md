@@ -1,6 +1,6 @@
 # Story 2.7: Light up nightly full-corpus + L2 Emacs oracle gates
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -145,6 +145,18 @@ Deliverables: `round_trip_full` harness, nightly.yml full-corpus steps (hosted×
 - [x] **T10** — deferred-work.md: annotate 2.5's L2-designation item + 2.6's LFS item; pre-seed the story-2.7 stanza. (AC8)
 - [x] **T11** — Gates: parser/workspace/extractor suites, clippy/fmt/deny/audit, YAML sanity, sentinel sweep, zero-lockfile-delta check. Exact counts in Completion Notes. (AC8)
 - [x] **T12** — Commit. Suggested title: `feat(ci): light up nightly full-corpus + L2 Emacs oracle gates (Story 2.7, closes #23)`. **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (pipeline's PR step): gate invocations + measured runtimes + first-nightly confirmation ask (Emacs-29 leg + docker-pull timing) + deferred-closure list + `Closes #23`. (process)
+
+### Review Findings
+
+Adversarial code review 2026-06-11 (diff `e0f22c8..45bdcff`, layers: Blind Hunter + Edge Case Hunter + Acceptance Auditor, executed in-session — no subagent tool available). 3 patch, 0 decision-needed, 0 defer (new), 8 dismissed as noise/handled. All patches applied in the review-fixes commit.
+
+- [x] [Review][Patch] Silent seed-list ↔ canonical drift gap — a `seed-list.txt` entry without a committed canonical AST was projected by the nightly job but compared by nothing (compare.py iterates the canonical dir only); the reverse direction already FAILed. Fixed both per-PR (1:1 stems assertion in `l2_canonical_concordance`, RED-first verified) and at nightly runtime (extra-output wiring guard in compare.py, FAIL-class, RED-first verified exit 1). [crates/orgsidian-parser/tests/l2_canonical.rs, scripts/l2-oracle/compare.py]
+- [x] [Review][Patch] `generate-canonical.sh` checked for `emacs` but not `python3` — a machine without python3 failed mid-pipeline with a cryptic error. Added the missing pre-flight guard. [scripts/l2-oracle/generate-canonical.sh:37]
+- [x] [Review][Patch] Team review-gate (PR body `Closes #23`): no PR exists yet for this stacked branch and the review run may not create one — recorded the obligation as a deferred-work item owned by the pipeline PR-opening step (2.6 precedent), including the issue #23 `status:review` → `status:done` label flip. [_bmad-output/implementation-artifacts/deferred-work.md]
+
+Dismissed (evidence-backed): 6 headline-less canonical files are forced choices (verified: zero candidates with headlines exist in the manifest for citation/clock/footnote/inline-latex/table/recurring-timestamp — schema-v1 limit already deferred); seed-list trailing-newline fragility (a dropped last line surfaces as compare.py missing-file FAIL); `$src` quoting in the elisp `--eval` (repo-controlled paths); JSON dumps in annotations (17 tiny files); `first_diff` missing-key vs null ambiguity (diagnostics-only); rolling tag rebuilds (already deferred + runtime digest log); WARN covering the LD-45 "mixed" case (canonical-proxy realization, documented variance 7); Windows EOL risk (covered by the `byte_len` cross-check).
+
+Review verification (all empirical, this machine): parser 79 passed (incl. both new gates), workspace 124/0/11, clippy `-D warnings` + fmt clean, zero `Cargo.lock` delta, sentinels byte-untouched, `nightly.yml` YAML-parses (3 jobs), seed coverage re-derived from the manifest (15/15 construct kinds + 2 structure-only, 17 files 1:1 with `canonical_ast/`), `generate-canonical.sh` idempotent on Emacs 30.2/Org 9.7.11 (17/17 byte-identical, re-run post-fix), compare.py all four triage classes + new wiring guard exercised with real projections (OK→0, FAIL→1, WARN→0, missing→1, wiring→1).
 
 ## Dev Notes
 
@@ -331,3 +343,4 @@ Fable 5 (claude-fable-5[1m]) — BMad dev-story pipeline, 2026-06-11. (Session r
 
 - 2026-06-11 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; gates grounded empirically: full 569-entry corpus round-trips in 0.18s, emacs-batch schema-v1 projection probe-verified on Emacs 30.2/Org 9.7.11, silex/emacs 29.4+30.2 image tags verified on Docker Hub; canonical-AST pipeline, LD-45 triage exit semantics, and Linux-only L2 placement pre-decided from specs with 8 variances recorded, not spec-edited). Status: ready-for-dev.
 - 2026-06-11 — Implementation complete (T1–T12): `round_trip_full` (569/569 byte-identical, 0.09s warm), nightly full-corpus gate on all 4 OSes, 17-file L2 seed + canonical ASTs (Emacs 30.2/Org 9.7.11, idempotent regeneration), `l2_canonical_concordance` Rust leg, `l2-emacs-oracle` nightly job + LD-45 comparator, runbook + doc touch-ups, deferred-work hygiene. All gates green (79/124/65 tests; clippy/fmt/deny/audit; zero lockfile delta; sentinels untouched). Status: review.
+- 2026-06-11 — Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor): 3 patch findings fixed (seed-list↔canonical 1:1 assertion per-PR + compare.py wiring guard; python3 pre-flight in generate-canonical.sh; PR-body `Closes #23` obligation recorded in deferred-work), 8 dismissed with evidence, 0 deferred. All ACs verified empirically (seed coverage re-derived from the manifest, idempotency re-confirmed, all four comparator triage classes + wiring guard exercised). Gates re-run green post-fix: parser 79, workspace 124/0/11, clippy/fmt clean, zero lockfile delta, sentinels untouched. Status: done.

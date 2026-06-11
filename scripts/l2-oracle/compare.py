@@ -112,6 +112,24 @@ def main() -> int:
               f"(anti-placebo floor: {MIN_SEED})")
         return 1
 
+    # Wiring guard: a projection output with no committed canonical AST
+    # means seed-list.txt and canonical_ast/ have drifted — that seed would
+    # otherwise be projected but compared by nothing (silent coverage gap).
+    # The Rust leg (tests/l2_canonical.rs) asserts the committed 1:1 per-PR;
+    # this catches runtime wiring drift in the nightly job itself.
+    wiring_fail = False
+    canonical_stems = {p.stem for p in canonical_files}
+    for leg_name, leg_dir in (("e29", args.e29_dir), ("e30", args.e30_dir)):
+        extras = sorted(p.stem for p in leg_dir.glob("*.json")
+                        if p.stem not in canonical_stems)
+        if extras:
+            print(f"::error::{leg_name}: projection output(s) with no committed "
+                  f"canonical AST: {', '.join(extras)} — seed-list.txt and "
+                  f"canonical_ast/ have drifted; run "
+                  f"scripts/l2-oracle/generate-canonical.sh, review, and commit "
+                  f"(docs/parser/l2-oracle.md)")
+            wiring_fail = True
+
     counts = {"ok": 0, "warn": 0, "fail": 0}
     for canonical_file in canonical_files:
         verdict = triage(canonical_file.stem, canonical_file, args.e29_dir, args.e30_dir)
@@ -119,7 +137,7 @@ def main() -> int:
 
     print(f"\nL2 oracle triage: {counts['ok']} OK, {counts['warn']} WARN, "
           f"{counts['fail']} FAIL over {len(canonical_files)} seed file(s)")
-    return 1 if counts["fail"] else 0
+    return 1 if counts["fail"] or wiring_fail else 0
 
 
 if __name__ == "__main__":
