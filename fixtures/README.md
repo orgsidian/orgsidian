@@ -21,6 +21,6 @@ promotion PR must name the consumers).
 - Both manifests are **regular git files, not LFS** — the per-PR gate must
   work on a checkout without git-LFS. Only `tests/fixtures/vault-corpus/`
   is meant to go through LFS (currently committed raw per the Story 2.5 AC6
-  fallback — see the `FOLLOWUP(Story-2.6)` marker in `.gitattributes`).
+  fallback — see the `FOLLOWUP(LFS-migration)` marker in `.gitattributes`).
 - Selection algorithm, licensing posture, and regeneration procedure:
   `docs/adr/0001-corpus-subset-selection.md`.

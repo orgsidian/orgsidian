@@ -1,6 +1,6 @@
 # Story 2.6: Light up L0 round-trip CI gate (per-PR ~100 files <60s)
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -121,16 +121,16 @@ Deliverables: harness repoint (`tests/round_trip.rs` + dev-dep edge), three `pr.
 
 ## Tasks / Subtasks
 
-- [ ] **T1** — Harness repoint: add `serde_json = { workspace = true }` dev-dep (Story-2.6 comment); extend `round_trip_subset` to load + iterate `fixtures/subset-pr.json` (exactly-100 assert, id-labeled `assert_round_trip`, actionable failure messages) while keeping the interim-dir iteration. RED-first: point the loader at the manifest with a deliberately wrong count assert (or temp-tamper a content string in memory) to watch the diagnostics fire, then finalize. (AC1)
-- [ ] **T2** — Measure: `time cargo test -p orgsidian-parser round_trip_subset --locked -- --test-threads=4` warm; record numbers for Completion Notes (expect low single-digit seconds). (AC5)
-- [ ] **T3** — `pr.yml`: L0 gate step after Step 9.1 (epic-verbatim invocation + `--locked`, `timeout-minutes: 1`, house-style comment) + slot-reservation comment update. (AC2)
-- [ ] **T4** — `pr.yml`: extractor test step (`--manifest-path`, `--locked`) + `rust-cache` `workspaces` extension (root + both tools). (AC3)
-- [ ] **T5** — `pr.yml`: extractor lockfile audit (`cargo audit ... --file tools/corpus-extractor/Cargo.lock`, shared `$IGNORES`); decide the deny-licenses bonus per AC4's pre-made scoping. (AC4)
-- [ ] **T6** — LFS disposition: `git lfs version` check; deferred-work annotation + `.gitattributes` marker re-point + CONTRIBUTING §5 one-liner per AC6. NO `git lfs migrate import` under any circumstance. (AC6)
-- [ ] **T7** — Doc touch-ups: CONTRIBUTING §1 parity line; `fixtures/fixtures.toml` interim note present-tense; verify `fixtures/README.md` rows. (AC7)
-- [ ] **T8** — deferred-work.md: annotate the three consumed 2.5 items; pre-seed the story-2.6 stanza. (AC8)
-- [ ] **T9** — Gates: parser suite, workspace suite, extractor suite, clippy/fmt/deny/audit (+ new scoped audit), YAML sanity, `git status` sentinel sweep. Report exact counts + lockfile delta in Completion Notes. (AC8)
-- [ ] **T10** — Commit. Suggested title: `feat(ci): light up L0 round-trip per-PR gate (Story 2.6, closes #22)` (scope `ci` per the Story-1.16 precedent; enum advisory, CONTRIBUTING §2). **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (when the pipeline's PR step runs): gate invocation + measured runtimes + first-run timing confirmation ask + deferred-items closure list + `Closes #22`. (process)
+- [x] **T1** — Harness repoint: add `serde_json = { workspace = true }` dev-dep (Story-2.6 comment); extend `round_trip_subset` to load + iterate `fixtures/subset-pr.json` (exactly-100 assert, id-labeled `assert_round_trip`, actionable failure messages) while keeping the interim-dir iteration. RED-first: point the loader at the manifest with a deliberately wrong count assert (or temp-tamper a content string in memory) to watch the diagnostics fire, then finalize. (AC1)
+- [x] **T2** — Measure: `time cargo test -p orgsidian-parser round_trip_subset --locked -- --test-threads=4` warm; record numbers for Completion Notes (expect low single-digit seconds). (AC5)
+- [x] **T3** — `pr.yml`: L0 gate step after Step 9.1 (epic-verbatim invocation + `--locked`, `timeout-minutes: 1`, house-style comment) + slot-reservation comment update. (AC2)
+- [x] **T4** — `pr.yml`: extractor test step (`--manifest-path`, `--locked`) + `rust-cache` `workspaces` extension (root + both tools). (AC3)
+- [x] **T5** — `pr.yml`: extractor lockfile audit (`cargo audit ... --file tools/corpus-extractor/Cargo.lock`, shared `$IGNORES`); decide the deny-licenses bonus per AC4's pre-made scoping. (AC4)
+- [x] **T6** — LFS disposition: `git lfs version` check; deferred-work annotation + `.gitattributes` marker re-point + CONTRIBUTING §5 one-liner per AC6. NO `git lfs migrate import` under any circumstance. (AC6)
+- [x] **T7** — Doc touch-ups: CONTRIBUTING §1 parity line; `fixtures/fixtures.toml` interim note present-tense; verify `fixtures/README.md` rows. (AC7)
+- [x] **T8** — deferred-work.md: annotate the three consumed 2.5 items; pre-seed the story-2.6 stanza. (AC8)
+- [x] **T9** — Gates: parser suite, workspace suite, extractor suite, clippy/fmt/deny/audit (+ new scoped audit), YAML sanity, `git status` sentinel sweep. Report exact counts + lockfile delta in Completion Notes. (AC8)
+- [x] **T10** — Commit. Suggested title: `feat(ci): light up L0 round-trip per-PR gate (Story 2.6, closes #22)` (scope `ci` per the Story-1.16 precedent; enum advisory, CONTRIBUTING §2). **NO** Co-Authored-By trailer, **NO** "Generated with Claude Code" footer, no AI-credit lines. PR body (when the pipeline's PR step runs): gate invocation + measured runtimes + first-run timing confirmation ask + deferred-items closure list + `Closes #22`. (process)
 
 ## Dev Notes
 
@@ -265,12 +265,46 @@ The gate reads `entries[].id` + `entries[].content` only. Do NOT touch `path` (L
 
 ### Agent Model Used
 
+claude-fable-5 (Fable 5) — BMad dev-story pipeline, fully autonomous orchestrator run, 2026-06-11.
+
 ### Debug Log References
+
+- RED run (T1): exactly-100 assert deliberately set to 101 → fired with the actionable message (`left: 100, right: 101`, names the manifest path + CONTRIBUTING §5 regeneration pointer). Note: the AC's alternative RED path (in-memory content tamper) cannot fire by design — Story 2.4's arbitrary-input identity property means ANY string round-trips, so the count-assert RED is the honest falsifiability check.
+- GREEN run: `cargo test -p orgsidian-parser round_trip_subset --locked -- --test-threads=4` → 1 passed; test body **1.66s** (100 embedded entries + 18 interim files, debug profile); ~3.0s wall warm. Substring filter matches exactly 1 test fn (verified via `--list`).
+- First `--locked` run failed until the lockfile registered the dev-dep edge: resolved offline via `cargo metadata --offline` — Cargo.lock delta is exactly 1 line (`serde_json` added to orgsidian-parser's dep list), zero new crates.
+- AC4 bonus probe: `cargo deny --locked --manifest-path tools/corpus-extractor/Cargo.toml check all` → advisories ok, **bans FAILED, licenses FAILED** → bonus NOT taken per the pre-made scoping; license half re-deferred (story-2.6 deferred-work stanza).
+- Scoped audit probe: `cargo audit --deny warnings $IGNORES --file tools/corpus-extractor/Cargo.lock` → exit 0, 97 crate dependencies scanned, zero NEW advisories (no STOP condition).
+- `git lfs version` re-verified → "git: 'lfs' is not a git command" (expected path: documented re-deferral).
+- pr.yml YAML validated via ruby YAML load + structural asserts (gate step directly after Step 9.1, `timeout-minutes: 1`, workspaces = `.` + both tool crates, audit step carries both invocations). PyYAML unavailable on this machine; ruby stdlib used instead.
 
 ### Completion Notes List
 
+- **AC1** — `round_trip_subset` extended (not forked): one test fn, two sources. Source 1: `fixtures/subset-pr.json` via `manifest_path()` (`CARGO_MANIFEST_DIR/../..` hop, extractor-established pattern), `serde_json::Value` access, anti-placebo exactly-100 assert + non-empty `header` presence check, per-entry `id`-labeled `assert_round_trip` (2.4 diagnostics untouched), all maintainer-visible failures panic with actionable messages naming the file + the CONTRIBUTING §5 regeneration pointer. Source 2: the interim 18-file dir iteration kept byte-equivalent (≥10 floor assert intact). File doc-comment updated to present tense. `corpus_retains_byte_sensitive_fixtures`, inline, and proptest tests byte-unchanged (only `cargo fmt` rewrapped one new statement).
+- **AC2** — pr.yml Step 9.2 `L0 round-trip subset gate (LD-32/LD-44, <60s)`: epic-verbatim invocation (epics.md:854) **plus `--locked`** (variance 1), `timeout-minutes: 1` (test-design §7.3.13 scaffold), placed right after Step 9.1, house-style comment block explaining the named-budgeted-contract rationale vs Step 9's workspace run. Slot-reservation `Story 2.6:` line annotated as landed. `nightly.yml` byte-untouched; no new top-level job (variance 2).
+- **AC3** — Step 9.3 `cargo test (tools/corpus-extractor)` (`--manifest-path` + `--locked`, Step 9.1 precedent): first CI compilation of the extractor + its 65-test suite per PR (TC-3 matrix meta-test + round-trip preflight twin now fire per-PR). `Swatinem/rust-cache@v2` extended with `workspaces: .` + `tools/corpus-extractor` + `tools/issues-sync` — **also fixes the pre-existing uncached issues-sync build** (noted per AC3). No system-lib surprise locally; CI test runs are network-free by design (no fetch/extract added).
+- **AC4** — Step 11 extended: second `cargo audit --deny warnings $IGNORES --file tools/corpus-extractor/Cargo.lock` invocation sharing the `.cargo/audit-ignore.txt` expansion (single source of truth). Green at zero new advisories — no exception needed, no STOP. License half: scoped `cargo deny` fails without allowlist edits → audit-only closure per the pre-made decision; re-deferred explicitly in the story-2.6 deferred-work stanza. `deny.toml` untouched.
+- **AC5** — Measured (this machine, debug, warm build): gate test body **1.66s** (1.74s in the full-suite run) for all 100 embedded entries + 18 interim files; ~3.0s wall including cargo overhead — ~35x inside the 60s budget; interim-only baseline was 0.01s, story-creation preflight proxy 1.75s (confirmed). In-CI enforcement = `timeout-minutes: 1` from the first run. **PROCESS ITEM for the PR step:** PR body must ask the merger to confirm the gate step duration on BOTH matrix cells (macos-14 + ubuntu-24.04) in the first Actions run, and note the one-time extractor cold build (~2-4 min/cell) until the extended rust-cache warms.
+- **AC6** — git-lfs re-verified absent → documented re-deferral (the expected path): deferred-work story-2.5 LFS item annotated (2.6 checked; new owner: first maintainer machine WITH git-lfs, after the Epic-2 story stack merges); `.gitattributes` marker re-pointed to `FOLLOWUP(LFS-migration)` with the no-history-rewrite caveat + the non-rewriting `git add --renormalize` alternative; CONTRIBUTING §5 current-state note no longer names Story 2.6 as owner. `git lfs migrate import` NOT run. Commented-out LFS stanza + active `-text` rules byte-unchanged; corpus files byte-untouched (no `[fixture:epic-2]` tag needed — no fixture content mutated).
+- **AC7** — CONTRIBUTING §1 parity one-liner now includes both `--manifest-path` tool-suite invocations (issues-sync was a pre-existing gap, fixed in the same stroke as noted) + a parenthetical naming the dedicated gate step (L0 gate is parity-covered by `cargo test --workspace`). `fixtures/fixtures.toml` `parser.round-trip-interim` note made present-tense; `corpus.subset-pr` note verified accurate (no edit). **Deviation (honesty edit):** `fixtures/README.md` was expected zero-edit, but its LFS bullet referenced the old `FOLLOWUP(Story-2.6)` marker name — one line updated to the new marker name; consumers table rows verified accurate and unchanged. The `vault-corpus` note in fixtures.toml got the same marker-name honesty touch (notes edits are legal — hand-maintained file). No epics/architecture/test-design/PRD/KNOWN_DIVERGENCES edits (variance-recording instead).
+- **AC8 (gates, exact counts)** — parser suite **77/0** (34 lib + 1 anchor + 4 grammar + 14 round_trip + 24 semantic; no count delta — existing fn extended); workspace **122 passed / 0 failed / 11 ignored** (baseline exact); extractor **65/0** via `--manifest-path`. `cargo clippy --workspace --all-targets --locked -- -D warnings` clean; `cargo fmt --all -- --check` clean; `cargo deny --locked check all` → advisories/bans/licenses/sources all ok; root `cargo audit` exit 0 at the baseline ignore list; scoped extractor audit exit 0. pr.yml parses (ruby YAML) with structure asserted. Sentinel sweep: `git status` shows ONLY the declared files; nothing under `crates/orgsidian-parser/src/`, test sentinels, `grammar/`, `build.rs`, `tools/**` sources, `fixtures/*.json`, `vault-corpus/**`, `nightly.yml`, `deny.toml`, `.cargo/audit-ignore.txt`, `docs/security/**`. Root `Cargo.lock` delta = the single `serde_json` dev-dep edge, zero new crates. deferred-work.md: three story-2.5 items annotated + story-2.6 stanza pre-seeded (LFS re-deferral, license-scan half, first-CI-run timing, dtolnay floating-ref cross-ref to story-1.16 — not fixed here).
+- **Variances recorded (Dev Notes §8, no spec edits):** (1) epic invocation gains `--locked` (LD-37 house rule); (2) macOS-arm64+Ubuntu-LTS satisfied by the existing matrix job, no new job; (3) <60s enforced via `timeout-minutes: 1` + local evidence, CI numbers confirmable only on first Actions run (process note); (4) harness extends rather than replaces the interim corpus (both sources under the contractual name); (5) deferred-item closures ride along per the 2.5 stanza pre-assignment.
+- **Process note (orchestrator constraint):** GitHub issue #22 verified OPEN with `status:backlog`; this run is forbidden from editing issues/PRs — the `status:*` label flips (backlog → in-progress → review) and the PR `Closes #22` body line are owned by the pipeline's later steps per the project's customization (`on_complete` checklist deferred to the orchestrator).
+
 ### File List
+
+- `crates/orgsidian-parser/Cargo.toml` — modified (serde_json `{ workspace = true }` dev-dep with Story-2.6 comment)
+- `crates/orgsidian-parser/tests/round_trip.rs` — modified (manifest source in `round_trip_subset`, `manifest_path()` helper, doc-comment present tense)
+- `Cargo.lock` — modified (1 line: serde_json dep edge on orgsidian-parser)
+- `.github/workflows/pr.yml` — modified (Step 9.2 L0 gate, Step 9.3 extractor tests, rust-cache `workspaces`, Step 11 scoped audit, slot-comment annotation)
+- `.gitattributes` — modified (FOLLOWUP marker re-pointed: new owner + no-rewrite caveat; active rules byte-unchanged)
+- `CONTRIBUTING.md` — modified (§1 parity line + parenthetical; §5 LFS current-state note)
+- `fixtures/fixtures.toml` — modified (notes only: round-trip-interim present tense; vault-corpus marker name)
+- `fixtures/README.md` — modified (1 line: FOLLOWUP marker name reference — honesty edit, consumers table unchanged)
+- `_bmad-output/implementation-artifacts/deferred-work.md` — modified (three story-2.5 items annotated; story-2.6 stanza pre-seeded)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified (2-6 status transitions)
+- `_bmad-output/implementation-artifacts/2-6-light-up-l0-round-trip-ci-gate-per-pr-100-files-60s.md` — modified (this file: tasks, status, dev record)
 
 ## Change Log
 
+- 2026-06-11 — Story implemented (all 10 tasks complete; gate live in pr.yml as Step 9.2 with timeout-minutes: 1; harness consumes fixtures/subset-pr.json + interim dir under the contractual test name; extractor CI step + scoped lockfile audit close the two pre-assigned deferred items; LFS followup re-deferred with documented owner + no-rewrite caveat; all gates green at baseline counts — parser 77, workspace 122/0/11, extractor 65; Cargo.lock delta = serde_json dev-dep edge only). Status: review.
 - 2026-06-11 — Story created (ultimate context engine analysis completed — comprehensive developer guide created; gate runtime grounded empirically: 100-entry round-trip measured at 1.75s vs the 60s budget; LFS re-deferral and audit-only supply-chain scoping pre-decided from specs with variances recorded, not spec-edited). Status: ready-for-dev.

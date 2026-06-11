@@ -28,9 +28,14 @@ fixtures/*.json text eol=lf
 # `-text` rides along: corpus bytes are EOL-sensitive by design (CRLF/mixed
 # edge bucket). Markdown (README.md provenance note) stays regular git —
 # the pattern matches *.org only.
-# FOLLOWUP(Story-2.6): git-lfs was unavailable on the machine that generated
-# the corpus (AC6 documented fallback) — corpus committed as raw git objects;
-# re-enable the stanza below and run `git lfs migrate import
-# --include="tests/fixtures/vault-corpus/**/*.org"` before the corpus grows.
+# FOLLOWUP(LFS-migration): Story 2.6 checked (2026-06-11) — git-lfs still
+# unavailable on this machine; corpus stays as raw git objects. Re-deferred:
+# owner is the first maintainer machine WITH git-lfs, after the Epic-2 story
+# stack (2.3→2.6) merges. CAVEAT — do NOT run `git lfs migrate import`
+# while stacked branches/PRs are open: it rewrites every commit touching the
+# corpus and orphans them. Non-rewriting alternative for the future owner:
+# uncomment the stanza below + `git lfs install` + `git add --renormalize
+# tests/fixtures/vault-corpus` in a normal commit (old raw blobs stay in
+# history, ~2.3 MB, acceptable; future versions go through LFS).
 # tests/fixtures/vault-corpus/**/*.org filter=lfs diff=lfs merge=lfs -text
 tests/fixtures/vault-corpus/**/*.org -text

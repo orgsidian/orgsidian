@@ -76,6 +76,17 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: pr-${{ matrix.os }}
+          # Story 2.6 (AC3): register the root workspace AND both tool crates
+          # (each OUTSIDE [workspace.members] per LD-5, each with its own
+          # target dir + lockfile). Without this the extractor's parser
+          # path-dep (tree-sitter + cc + chrono) recompiles cold on every PR
+          # (~2-4 min/cell) — and the issues-sync build was never cached
+          # either (pre-existing gap, fixed in the same stroke). Cache keys
+          # now hash the tool lockfiles too, so tool-dep bumps bust correctly.
+          workspaces: |
+            .
+            tools/corpus-extractor
+            tools/issues-sync
 
       # Step 3 — pnpm + Node. ORDER MATTERS: pnpm/action-setup MUST run
       # BEFORE actions/setup-node so `cache: 'pnpm'` finds the pnpm binary on
@@ -128,6 +139,33 @@ jobs:
       - name: cargo test (tools/issues-sync)
         run: cargo test --manifest-path tools/issues-sync/Cargo.toml --locked
 
+      # Step 9.2 — L0 round-trip subset gate (Story 2.6: LD-32/LD-44, FR-2
+      # enforcement). Invocation is epic-verbatim (epics.md:854) plus
+      # `--locked` per the LD-37 house rule. Step 9's `cargo test --workspace`
+      # already executes round_trip_subset once — this dedicated step is the
+      # named, budgeted contract (visible step timing in the Actions UI +
+      # the <60s budget enforced via timeout-minutes: 1), not redundant
+      # coverage by accident. The budget is safe: the step reuses test
+      # binaries already compiled by Step 9 in this job, so its wall-clock is
+      # pure test runtime (measured 1.66s for the 100-entry embedded subset
+      # + 18 interim files, debug profile).
+      - name: L0 round-trip subset gate (LD-32/LD-44, <60s)
+        timeout-minutes: 1
+        run: cargo test -p orgsidian-parser round_trip_subset --locked -- --test-threads=4
+
+      # Step 9.3 — tools/corpus-extractor test suite (Story 2.6 AC3 — closes
+      # the story-2.5 deferred item; mirrors the Step 9.1 issues-sync
+      # precedent). Crate is OUTSIDE [workspace.members] (LD-5
+      # leaf-isolation), so --workspace doesn't pick it up. Runs the 65-test
+      # suite: notably the TC-3 matrix meta-test (committed subset-pr.json
+      # still satisfies the LD-44 matrix — fixture-rot tripwire now fires
+      # per-PR) and the round-trip preflight twin (all 100 entries through
+      # the parser path-dep — an independent second execution of the L0
+      # property). Network-free by design: fetch is a maintainer operation —
+      # never add fetch/extract invocations here.
+      - name: cargo test (tools/corpus-extractor)
+        run: cargo test --manifest-path tools/corpus-extractor/Cargo.toml --locked
+
       # Step 10 — cargo-deny (uses deny.toml from Story 1.7).
       - name: cargo deny
         run: cargo deny --locked check all
@@ -138,10 +176,17 @@ jobs:
       # `--config` flag, so we expand the list inline. Kept in lockstep with
       # the "Cargo advisories" table in docs/security/advisory-exceptions.md
       # per LD-37.
+      # Story 2.6 (AC4, ADR 0001 §6): the second invocation audits the
+      # extractor's standalone lockfile via `--file` (the crate is
+      # workspace-excluded, so the root scan never sees it). Same $IGNORES
+      # expansion on purpose — lockstep beats divergence. License-side scan
+      # stays audit-only (scoped cargo-deny needs allowlist changes —
+      # re-deferred, see deferred-work.md story-2.6 stanza).
       - name: cargo audit
         run: |
           IGNORES="$(awk '/^RUSTSEC-/ {printf "--ignore %s ", $1}' .cargo/audit-ignore.txt)"
           cargo audit --deny warnings $IGNORES
+          cargo audit --deny warnings $IGNORES --file tools/corpus-extractor/Cargo.lock
 
       # Step 12 — JS supply-chain audit.
       - name: pnpm audit
@@ -177,7 +222,7 @@ jobs:
       # the bodies here; the supporting deps + scaffolding don't exist yet):
       # Story 1.17: pnpm a11y hard gate (contrast + axe-core + keyboard scenarios) lands here
       # Story 1.12 perf snapshot regression macro: now wired via assert_no_perf_regression! in crates/orgsidian-core/src/test_support/perf.rs and consumed by perf-AC stories.
-      # Story 2.6: L0 round-trip subset gate (~100 files, <60s) lands here
+      # Story 2.6 L0 round-trip subset gate: landed 2026-06-11 as Step 9.2 above (epic-verbatim invocation + --locked, timeout-minutes: 1).
 
       # Step 16 (Story 1.17, LD-58) — WCAG 2.1 AA hard gate:
       #   (a) contrast-matrix Vitest test on shell-ui/src/themes/tokens.css
