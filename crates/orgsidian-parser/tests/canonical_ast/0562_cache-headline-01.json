@@ -1,0 +1,70 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0562_cache-headline-01.org",
+  "deftest": "test-org-element/cache-headline",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "Heading",
+      "tags": [],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": [
+        {
+          "level": 3,
+          "todo": null,
+          "title": "Sub-heading",
+          "tags": [],
+          "scheduled": null,
+          "deadline": null,
+          "closed": null,
+          "children": []
+        },
+        {
+          "level": 2,
+          "todo": null,
+          "title": "Another",
+          "tags": [],
+          "scheduled": null,
+          "deadline": null,
+          "closed": null,
+          "children": [
+            {
+              "level": 3,
+              "todo": null,
+              "title": "1",
+              "tags": [],
+              "scheduled": null,
+              "deadline": null,
+              "closed": null,
+              "children": [
+                {
+                  "level": 5,
+                  "todo": null,
+                  "title": "2",
+                  "tags": [],
+                  "scheduled": null,
+                  "deadline": null,
+                  "closed": null,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "todo": null,
+          "title": "3",
+          "tags": [],
+          "scheduled": null,
+          "deadline": null,
+          "closed": null,
+          "children": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0372_planning-parser-02.org",
+  "deftest": "test-org-element/planning-parser",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "H",
+      "tags": [],
+      "scheduled": "<2012-03-29 thu.>",
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}

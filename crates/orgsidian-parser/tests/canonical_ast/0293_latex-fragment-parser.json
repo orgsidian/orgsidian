@@ -1,0 +1,6 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0293_latex-fragment-parser.org",
+  "deftest": "test-org-element/latex-fragment-parser",
+  "headlines": []
+}

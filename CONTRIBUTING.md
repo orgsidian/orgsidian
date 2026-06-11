@@ -178,6 +178,8 @@ Per the architecture's [Cross-Cutting Concerns header](./_bmad-output/planning-a
 
 Story 1.11 implements the LD-41 failure-mode harness; Story 1.12 implements the perf-snapshot regression macro consumed across the epics — both reference `test-design.md` as the source spec.
 
+For the L2 Emacs oracle and the canonical ASTs (schema, seed selection, regeneration, divergence triage, image bumps), see [`docs/parser/l2-oracle.md`](./docs/parser/l2-oracle.md).
+
 ## 8. Parser ownership (LD-48)
 
 The org-mode grammar at [`crates/orgsidian-parser/grammar/`](./crates/orgsidian-parser/grammar/) is a **SHA-pinned git submodule** vendoring [`nvim-orgmode/tree-sitter-org`](https://github.com/nvim-orgmode/tree-sitter-org). The vendoring discipline, the parser-owner role, and the upgrade process are mandated by [LD-48 in architecture.md](./_bmad-output/planning-artifacts/architecture.md#L1276). This section is the human-readable contract; the machine-readable pin is whatever SHA `git ls-tree HEAD crates/orgsidian-parser/grammar` reports.

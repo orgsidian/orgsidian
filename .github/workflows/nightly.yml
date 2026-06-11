@@ -9,7 +9,10 @@
 # LD-43 (memory soak): nightly Linux-only memory soak placeholder reserved
 #   for Story 4.9 (Epic 4 close-out).
 # LD-44 (full corpus): nightly L0 round-trip full corpus + L2 Emacs oracle
-#   placeholders reserved for Story 2.7.
+#   gates LANDED (Story 2.7): the `round_trip_full` gate step runs in both
+#   the hosted matrix and the arch-linux cell (macOS + Ubuntu + Arch +
+#   Windows), and the `l2-emacs-oracle` job below runs the LD-45
+#   ground-truth triage against pinned Emacs 29.4/30.2 images.
 # LD-56 (Graph View cross-webview perf gate): nightly placeholder reserved
 #   for Story 8.12.
 # LD-58 (a11y hard gate): NOT scheduled nightly — wired into pr.yml by
@@ -112,6 +115,19 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --locked
 
+      # Story 2.7 — L0 full-corpus round-trip gate (LD-32/LD-44). The
+      # workspace test run above already executes `round_trip_full` once;
+      # this dedicated step is the visible, budgeted contract (Story 2.6
+      # AC2 pattern): epic-verbatim invocation (epics.md:869) plus the
+      # `--locked` house rule (LD-37). Binaries are warm from the workspace
+      # run, so step wall-clock is pure test runtime (~0.2s at the observed
+      # 569 entries); timeout-minutes is the corpus-growth tripwire as the
+      # corpus climbs back toward the ~2000-assertion target on upstream
+      # pin bumps.
+      - name: L0 full-corpus round-trip gate (LD-32/LD-44)
+        timeout-minutes: 5
+        run: cargo test -p orgsidian-parser round_trip_full --locked
+
       # Story 1.11: failure-mode test harness (LD-41) lands here as a
       # nightly-only gate. Per-PR runs the fast path; nightly exercises the
       # full failure-mode catalog.
@@ -157,7 +173,10 @@ jobs:
         run: pnpm --filter shell-ui i18n:check
 
       # Slot reservations (filled by later stories):
-      # Story 2.7: nightly L0 full corpus + L2 Emacs oracle gates land here
+      # Story 2.7: LANDED — the L0 full-corpus gate step sits after `cargo
+      #   test` above; the L2 Emacs oracle is the top-level `l2-emacs-oracle`
+      #   job below (Linux-only: docker is unavailable on macOS/Windows
+      #   runners, and cross-version triage needs co-located outputs).
       # Story 8.12: Graph View cross-webview perf gate lands here
 
       # Linux-only nightly memory soak (Story 4.9 / LD-43). The 12-hour
@@ -237,6 +256,16 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --locked
 
+      # Story 2.7 — L0 full-corpus round-trip gate (LD-32/LD-44) on the
+      # Arch rolling-release canary too (the epic's OS list is macOS +
+      # Ubuntu + Arch + Windows). Same named-budgeted-contract rationale as
+      # the hosted cell: the workspace run above already executes
+      # `round_trip_full`; this step is the visible, budgeted contract
+      # (epics.md:869 + `--locked` per LD-37).
+      - name: L0 full-corpus round-trip gate (LD-32/LD-44)
+        timeout-minutes: 5
+        run: cargo test -p orgsidian-parser round_trip_full --locked
+
       - name: cargo deny
         run: cargo deny --locked check all
 
@@ -265,3 +294,70 @@ jobs:
       # Same Story-4.9 memory soak slot also applies to Arch (Linux family).
       - name: nightly memory soak (LD-43) — placeholder
         run: echo "Story 4.9 wires the LD-43 12-hour memory soak here (Linux-only, applies to Arch too)."
+
+  # Story 2.7 — L2 Emacs ground-truth oracle (LD-45). Projects every
+  # designated L2 seed file (scripts/l2-oracle/seed-list.txt) through
+  # `org-element` under BOTH pinned Emacs images and triages the outputs
+  # against the committed canonical ASTs
+  # (crates/orgsidian-parser/tests/canonical_ast/) per the LD-45 decision
+  # table — comparator: scripts/l2-oracle/compare.py; runbook:
+  # docs/parser/l2-oracle.md.
+  #
+  # Linux-only single job BY DESIGN: docker is unavailable on the GitHub
+  # macOS/Windows runners, the epic's 4-OS clause binds `round_trip_full`
+  # (satisfied above), and cross-version e29-vs-e30 triage needs both
+  # outputs co-located. Image pinning: exact-version tags (silex/emacs is
+  # the de-facto maintained multi-version image — no official `emacs`
+  # repo exists on Docker Hub); tags rebuild on a rolling basis, so each
+  # image digest is logged at runtime for the R-028 drift audit trail.
+  l2-emacs-oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20 # two image pulls dominate; per-file emacs batch is ~100ms
+    env:
+      EMACS_29_IMAGE: silex/emacs:29.4
+      EMACS_30_IMAGE: silex/emacs:30.2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        # NO submodules: this job touches only scripts/l2-oracle/,
+        # tests/fixtures/vault-corpus/, and the committed canonical ASTs —
+        # no cargo, no grammar (LD-48 untouched).
+
+      - name: Pull pinned Emacs images + log digests (R-028 audit trail)
+        run: |
+          set -euo pipefail
+          for image in "$EMACS_29_IMAGE" "$EMACS_30_IMAGE"; do
+            docker pull --quiet "$image"
+            echo "R-028 digest: $(docker image inspect --format '{{index .RepoDigests 0}}' "$image")"
+          done
+
+      - name: Project L2 seed under both pinned Emacs versions
+        # Epic invocation shape preserved: emacs -Q --batch -l projection.el
+        # --eval '(l2-project-file "...")' per designated file, per image.
+        # Any docker/emacs execution failure fails the step (set -e +
+        # pipefail): an oracle that cannot run is a broken gate, not a
+        # skipped one.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/l2-out/e29 /tmp/l2-out/e30
+          while IFS= read -r rel; do
+            case "$rel" in '' | '#'*) continue ;; esac
+            stem="$(basename "$rel" .org)"
+            for leg in e29 e30; do
+              if [ "$leg" = e29 ]; then image="$EMACS_29_IMAGE"; else image="$EMACS_30_IMAGE"; fi
+              docker run --rm -v "$PWD:/work" -w /work "$image" \
+                emacs -Q --batch -l scripts/l2-oracle/projection.el \
+                --eval "(l2-project-file \"tests/fixtures/vault-corpus/$rel\")" \
+                >"/tmp/l2-out/$leg/$stem.json"
+            done
+          done <scripts/l2-oracle/seed-list.txt
+
+      - name: LD-45 triage (evaluate all, then fail on FAIL-class divergence)
+        # OK: e29 == e30 == canonical. FAIL (::error): both Emacs agree
+        # against the canonical (Orgsidian bug if the Rust leg is green;
+        # canonical drift after an image bump if red). WARN (::warning,
+        # non-blocking): e29 != e30 — KNOWN_DIVERGENCES.md entry per LD-45.
+        run: |
+          python3 scripts/l2-oracle/compare.py \
+            --canonical-dir crates/orgsidian-parser/tests/canonical_ast \
+            --e29-dir /tmp/l2-out/e29 --e30-dir /tmp/l2-out/e30

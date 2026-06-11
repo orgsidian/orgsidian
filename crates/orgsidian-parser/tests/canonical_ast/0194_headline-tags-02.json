@@ -1,0 +1,19 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0194_headline-tags-02.org",
+  "deftest": "test-org-element/headline-tags",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "Headline",
+      "tags": [
+        "tag"
+      ],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}
