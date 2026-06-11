@@ -1,0 +1,17 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0369_plain-list-parser-05.org",
+  "deftest": "test-org-element/plain-list-parser",
+  "headlines": [
+    {
+      "level": 1,
+      "todo": null,
+      "title": "Headline",
+      "tags": [],
+      "scheduled": null,
+      "deadline": null,
+      "closed": null,
+      "children": []
+    }
+  ]
+}

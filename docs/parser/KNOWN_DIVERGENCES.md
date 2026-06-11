@@ -7,11 +7,12 @@ submodule `crates/orgsidian-parser/grammar/`, commit
 layer) and org-mode's reference behavior (Emacs `org-element`).
 
 **LD-45 role:** this file is the landing zone of the divergence-triage
-workflow. From Story 2.7 onward, every nightly Emacs-oracle mismatch is
+workflow, live since Story 2.7: every nightly Emacs-oracle mismatch (the
+`l2-emacs-oracle` job's WARN class — see `docs/parser/l2-oracle.md`) is
 triaged into an entry here (construct, expected, observed, chosen behavior,
-status/owner). Until then it records the gaps verified during Stories
-2.2/2.3 implementation. The grammar itself is READ-ONLY per LD-48 — local
-grammar edits are never an acceptable fix.
+status/owner). Entries 1–9 record the gaps verified during Stories 2.2/2.3
+implementation. The grammar itself is READ-ONLY per LD-48 — local grammar
+edits are never an acceptable fix.
 
 Entry format: **Construct** / Expected (org-mode/Emacs) / Observed
 (tree-sitter-org @ pinned SHA) / Orgsidian behavior / Status & owner.

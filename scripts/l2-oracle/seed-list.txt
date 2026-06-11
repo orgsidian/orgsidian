@@ -1,0 +1,25 @@
+# L2 oracle seed list (Story 2.7, LD-45) — corpus-relative paths under
+# tests/fixtures/vault-corpus/, one per line. Selection rule + per-pick
+# rationale: crates/orgsidian-parser/tests/canonical_ast/README.md.
+# Regenerate the canonical ASTs after editing: scripts/l2-oracle/generate-canonical.sh
+#
+# >= 1 file per manifest construct kind (smallest representative,
+# preferring files that contain at least one headline):
+extracted/0214_headline-properties-03.org
+extracted/0079_citation-reference-parser-02.org
+extracted/0092_clock-parser.org
+extracted/0371_planning-parser-01.org
+extracted/0383_property-drawer-parser-07.org
+extracted/0173_footnote-definition-parser-09.org
+extracted/0185_headline-todo-keyword.org
+extracted/0293_latex-fragment-parser.org
+extracted/0517_context-15.org
+extracted/0338_link-parser-23.org
+extracted/0369_plain-list-parser-05.org
+extracted/0440_timestamp-parser-08.org
+extracted/0372_planning-parser-02.org
+extracted/0429_table-cell-parser-01.org
+extracted/0194_headline-tags-02.org
+# structure-only (headline tree, no manifest constructs):
+extracted/0566_cache-headline-05.org
+extracted/0562_cache-headline-01.org

@@ -1,0 +1,6 @@
+{
+  "schema": "l2-projection-v1",
+  "source": "extracted/0092_clock-parser.org",
+  "deftest": "test-org-element/clock-parser",
+  "headlines": []
+}
