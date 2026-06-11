@@ -1,0 +1,338 @@
+//! Story 2.4 — round-trip serializer test surface (FR-2).
+//!
+//! Three layers, per the epic:
+//!
+//! 1. `round_trip_subset` — corpus-driven byte-identity over every `.org`
+//!    file under `tests/fixtures/round_trip/` (interim LD-44-representative
+//!    corpus; Story 2.5's full ~100-file subset plugs into this same test).
+//!    The test NAME is a public contract: Story 2.6's CI gate invokes
+//!    `cargo test -p orgsidian-parser round_trip_subset` verbatim.
+//! 2. Inline-literal edge cases — CRLF, mixed endings, missing trailing
+//!    newline, empty input, ERROR-region pathologies. These bytes are not
+//!    safe to commit as fixture files (EOL rewriting), so they live here.
+//! 3. proptest properties (256 cases each): the epic's second-serialization
+//!    idempotence over generated org documents, and the stronger
+//!    arbitrary-input identity `serialize_document(&analyze(s)?) == s` for
+//!    *any* string (the AC2 tiling-invariant enforcement mechanism —
+//!    `analyze` is total per LD-41, so the property has no precondition).
+
+use std::fs;
+use std::path::PathBuf;
+
+use orgsidian_parser::{analyze, serialize, serialize_document};
+use proptest::collection;
+use proptest::option;
+use proptest::prelude::*;
+
+/// The interim fixture corpus directory (directory-driven on purpose:
+/// Stories 2.5/2.6 extend/repoint the corpus without touching this test).
+fn fixtures_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("round_trip")
+}
+
+/// Byte offset of the first divergence between two strings.
+fn first_divergence(expected: &str, actual: &str) -> usize {
+    expected
+        .bytes()
+        .zip(actual.bytes())
+        .position(|(e, a)| e != a)
+        .unwrap_or_else(|| expected.len().min(actual.len()))
+}
+
+/// A short, lossy context window around `offset` for divergence diagnostics.
+fn context_window(s: &str, offset: usize) -> String {
+    let start = offset.saturating_sub(20);
+    let end = (offset + 20).min(s.len());
+    format!("{:?}", String::from_utf8_lossy(&s.as_bytes()[start..end]))
+}
+
+/// Assert `serialize_document(&analyze(src)?) == src` byte-for-byte,
+/// reporting the failing label, first divergent byte offset, and a context
+/// window on mismatch (a bare `assert_eq!` on multi-KB strings is useless
+/// diagnostics).
+fn assert_round_trip(label: &str, src: &str) {
+    let doc = analyze(src).unwrap_or_else(|e| panic!("{label}: analyze failed: {e}"));
+    let out = serialize_document(&doc);
+    if out != src {
+        let offset = first_divergence(src, out.as_str());
+        panic!(
+            "round-trip divergence in {label} at byte {offset} \
+             (input {} bytes, output {} bytes)\n  expected …{}…\n  got      …{}…",
+            src.len(),
+            out.len(),
+            context_window(src, offset),
+            context_window(&out, offset),
+        );
+    }
+}
+
+// --- 1. Corpus gate (name-locked for Story 2.6's CI invocation) ---
+
+#[test]
+fn round_trip_subset() {
+    let dir = fixtures_dir();
+    let mut paths: Vec<PathBuf> = fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("fixture dir {} unreadable: {e}", dir.display()))
+        .map(|entry| entry.expect("fixture dir entry").path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "org"))
+        .collect();
+    paths.sort();
+
+    assert!(
+        paths.len() >= 10,
+        "interim corpus unexpectedly small ({} files) — fixtures missing?",
+        paths.len()
+    );
+
+    for path in &paths {
+        let src = fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+        let label = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.display().to_string());
+        assert_round_trip(&label, &src);
+    }
+}
+
+// The committed corpus must keep its byte-sensitive members byte-sensitive:
+// if EOL mangling (autocrlf without the .gitattributes `-text` rule) ever
+// rewrites the no-trailing-newline fixture, or a whitespace-stripping tool
+// (editor hook, formatter) rewrites the trailing-whitespace fixture, this
+// tripwire fires before the round-trip gate silently weakens.
+#[test]
+fn corpus_retains_byte_sensitive_fixtures() {
+    let path = fixtures_dir().join("18_no_trailing_newline.org");
+    let src = fs::read_to_string(&path).expect("fixture present");
+    assert!(
+        !src.ends_with('\n'),
+        "18_no_trailing_newline.org must NOT end with a newline — \
+         EOL protection (.gitattributes -text) has been bypassed"
+    );
+
+    let path = fixtures_dir().join("14_overindented_drawer.org");
+    let src = fs::read_to_string(&path).expect("fixture present");
+    assert!(
+        src.lines().any(|l| l.ends_with(' ') || l.ends_with('\t')),
+        "14_overindented_drawer.org must keep its trailing whitespace/tabs — \
+         a whitespace-stripping tool has rewritten the fixture"
+    );
+}
+
+// --- 2. Inline-literal edge cases (bytes unsafe to commit as fixtures) ---
+
+#[test]
+fn round_trip_crlf() {
+    assert_round_trip("inline:crlf", "* One\r\nbody line\r\n* Two\r\nmore\r\n");
+}
+
+#[test]
+fn round_trip_crlf_with_preamble() {
+    assert_round_trip(
+        "inline:crlf-preamble",
+        "#+TITLE: t\r\n\r\nintro\r\n* One\r\nSCHEDULED: <2026-06-10 Wed>\r\nbody\r\n",
+    );
+}
+
+#[test]
+fn round_trip_mixed_line_endings() {
+    assert_round_trip(
+        "inline:mixed-eol",
+        "* Unix\nbody\n** CRLF child\r\ncrlf body\r\n* Tail\nmixed\r\nend\n",
+    );
+}
+
+#[test]
+fn round_trip_missing_trailing_newline() {
+    assert_round_trip("inline:no-trailing-nl", "* One\nbody with no final newline");
+}
+
+#[test]
+fn round_trip_trailing_blank_lines() {
+    assert_round_trip("inline:trailing-blanks", "* One\nbody\n\n\n");
+}
+
+#[test]
+fn round_trip_empty_input() {
+    assert_round_trip("inline:empty", "");
+}
+
+#[test]
+fn round_trip_whitespace_only_input() {
+    assert_round_trip("inline:whitespace-only", "  \n\t\n   \n");
+}
+
+// ERROR-region pathology (T1 probe ground truth): a root-level ERROR node is
+// not a `body`/`subsection` field — without gap-absorption its bytes vanish.
+#[test]
+fn round_trip_error_region_bytes_survive() {
+    assert_round_trip("inline:error-region", "\u{0}\u{1}* X\n\u{7f}");
+}
+
+#[test]
+fn round_trip_headlines_only_serialize_matches_document() {
+    // For a file with no preamble, `serialize(&headlines)` and
+    // `serialize_document` are identical (AC1 interpretation).
+    let src = "* A\nbody\n** B\nchild body\n* C\n";
+    let doc = analyze(src).expect("analyze");
+    assert!(doc.preamble.is_none(), "sample must have no preamble");
+    assert_eq!(serialize(&doc.headlines), src);
+    assert_eq!(serialize_document(&doc), src);
+}
+
+// --- 3. proptest properties (Story 2.4 AC4; house style:
+//        orgsidian-core/tests/settings_round_trip.rs) ---
+
+/// Random org headline line: stars, optional TODO keyword (default config
+/// set), title, optional trailing tags.
+fn headline_line_strategy() -> impl Strategy<Value = String> {
+    (
+        1..=6usize,
+        option::of(prop_oneof![
+            Just("TODO"),
+            Just("NEXT"),
+            Just("DONE"),
+            Just("WAITING"),
+        ]),
+        "[A-Za-z][A-Za-z0-9 ]{0,16}",
+        option::of("(:[a-z]{1,6}){1,3}:"),
+    )
+        .prop_map(|(level, keyword, title, tags)| {
+            let mut line = "*".repeat(level);
+            if let Some(kw) = keyword {
+                line.push(' ');
+                line.push_str(kw);
+            }
+            line.push(' ');
+            line.push_str(&title);
+            if let Some(tags) = tags {
+                line.push(' ');
+                line.push_str(&tags);
+            }
+            line.push('\n');
+            line
+        })
+}
+
+/// Random planning line with a chrono-valid date and optional repeater.
+fn planning_line_strategy() -> impl Strategy<Value = String> {
+    (
+        prop_oneof![Just("SCHEDULED"), Just("DEADLINE"), Just("CLOSED")],
+        2000..2100i32,
+        1..=12u32,
+        1..=28u32,
+        option::of((
+            prop_oneof![Just("+"), Just("++"), Just(".+")],
+            1..30u32,
+            "[dwmy]",
+        )),
+        any::<bool>(),
+    )
+        .prop_map(|(name, y, m, d, repeater, active)| {
+            let mut stamp = format!("{y:04}-{m:02}-{d:02} Xdy");
+            if let Some((kind, value, unit)) = repeater {
+                stamp.push_str(&format!(" {kind}{value}{unit}"));
+            }
+            let (open, close) = if active { ('<', '>') } else { ('[', ']') };
+            format!("{name}: {open}{stamp}{close}\n")
+        })
+}
+
+/// Random property drawer (0–3 properties).
+fn drawer_strategy() -> impl Strategy<Value = String> {
+    collection::vec(("[A-Z_]{2,8}", "[a-z0-9 -]{0,12}"), 0..4).prop_map(|props| {
+        let mut out = String::from(":PROPERTIES:\n");
+        for (k, v) in props {
+            out.push_str(&format!(":{k}: {v}\n"));
+        }
+        out.push_str(":END:\n");
+        out
+    })
+}
+
+/// Random body: 0–4 lines of plain text and blank lines (never starting
+/// with `*`, so the generated structure stays as declared).
+fn body_strategy() -> impl Strategy<Value = String> {
+    collection::vec(
+        prop_oneof![Just(String::new()), "[A-Za-z][A-Za-z0-9 .,]{0,24}"],
+        0..4,
+    )
+    .prop_map(|lines| {
+        lines
+            .into_iter()
+            .map(|l| format!("{l}\n"))
+            .collect::<String>()
+    })
+}
+
+/// One full generated headline: headline line + optional planning line +
+/// optional property drawer + body. Nesting across headlines emerges from
+/// the random level sequence.
+fn headline_block_strategy() -> impl Strategy<Value = String> {
+    (
+        headline_line_strategy(),
+        option::of(planning_line_strategy()),
+        option::of(drawer_strategy()),
+        body_strategy(),
+    )
+        .prop_map(|(line, plan, drawer, body)| {
+            let mut out = line;
+            if let Some(plan) = plan {
+                out.push_str(&plan);
+            }
+            if let Some(drawer) = drawer {
+                out.push_str(&drawer);
+            }
+            out.push_str(&body);
+            out
+        })
+}
+
+/// A whole generated org document: 1–6 headline blocks concatenated.
+/// Levels are random, so arbitrary nesting shapes occur.
+fn org_document_strategy() -> impl Strategy<Value = String> {
+    collection::vec(headline_block_strategy(), 1..6).prop_map(|blocks| blocks.concat())
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+
+    /// Epic property (epics.md:822-825): generated headline content →
+    /// `analyze` → `serialize` → `analyze` → `serialize`; the second
+    /// serialization is byte-identical to the first. Headlines are
+    /// constructed via rendered org text + `analyze()` — the only honest
+    /// constructor of a valid `raw` (Dev Notes §7 variance 4).
+    #[test]
+    fn round_trip_second_serialization_idempotent(doc_text in org_document_strategy()) {
+        let doc = analyze(&doc_text).expect("analyze is total (LD-41)");
+        let first = serialize(&doc.headlines);
+        // Tiling invariant: the generated docs have no preamble, so the
+        // first serialization must already equal the input.
+        prop_assert_eq!(&first, &doc_text, "first serialization must be identity");
+        let reparsed = analyze(&first).expect("analyze is total (LD-41)");
+        let second = serialize(&reparsed.headlines);
+        prop_assert_eq!(&second, &first, "second serialization must be a fixed point");
+    }
+
+    /// Arbitrary-input identity (stronger, AC4): for ANY string,
+    /// `serialize_document(&analyze(s)?) == s` byte-for-byte. `analyze`
+    /// accepts every input (LD-41), so there is no precondition — this
+    /// enforces the AC2 tiling invariant against ERROR-region pathologies
+    /// far beyond handcrafted fixtures.
+    #[test]
+    fn round_trip_identity_arbitrary_input(s in any::<String>()) {
+        let doc = analyze(&s).expect("analyze is total (LD-41)");
+        prop_assert_eq!(serialize_document(&doc), s);
+    }
+
+    /// Unicode-heavy printable variant of the identity property (`\PC*`:
+    /// any non-control characters, multi-byte and RTL included).
+    #[test]
+    fn round_trip_identity_unicode_input(s in "\\PC{0,200}") {
+        let doc = analyze(&s).expect("analyze is total (LD-41)");
+        prop_assert_eq!(serialize_document(&doc), s);
+    }
+}

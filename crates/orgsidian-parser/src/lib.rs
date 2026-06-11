@@ -11,14 +11,17 @@
 //! (see `tests/anchor.rs`) and is preserved across stories. The [`semantic`]
 //! module (Story 2.3) lifts the raw tree into typed, owned semantic structs
 //! via [`analyze`]; the round-trip serializer (Story 2.4, FR-2) builds on
-//! both surfaces.
+//! both surfaces: [`serialize`] / [`serialize_document`] emit the retained
+//! raw regions back, byte-identical to the analyzed source.
 
 mod grammar;
 pub mod semantic;
+mod serializer;
 
 use thiserror::Error;
 
 pub use semantic::analyze;
+pub use serializer::{serialize, serialize_document};
 
 /// Re-export so downstream crates can name `orgsidian_parser::tree_sitter::Node`
 /// (etc.) without taking their own `tree-sitter` dependency — the version pin

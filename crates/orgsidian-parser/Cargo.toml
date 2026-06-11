@@ -22,3 +22,10 @@ chrono = { workspace = true }
 [build-dependencies]
 # Story 2.1: cc driver for build.rs — compiles vendored grammar/src/{parser,scanner}.c.
 cc = { workspace = true }
+
+[dev-dependencies]
+# Story 2.4 (FR-2): proptest for the round-trip properties (second-serialization
+# idempotence + arbitrary-input identity) in tests/round_trip.rs. Workspace-pinned,
+# already resolved in Cargo.lock via orgsidian-core — a dependency edge only,
+# zero new crates.
+proptest = { workspace = true }

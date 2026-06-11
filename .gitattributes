@@ -6,3 +6,12 @@
 # behavior for the rest of the repo until a dedicated repo-hygiene story
 # tackles end-of-line policy holistically.
 tests/perf-baselines/*.json text eol=lf
+
+# Story 2.4 (FR-2): round-trip fixture corpus files are byte-exact test
+# inputs — the `round_trip_subset` gate asserts serialize(analyze(f)) == f
+# byte-for-byte, and some fixtures deliberately carry trailing whitespace or
+# no trailing newline. `-text` opts them out of ALL EOL conversion so a
+# Windows checkout with `core.autocrlf=true` cannot silently rewrite fixture
+# bytes and turn the gate into a liar. Scoping kept narrow on purpose
+# (mirrors the perf-baselines rule above).
+crates/orgsidian-parser/tests/fixtures/round_trip/*.org -text

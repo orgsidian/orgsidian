@@ -75,6 +75,22 @@ pub struct Headline {
     /// `docs/parser/KNOWN_DIVERGENCES.md` entry 1 (Epic 4 decides whether
     /// verbatim regions get excluded).
     pub links: Vec<Link>,
+    /// Raw source text of this headline's **own region**: the headline line
+    /// plus planning line, drawers, and body — from the section start up to
+    /// the start of the first child section (or the section end when
+    /// childless). Exactly the region the links scan covers; both are
+    /// computed from the same boundaries (Story 2.4, FR-2).
+    ///
+    /// **Tiling invariant (load-bearing for round-trip serialization):** for
+    /// every analyzed document, the preamble text plus the recursive
+    /// concatenation of all `raw` fields (own region first, then children in
+    /// order) reproduces the `analyze()` input byte-for-byte — nothing
+    /// dropped, nothing duplicated. Bytes the grammar leaves outside any
+    /// retained region (`ERROR` nodes, headline-less sections inside `ERROR`
+    /// regions) are gap-absorbed into the nearest retained `raw`, so this
+    /// field may carry a few absorbed bytes beyond the own region on
+    /// pathological input. [`crate::serialize`] consumes this field.
+    pub raw: String,
     /// Byte range of the headline's whole section (headline line through the
     /// end of its last child) in the `analyze()` input.
     pub span: Range<usize>,
@@ -257,17 +273,43 @@ pub(crate) fn build_section(
         .next()
         .map(|sub| sub.start_byte())
         .unwrap_or_else(|| section.end_byte());
-    let links = source
+    let own_region = source
         .get(section.start_byte()..own_region_end)
-        .map(|text| link::scan_links(text, section.start_byte()))
-        .unwrap_or_default();
+        .unwrap_or("");
+    let links = link::scan_links(own_region, section.start_byte());
 
-    // Children: nested sections, recursively.
+    // Raw own region: the SAME slice the links scan covers — single source
+    // of truth, the two can never drift (Story 2.4 tiling invariant).
+    let mut raw = own_region.to_string();
+
+    // Children: nested sections, recursively, with a gap-absorption cursor —
+    // a child `section` without a `headline` field (possible inside `ERROR`
+    // regions) builds to `None`, and its bytes must not be dropped: they are
+    // prepended to the next built child's `raw`, or appended at the end (to
+    // the last child's last descendant, preserving emission order, or to the
+    // own-region `raw` when no child built at all).
+    let mut children: Vec<Headline> = Vec::new();
+    let mut pos = own_region_end;
     let mut cursor = section.walk();
-    let children = section
-        .children_by_field_name("subsection", &mut cursor)
-        .filter_map(|sub| build_section(sub, source, config))
-        .collect();
+    for sub in section.children_by_field_name("subsection", &mut cursor) {
+        let range = sub.byte_range();
+        if let Some(mut child) = build_section(sub, source, config) {
+            if range.start > pos {
+                child
+                    .raw
+                    .insert_str(0, source.get(pos..range.start).unwrap_or(""));
+            }
+            pos = pos.max(range.end);
+            children.push(child);
+        }
+    }
+    if pos < section.end_byte() {
+        let tail = source.get(pos..section.end_byte()).unwrap_or("");
+        match children.last_mut() {
+            Some(last) => absorb_trailing(last, tail),
+            None => raw.push_str(tail),
+        }
+    }
 
     Some(Headline {
         level,
@@ -281,7 +323,19 @@ pub(crate) fn build_section(
         drawers,
         clocks,
         links,
+        raw,
         span: section.byte_range(),
         children,
     })
+}
+
+/// Append `tail` after this headline's entire emission: recurse to the last
+/// descendant in document order and extend its `raw`. Appending to the
+/// headline's own `raw` directly would emit the tail *before* its children —
+/// reordering bytes and breaking the tiling invariant (Story 2.4).
+pub(crate) fn absorb_trailing(headline: &mut Headline, tail: &str) {
+    match headline.children.last_mut() {
+        Some(last) => absorb_trailing(last, tail),
+        None => headline.raw.push_str(tail),
+    }
 }
