@@ -31,7 +31,10 @@ fn disk_full_atomic_write() {
     // target's prior content is intact, and no temp residue remains — the
     // explicit `discard()` on the error path is what this proves.
     let scenario = fail::FailScenario::setup();
-    fail::cfg("vault::atomic-write::write", "return(ENOSPC)").expect("fail-point cfg must succeed");
+    // Bare `return` action: the injected error (ENOSPC-shaped `StorageFull`)
+    // is fixed inside the fail-point closure in `vault::atomic::write_body` —
+    // a `return(...)` payload would be silently ignored, so none is passed.
+    fail::cfg("vault::atomic-write::write", "return").expect("fail-point cfg must succeed");
 
     const PRIOR: &[u8] = b"* TODO prior content survives\n";
     let dir = tempfile::TempDir::new().expect("TempDir must succeed");
@@ -40,7 +43,11 @@ fn disk_full_atomic_write() {
 
     let result = orgsidian_vault::atomic_write(&target, b"* TODO new content\n");
 
-    assert!(result.is_err(), "injected disk-full must surface an error");
+    assert!(
+        matches!(result, Err(orgsidian_vault::VaultError::Io { .. })),
+        "injected disk-full must surface immediately as non-transient Io \
+         (never RetriesExhausted — ENOSPC must not be retried): {result:?}"
+    );
     assert_eq!(
         std::fs::read(&target).expect("target must still be readable"),
         PRIOR,

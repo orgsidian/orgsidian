@@ -93,8 +93,12 @@ fn write_body(file: &mut AtomicWriteFile, content: &[u8]) -> io::Result<()> {
 ///   classifier platform-uniform.
 /// - `ERROR_SHARING_VIOLATION` (32) / `ERROR_LOCK_VIOLATION` (33) surface
 ///   with an uncategorized `ErrorKind` on Windows, so match the raw OS code.
-///   The raw check stays platform-uniform: on Unix those codes are
-///   EPIPE/EDOM, which an atomic file write never produces.
+///   The raw check is deliberately NOT gated on the `ErrorKind` (AC3 letter
+///   variance, recorded in Completion Notes): `ErrorKind::Uncategorized` is
+///   unstable and its raw-code mapping can shift across Rust releases, so
+///   kind-gating would silently break the Windows retry path. The ungated
+///   check stays platform-uniform: on Unix those codes are EPIPE/EDOM, which
+///   an atomic file write never produces.
 ///
 /// Everything else — `NotFound` (target dir gone), directory-shaped targets,
 /// ENOSPC — is non-transient and fails immediately.
@@ -161,8 +165,13 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<(), VaultError> {
 /// Outcome of a [`clean_orphan_temp_files`] pass.
 #[derive(Debug, Default)]
 pub struct CleanupReport {
-    /// Absolute paths of the orphaned temp files that were removed.
+    /// Paths of the orphaned temp files that were removed, as resolved from
+    /// the `vault_root` passed in (absolute iff `vault_root` is absolute).
     pub removed: Vec<PathBuf>,
+    /// Per-entry failures the best-effort scan skipped over (unreadable
+    /// subdirectory, undeletable orphan). Deletions recorded in `removed`
+    /// happened even when this is non-empty.
+    pub errors: Vec<(PathBuf, io::Error)>,
 }
 
 impl CleanupReport {
@@ -176,47 +185,92 @@ impl CleanupReport {
 /// siblings left behind by dead writers (`kill -9`, power loss — the crate
 /// documents that aborts without unwinding leak temps).
 ///
-/// A file is an orphan candidate only when its name matches the crate's real
-/// temp pattern — `.` + `{name}.org` + `.` + 6 ASCII alphanumerics (verified
-/// in atomic-write-file 0.3.0, `src/imp/generic.rs::RandomName`) — **and** its
-/// mtime is at least 60s old, so a concurrent in-flight writer is never
-/// raced. Anything else (user dotfiles, `.orgsidian/`, non-`.org` targets,
-/// fresh temps) is never touched.
+/// A file is an orphan candidate only when ALL of:
+///
+/// - its name matches the crate's real temp pattern — `.` + `{name}.org` +
+///   `.` + 6 ASCII alphanumerics (verified in atomic-write-file 0.3.0,
+///   `src/imp/generic.rs::RandomName`);
+/// - the `{name}.org` target it points at exists in the same directory — a
+///   pattern-shaped name whose target is absent is more plausibly a user file
+///   than crate residue, and deleting user data is the one unrecoverable
+///   failure (the residue of a crashed first save to a brand-new target is
+///   the accepted trade-off);
+/// - its mtime is at least 60s old, so a concurrent in-flight writer is
+///   never raced.
+///
+/// Anything else (user dotfiles, `.orgsidian/`, non-`.org` targets, fresh
+/// temps) is never touched. Symlinks are never followed — including
+/// symlink-to-directory, so orphans inside linked subtrees are out of scope
+/// (cycle safety beats coverage there).
+///
+/// The scan is best-effort: per-entry failures are recorded in
+/// [`CleanupReport::errors`] and the scan continues. The only hard error is
+/// `vault_root` itself being unreadable.
 ///
 /// Story 3.6 wires this into the Vault-open flow; this story ships the API.
 pub fn clean_orphan_temp_files(vault_root: &Path) -> Result<CleanupReport, VaultError> {
     let mut report = CleanupReport::default();
     let now = SystemTime::now();
-    clean_orphans_in_dir(vault_root, now, &mut report)?;
+
+    let root_entries = std::fs::read_dir(vault_root).map_err(|e| VaultError::Io {
+        path: vault_root.to_path_buf(),
+        source: e,
+    })?;
+
+    // Iterative traversal (no recursion): a pathologically deep tree — e.g.
+    // nesting loops manufactured by sync tools — must not overflow the stack.
+    let mut pending: Vec<PathBuf> = Vec::new();
+    scan_dir_entries(root_entries, vault_root, now, &mut pending, &mut report);
+    while let Some(dir) = pending.pop() {
+        match std::fs::read_dir(&dir) {
+            Ok(entries) => scan_dir_entries(entries, &dir, now, &mut pending, &mut report),
+            Err(e) => report.errors.push((dir, e)),
+        }
+    }
     Ok(report)
 }
 
-fn clean_orphans_in_dir(
+fn scan_dir_entries(
+    entries: std::fs::ReadDir,
     dir: &Path,
     now: SystemTime,
+    pending: &mut Vec<PathBuf>,
     report: &mut CleanupReport,
-) -> Result<(), VaultError> {
-    let io_err = |path: &Path, source: io::Error| VaultError::Io {
-        path: path.to_path_buf(),
-        source,
-    };
-
-    for entry in std::fs::read_dir(dir).map_err(|e| io_err(dir, e))? {
-        let entry = entry.map_err(|e| io_err(dir, e))?;
+) {
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => {
+                report.errors.push((dir.to_path_buf(), e));
+                continue;
+            }
+        };
         let path = entry.path();
-        let file_type = entry.file_type().map_err(|e| io_err(&path, e))?;
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(e) => {
+                report.errors.push((path, e));
+                continue;
+            }
+        };
 
         if file_type.is_dir() {
-            clean_orphans_in_dir(&path, now, report)?;
+            pending.push(path);
             continue;
         }
+        // Symlinks (even to directories) are neither followed nor eligible.
         if !file_type.is_file() {
             continue;
         }
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        if !is_orphan_temp_name(name) {
+        let Some(target_name) = orphan_target_name(name) else {
+            continue;
+        };
+        // Target-existence guard: without a `{stem}.org` sibling the name is
+        // more plausibly a user file than crate residue — never delete it.
+        if !dir.join(target_name).is_file() {
             continue;
         }
         // mtime-age guard: skip fresh temps (in-flight writers). A file whose
@@ -225,32 +279,40 @@ fn clean_orphans_in_dir(
             continue;
         };
         match now.duration_since(modified) {
-            Ok(age) if age >= ORPHAN_MIN_AGE => {
-                std::fs::remove_file(&path).map_err(|e| io_err(&path, e))?;
-                report.removed.push(path);
-            }
+            Ok(age) if age >= ORPHAN_MIN_AGE => match std::fs::remove_file(&path) {
+                Ok(()) => report.removed.push(path),
+                // Already gone — a concurrent cleaner or the user raced us.
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(e) => report.errors.push((path, e)),
+            },
             // Fresh temp, or mtime in the future (clock skew) — leave it.
             _ => {}
         }
     }
-    Ok(())
 }
 
-/// Match the `atomic-write-file` temp pattern for an `.org` target:
-/// `.` + `{stem}.org` + `.` + exactly 6 ASCII alphanumerics.
-fn is_orphan_temp_name(name: &str) -> bool {
-    let Some(rest) = name.strip_prefix('.') else {
-        return false;
-    };
-    let Some((target, suffix)) = rest.rsplit_once('.') else {
-        return false;
-    };
-    suffix.len() == 6
+/// Match the `atomic-write-file` temp pattern for an `.org` target —
+/// `.` + `{stem}.org` + `.` + exactly 6 ASCII alphanumerics — and return the
+/// `{stem}.org` target name the temp points at.
+///
+/// The name alone cannot rule out a user file: "backup" is 6 ASCII
+/// alphanumerics, so `.notes.org.backup` matches. The caller's
+/// target-existence + mtime-age guards carry the rest of the safety burden.
+fn orphan_target_name(name: &str) -> Option<&str> {
+    let rest = name.strip_prefix('.')?;
+    let (target, suffix) = rest.rsplit_once('.')?;
+    (suffix.len() == 6
         && suffix.chars().all(|c| c.is_ascii_alphanumeric())
         && target.ends_with(".org")
         // Guard against a bare `.org` target name (`..org.abc123`): the temp
         // must belong to a plausible `{stem}.org` file.
-        && target.len() > ".org".len()
+        && target.len() > ".org".len())
+    .then_some(target)
+}
+
+#[cfg(test)]
+fn is_orphan_temp_name(name: &str) -> bool {
+    orphan_target_name(name).is_some()
 }
 
 #[cfg(test)]
@@ -292,6 +354,12 @@ mod tests {
         // Real pattern: `.{basename}.{6 alnum}` for an `.org` target.
         assert!(is_orphan_temp_name(".notes.org.aB3xY9"));
         assert!(is_orphan_temp_name(".hidden.org.abc123"));
+        // The name alone cannot rule out a user file — "backup" is 6 ASCII
+        // alphanumerics. The target-existence + mtime guards in the scan are
+        // what keeps such files safe (see `symlink`/false-positive tests in
+        // tests/orphan_cleanup.rs).
+        assert!(is_orphan_temp_name(".notes.org.backup"));
+        assert_eq!(orphan_target_name(".notes.org.aB3xY9"), Some("notes.org"));
 
         // Never touched: user dotfiles, wrong suffix length, non-org targets.
         assert!(!is_orphan_temp_name(".gitignore"));

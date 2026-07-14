@@ -3,9 +3,11 @@
 //!
 //! Plants fixtures matching the real `atomic-write-file` 0.3.0 temp pattern
 //! (`.` + `{name}.org` + `.` + 6 alphanumerics — no PID, verified in crate
-//! source) and asserts the mtime-age-guarded scan removes only stale orphans:
-//! user dotfiles, `.orgsidian/` contents, non-`.org` temps, and fresh
-//! in-flight temps must all survive.
+//! source) and asserts the guarded scan removes only stale orphans whose
+//! `{name}.org` target exists: user dotfiles, `.orgsidian/` contents,
+//! non-`.org` temps, fresh in-flight temps, and pattern-shaped names with no
+//! target (plausible user files) must all survive. The scan is best-effort
+//! and never follows symlinks.
 
 use std::fs::{self, File, FileTimes};
 use std::path::Path;
@@ -31,6 +33,8 @@ fn plant(path: &Path, content: &[u8]) {
 #[test]
 fn stale_orphan_is_removed_and_reported() {
     let dir = tempfile::TempDir::new().expect("TempDir");
+    let target = dir.path().join("notes.org");
+    plant(&target, b"* TODO real content\n");
     let orphan = dir.path().join(".notes.org.aB3xY9");
     plant(&orphan, b"partial write from dead writer");
     backdate(&orphan, Duration::from_secs(120));
@@ -39,7 +43,9 @@ fn stale_orphan_is_removed_and_reported() {
 
     assert_eq!(report.removed_count(), 1);
     assert_eq!(report.removed, vec![orphan.clone()]);
+    assert!(report.errors.is_empty(), "clean scan reports no errors");
     assert!(!orphan.exists(), "stale orphan must be deleted");
+    assert!(target.exists(), "the real target file must survive");
 }
 
 #[test]
@@ -47,6 +53,7 @@ fn stale_orphan_in_subdirectory_is_removed() {
     let dir = tempfile::TempDir::new().expect("TempDir");
     let subdir = dir.path().join("projects");
     fs::create_dir(&subdir).expect("mkdir");
+    plant(&subdir.join("plan.org"), b"* real\n");
     let orphan = subdir.join(".plan.org.Zz9Aa1");
     plant(&orphan, b"stale");
     backdate(&orphan, Duration::from_secs(120));
@@ -55,6 +62,27 @@ fn stale_orphan_in_subdirectory_is_removed() {
 
     assert_eq!(report.removed_count(), 1, "recursive scan reaches subdirs");
     assert!(!orphan.exists());
+}
+
+#[test]
+fn pattern_shaped_name_without_target_survives() {
+    // Review finding (Story 3.1): "backup" is exactly 6 ASCII alphanumerics,
+    // so `.archive.org.backup` matches the crate temp pattern by name alone.
+    // Without an `archive.org` target in the same directory it is more
+    // plausibly a user file than crate residue — the target-existence guard
+    // must leave it alone no matter how old it is.
+    let dir = tempfile::TempDir::new().expect("TempDir");
+    let lookalike = dir.path().join(".archive.org.backup");
+    plant(&lookalike, b"user-made backup, not crate residue");
+    backdate(&lookalike, Duration::from_secs(3600));
+
+    let report = clean_orphan_temp_files(dir.path()).expect("cleanup must succeed");
+
+    assert_eq!(report.removed_count(), 0);
+    assert!(
+        lookalike.exists(),
+        "pattern-shaped name with no target must never be deleted"
+    );
 }
 
 #[test]
@@ -80,7 +108,10 @@ fn user_dotfiles_and_fresh_temps_survive() {
     backdate(&toml_temp, Duration::from_secs(3600));
 
     // Fresh in-flight temp (current mtime) — a concurrent writer must never
-    // be raced, so the 60s age guard leaves it alone.
+    // be raced, so the 60s age guard leaves it alone. Its target exists, so
+    // the age guard (not the target-existence guard) is what protects it.
+    let draft = dir.path().join("draft.org");
+    plant(&draft, b"* draft\n");
     let in_flight = dir.path().join(".draft.org.qW4rT7");
     plant(&in_flight, b"in-flight write");
 
@@ -109,4 +140,31 @@ fn hidden_org_target_orphan_is_removed_alongside_survivors() {
     assert_eq!(report.removed_count(), 1);
     assert!(!orphan.exists());
     assert!(target.exists(), "the real target file must survive");
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_directories_are_not_followed() {
+    // Cycle safety: the scan never follows symlinks, so orphans behind a
+    // symlinked org folder are out of scope (documented on the API).
+    let vault = tempfile::TempDir::new().expect("TempDir");
+    let outside = tempfile::TempDir::new().expect("TempDir");
+    plant(&outside.path().join("notes.org"), b"* real\n");
+    let orphan = outside.path().join(".notes.org.aB3xY9");
+    plant(&orphan, b"stale orphan behind a symlink");
+    backdate(&orphan, Duration::from_secs(120));
+    std::os::unix::fs::symlink(outside.path(), vault.path().join("linked"))
+        .expect("symlink fixture");
+
+    let report = clean_orphan_temp_files(vault.path()).expect("cleanup must succeed");
+
+    assert_eq!(
+        report.removed_count(),
+        0,
+        "linked subtree must not be scanned"
+    );
+    assert!(
+        orphan.exists(),
+        "orphans behind symlinked dirs are untouched"
+    );
 }

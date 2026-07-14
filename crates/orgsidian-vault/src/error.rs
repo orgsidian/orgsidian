@@ -10,7 +10,10 @@
 use std::io;
 use std::path::PathBuf;
 
+// Epic 3 grows this crate (dirty buffer, SQLite mirror, vault open): new
+// variants must not be breaking changes for downstream exhaustive matches.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum VaultError {
     /// Non-transient filesystem I/O failure (open, write, commit, scan,
     /// remove). Surfaced immediately — never retried (LD-41 disk-full row:
