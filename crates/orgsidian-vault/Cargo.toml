@@ -7,9 +7,25 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Story 3.1 (LD-41): opt-in fail-point in the atomic-write path for the
+# workspace-root failure-mode harness. Mirrors the workspace `fail` convention:
+# the feature is activated by consumers (orgsidian-core `test-support`), never
+# by default, so production builds compile `fail` to no-ops (here: the dep is
+# absent entirely).
+failpoints = ["dep:fail", "fail/failpoints"]
+
 [dependencies]
 # Real deps: atomic-write-file (Story 1.9, anchor + LD-8 foundation); rusqlite etc. land in Story 3.x.
 atomic-write-file = { workspace = true }
+# Story 3.1 (AC2): VaultError derives per the SettingsError precedent.
+thiserror = { workspace = true }
+# Story 3.1 (LD-8): structured-logging facade for retry-path warn events.
+# Subscriber wiring is the binary's job (LD-35); the leaf consumes the facade.
+tracing = { workspace = true }
+# Story 3.1 (LD-41): fault injection for the disk-full harness row. Optional —
+# see the `failpoints` feature above.
+fail = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Story 1.9: tempfile is dev-only; per-crate (no workspace pin needed for dev deps).

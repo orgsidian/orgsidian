@@ -56,7 +56,12 @@ pub fn write_global_settings(settings: &GlobalSettings) -> SettingsResult<()> {
     contents.push_str(FILE_HEADER);
     contents.push_str(&body);
 
-    atomic_write(&path, contents.as_bytes()).map_err(|source| SettingsError::Io { path, source })
+    // Story 3.1: atomic_write returns VaultError; SettingsError keeps its
+    // io::Error-sourced shape via the into_io() escape hatch.
+    atomic_write(&path, contents.as_bytes()).map_err(|e| SettingsError::Io {
+        path,
+        source: e.into_io(),
+    })
 }
 
 #[cfg(test)]
