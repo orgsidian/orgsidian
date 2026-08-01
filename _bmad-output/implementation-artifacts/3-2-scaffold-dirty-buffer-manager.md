@@ -1,6 +1,6 @@
 # Story 3.2: Scaffold Dirty Buffer manager
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -74,20 +74,20 @@ The deliverable is exactly: `src/dirty_buffer.rs` (the manager + API + colocated
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Module + type + re-export (AC1, AC2)
-  - [ ] Create `src/dirty_buffer.rs` with module doc header (LD-7 + FR-16 + NFR-16 traces)
-  - [ ] `#[derive(Debug, Default)] pub struct DirtyBufferManager { buffers: HashMap<PathBuf, String> }` + `pub fn new()`
-  - [ ] `mark_dirty` / `mark_clean` / `is_dirty` / `get_buffer` per AC2 signatures
-  - [ ] `lib.rs`: add `pub mod dirty_buffer;` + `pub use dirty_buffer::DirtyBufferManager;`; rewrite the forward-looking crate-doc sentence to present tense
-- [ ] Task 2 — Thread-safety shape + sharing docs (AC3)
-  - [ ] Plain-struct shape (`&self` reads / `&mut self` mutations); `RwLock` rationale in module doc
-  - [ ] Document the `Arc<RwLock<DirtyBufferManager>>` shared handle; optional `SharedDirtyBuffers` alias
-- [ ] Task 3 — Tests (AC4)
-  - [ ] Colocated `#[cfg(test)] mod tests`: lifecycle, get_buffer None-cases, re-mark replaces, mark_clean no-op, independent paths
-  - [ ] Concurrency smoke test through `Arc<RwLock<_>>`; `_assert_send_sync` witness
-- [ ] Task 4 — Gates (AC5)
-  - [ ] `cargo test --workspace`, `cargo clippy -- -D warnings`, `cargo fmt --check`, `cargo deny check`, `cargo audit`
-  - [ ] Confirm zero dependency delta; no `unwrap`/`expect`/`panic!` in non-test code
+- [x] Task 1 — Module + type + re-export (AC1, AC2)
+  - [x] Create `src/dirty_buffer.rs` with module doc header (LD-7 + FR-16 + NFR-16 traces)
+  - [x] `#[derive(Debug, Default)] pub struct DirtyBufferManager { buffers: HashMap<PathBuf, String> }` + `pub fn new()`
+  - [x] `mark_dirty` / `mark_clean` / `is_dirty` / `get_buffer` per AC2 signatures
+  - [x] `lib.rs`: add `pub mod dirty_buffer;` + `pub use dirty_buffer::DirtyBufferManager;`; rewrite the forward-looking crate-doc sentence to present tense
+- [x] Task 2 — Thread-safety shape + sharing docs (AC3)
+  - [x] Plain-struct shape (`&self` reads / `&mut self` mutations); `RwLock` rationale in module doc
+  - [x] Document the `Arc<RwLock<DirtyBufferManager>>` shared handle; optional `SharedDirtyBuffers` alias
+- [x] Task 3 — Tests (AC4)
+  - [x] Colocated `#[cfg(test)] mod tests`: lifecycle, get_buffer None-cases, re-mark replaces, mark_clean no-op, independent paths
+  - [x] Concurrency smoke test through `Arc<RwLock<_>>`; `_assert_send_sync` witness
+- [x] Task 4 — Gates (AC5)
+  - [x] `cargo test --workspace`, `cargo clippy -- -D warnings`, `cargo fmt --check`, `cargo deny check`, `cargo audit`
+  - [x] Confirm zero dependency delta; no `unwrap`/`expect`/`panic!` in non-test code
 
 ## Dev Notes
 
@@ -166,12 +166,52 @@ No `project-context.md` exists in the repo at story-creation (checked 2026-07-22
 
 ### Agent Model Used
 
+claude-opus-5[1m] (Claude Opus 5, 1M context) — `bmad-dev-story` workflow.
+
 ### Debug Log References
+
+Red-green-refactor, single pass:
+
+- **RED** — wrote the full colocated test module (7 tests) plus the bare `DirtyBufferManager` struct with no `impl` block, then `cargo test -p orgsidian-vault`: 13 compile errors, all `E0599 no method/associated function found` (`new` ×6, `is_dirty` ×3, `get_buffer` ×2, `mark_dirty` ×1, `mark_clean` ×1). Confirms the tests genuinely exercise the AC2 surface rather than passing vacuously.
+- **GREEN** — added the `impl` block (`new` + the four mandated methods). All 7 `dirty_buffer::tests` pass; the 4 pre-existing `atomic::tests` unaffected (11 lib tests total).
+- **REFACTOR** — `cargo fmt` reformatted one multi-line `assert!` in `distinct_paths_tracked_independently`; no logic change. `cargo clippy --workspace --all-targets -- -D warnings` exit 0 with no lint on the new module (no `new_without_default` warning — `Default` is derived *and* `new()` exists, which is the idiom clippy wants).
 
 ### Completion Notes List
 
+**What shipped.** One new module, `crates/orgsidian-vault/src/dirty_buffer.rs`: `DirtyBufferManager` (a `HashMap<PathBuf, String>` newtype-ish registry) with exactly the four epic-mandated methods, plus `new()` and a `SharedDirtyBuffers = Arc<RwLock<DirtyBufferManager>>` alias. `lib.rs` gained the module decl, the `DirtyBufferManager` re-export, and a present-tense rewrite of the forward-looking Story-3.2 doc sentence. No other pre-existing file touched.
+
+**Epic signature honored — no variance to disclose.** `get_buffer` returns `Option<&str>` literally, per AC2/AC3's recommended default. The plain-struct + caller-owned-lock shape (Dev Note 2) was implemented as pre-decided; the interior-locking fallback and its `Option<String>` clone cost were **not** taken, so the AC3 "permitted deviation" disclosure does not apply.
+
+**AC3 `RwLock` choice.** `std::sync::RwLock`, not `Mutex`, and not `parking_lot` (no such dep in-tree, none warranted for a small read-skewed map). Rationale is in the module doc: the Epic 5 watcher hammers `is_dirty` on every debounced FS event, mutations only at keystroke-batch/save boundaries.
+
+**API surface held to four methods.** No `all_dirty()`, no event emission, no persistence, no `#[tauri::command]`, no `Vault` host struct — per Dev Note 4 and the Story-3.1 review lesson about unrequested surface.
+
+**Judgment call worth a reviewer's eye — `.unwrap()` inside the module-doc example.** AC3 requires the module doc to state the shared handle explicitly; I made that an *executable* doctest (```` ``` ```` fenced, runs under `cargo test --doc`, passing) rather than an un-compiled snippet, so the documented pattern cannot rot. It contains two `RwLock` guard `.unwrap()` calls at lines 31-32 — idiomatic for a Rust doc example, and doctests are test code (Dev Note 5: "Tests may `.unwrap()` the `RwLock` guards freely"). Verified there is **no CI grep gate** on `unwrap`/`expect` in `.github/workflows/` — the Story-2.8 no-panic rule is review-enforced convention — and confirmed zero `unwrap`/`expect`/`panic!`/`todo!` in the actual non-test code above the `#[cfg(test)]` boundary. Flagging it because these are the first `//!`-comment `unwrap()`s in the tree (no precedent to point at). Reject and downgrade to a non-running ```` ```no_run ````/```` ```text ```` block if the convention is meant to read literally.
+
+**Concurrency test is deterministic.** `shared_handle_is_race_free` spawns 8 threads × 50 interleaved `mark_dirty`/`is_dirty` cycles through the shared handle; half the threads end by saving. Assertions run *after* join and only on final state (even-numbered threads clean + `get_buffer == None`; odd-numbered dirty with last-write-wins content) — never on timing or interleaving order, per the Story-3.1 lesson.
+
+**Gates (all green, verified locally).**
+
+- `cargo test --workspace` — 0 failures across all crates. Vault: 11 lib tests (7 new), 5 `tests/atomic.rs`, 6 `tests/orphan_cleanup.rs`, 1 doctest (new).
+- `cargo clippy --workspace --all-targets -- -D warnings` — exit 0.
+- `cargo fmt --check` — clean.
+- `cargo deny check` — advisories ok, bans ok, licenses ok, sources ok. (Pre-existing unrelated note: the `RUSTSEC-2026-0195` ignore entry in `deny.toml:65` matches no crate — untouched by this story.)
+- `cargo audit` — 18 allowed warnings, the unchanged pre-existing baseline.
+- **Dependency delta exactly zero** — `git diff HEAD -- crates/orgsidian-vault/Cargo.toml Cargo.lock` is 0 lines. std-only: `HashMap`, `Arc`, `RwLock`, `Path`, `PathBuf`.
+
+**Sentinel discipline verified byte-exact.** `git diff --name-only HEAD` over `tests/anchor.rs`, `src/atomic.rs`, `src/error.rs`, `crates/orgsidian-vault/Cargo.toml`, root `Cargo.toml`, `deny.toml`, `.github/`, `crates/orgsidian-core/tests/failure_modes.rs`, `docs/failure-modes/` returned **empty**. LD-41 harness still reports `2 passed; 8 ignored` — `EXPECTED_REMAINING_PLACEHOLDERS` stays at 8, unchanged.
+
+**Deferred work recorded.** One MED item appended to `deferred-work.md` (§story-3.2 implementation): the raw-`PathBuf` keying means two spellings of the same file register as independent entries, so `is_dirty` can answer `false` for a genuinely-dirty file and FR-16 would route an external write to auto-reload and clobber the buffer. Ownership assigned to the Epic 5/6 Vault-open story, which must canonicalize once at open. This is the pre-decided AC2/Dev-Note-3 tradeoff, not a defect — but it is a real correctness obligation on the consumer, so it is written down rather than left implicit.
+
 ### File List
+
+- `crates/orgsidian-vault/src/dirty_buffer.rs` — **NEW**: `DirtyBufferManager` + `SharedDirtyBuffers` alias + colocated `#[cfg(test)] mod tests` (7 tests).
+- `crates/orgsidian-vault/src/lib.rs` — MODIFIED: `pub mod dirty_buffer;`, `pub use dirty_buffer::DirtyBufferManager;`, crate-doc sentence rewritten to present tense.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — MODIFIED: appended §"Deferred from: story-3.2 implementation (2026-08-01)".
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — MODIFIED: `3-2-…` ready-for-dev → in-progress → review; `last_updated` bumped.
+- `_bmad-output/implementation-artifacts/3-2-scaffold-dirty-buffer-manager.md` — MODIFIED: task checkboxes, Dev Agent Record, File List, Change Log, Status.
 
 ## Change Log
 
 - 2026-07-22 — Story created (create-story workflow); status ready-for-dev; github issue #26 pre-existing via Story 1.16 sync.
+- 2026-08-01 — Implemented (dev-story workflow): `dirty_buffer` module + 7 colocated tests + `lib.rs` re-export. All 5 ACs satisfied, zero dependency delta, all gates green, sentinels byte-untouched. Status → review; issue #26 label → `status:in-review`.
