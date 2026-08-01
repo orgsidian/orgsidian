@@ -16,6 +16,17 @@ tests/perf-baselines/*.json text eol=lf
 # (mirrors the perf-baselines rule above).
 crates/orgsidian-parser/tests/fixtures/round_trip/*.org -text
 
+# Story 2.8: the `orgsidian parse` CLI fixture asserts *semantic* output
+# (SCHEDULED stamp, :PROPERTIES: → :ID:), not EOL handling. On a Windows
+# checkout with `core.autocrlf=true` it becomes CRLF, and the vendored
+# grammar then emits no `plan` / `property_drawer` nodes — so `scheduled`
+# and `properties` come back empty and the two parse_cmd tests fail. That
+# grammar-level CRLF gap is a real cross-platform bug tracked separately;
+# `-text` here only keeps this fixture's bytes identical on every platform
+# so the CLI test asserts what it means to assert. Same narrow scoping as
+# the rules above — this is NOT a repo-wide EOL policy.
+crates/orgsidian-cli/tests/fixtures/*.org -text
+
 # Story 2.5 (LD-44): generated corpus manifests are regular git files (NOT
 # LFS — the Story 2.6 per-PR gate must work on an LFS-free checkout; embedded
 # content is JSON-escaped so EOL-sensitive bytes live inside string literals).
