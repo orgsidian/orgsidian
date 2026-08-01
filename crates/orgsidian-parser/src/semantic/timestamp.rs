@@ -242,10 +242,9 @@ fn parse_repeater(token: &str) -> Option<Repeater> {
         (RepeaterKind::CatchUp, rest)
     } else if let Some(rest) = token.strip_prefix(".+") {
         (RepeaterKind::Restart, rest)
-    } else if let Some(rest) = token.strip_prefix('+') {
-        (RepeaterKind::Cumulate, rest)
     } else {
-        return None;
+        let rest = token.strip_prefix('+')?;
+        (RepeaterKind::Cumulate, rest)
     };
     let (value, unit) = parse_interval(rest)?;
     Some(Repeater { kind, value, unit })
@@ -255,10 +254,9 @@ fn parse_repeater(token: &str) -> Option<Repeater> {
 fn parse_delay(token: &str) -> Option<Delay> {
     let (kind, rest) = if let Some(rest) = token.strip_prefix("--") {
         (DelayKind::First, rest)
-    } else if let Some(rest) = token.strip_prefix('-') {
-        (DelayKind::All, rest)
     } else {
-        return None;
+        let rest = token.strip_prefix('-')?;
+        (DelayKind::All, rest)
     };
     let (value, unit) = parse_interval(rest)?;
     Some(Delay { kind, value, unit })
