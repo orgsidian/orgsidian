@@ -24,22 +24,46 @@ fn malformed_org_file_quarantined() {
 }
 
 #[test]
-#[ignore = "implemented in Epic 3"]
 fn disk_full_atomic_write() {
-    // Future implementation (Epic 3 / Story 3.1):
-    //
-    // let _scenario = fail::FailScenario::setup();
-    // fail::cfg("atomic-write::after-tmp-rename", "panic").unwrap();
-    // let vault = test_vault();
-    // let result = vault.save_file("test.org", "content");
-    // assert!(result.is_err());
-    // assert!(!vault.path().join("test.org").exists());
-    //
-    // FailScenario teardown is automatic on drop.
-    unimplemented!(
-        "LD-41: Disk full / ENOSPC during atomic write — \
-         see test-design.md §6.7 + Story 3.1 for real implementation"
+    // Story 3.1: inject an ENOSPC-shaped failure after `AtomicWriteFile::open`
+    // (the temp sibling already exists when the fail-point fires) and assert
+    // the LD-41 disk-full row: error surfaces immediately (no retry), the
+    // target's prior content is intact, and no temp residue remains — the
+    // explicit `discard()` on the error path is what this proves.
+    let scenario = fail::FailScenario::setup();
+    // Bare `return` action: the injected error (ENOSPC-shaped `StorageFull`)
+    // is fixed inside the fail-point closure in `vault::atomic::write_body` —
+    // a `return(...)` payload would be silently ignored, so none is passed.
+    fail::cfg("vault::atomic-write::write", "return").expect("fail-point cfg must succeed");
+
+    const PRIOR: &[u8] = b"* TODO prior content survives\n";
+    let dir = tempfile::TempDir::new().expect("TempDir must succeed");
+    let target = dir.path().join("test.org");
+    std::fs::write(&target, PRIOR).expect("seed prior content");
+
+    let result = orgsidian_vault::atomic_write(&target, b"* TODO new content\n");
+
+    assert!(
+        matches!(result, Err(orgsidian_vault::VaultError::Io { .. })),
+        "injected disk-full must surface immediately as non-transient Io \
+         (never RetriesExhausted — ENOSPC must not be retried): {result:?}"
     );
+    assert_eq!(
+        std::fs::read(&target).expect("target must still be readable"),
+        PRIOR,
+        "prior content must be intact — no partial-write corruption"
+    );
+    let residue: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("read_dir")
+        .map(|e| e.expect("dir entry").file_name())
+        .filter(|name| name != "test.org")
+        .collect();
+    assert!(
+        residue.is_empty(),
+        "no temp sibling may remain after the failed write: {residue:?}"
+    );
+
+    scenario.teardown();
 }
 
 #[test]
@@ -88,12 +112,34 @@ fn sqlite_index_corruption_rebuild() {
 }
 
 #[test]
-#[ignore = "implemented in Epic 3"]
 fn tmp_orphan_files_cleanup() {
-    unimplemented!(
-        "LD-41: .tmp orphan files cleanup — \
-         see test-design.md §6.7 + Story 3.1 for real implementation"
-    );
+    // Story 3.1: simulate a `kill -9` mid-write by planting a temp file
+    // matching the real `atomic-write-file` 0.3.0 pattern (`.{name}.org.` +
+    // 6 alphanumerics — no PID; see Story 3.1 AC5 deviation note) with a
+    // backdated mtime, then assert `clean_orphan_temp_files` removes it while
+    // legitimate files survive.
+    let dir = tempfile::TempDir::new().expect("TempDir must succeed");
+
+    let legit = dir.path().join("notes.org");
+    std::fs::write(&legit, b"* TODO legitimate content\n").expect("seed legit file");
+
+    let orphan = dir.path().join(".notes.org.aB3xY9");
+    std::fs::write(&orphan, b"partial write from dead writer").expect("plant orphan");
+    // Clear the 60s mtime-age guard (fresh in-flight temps are never raced).
+    let stale = std::time::SystemTime::now() - std::time::Duration::from_secs(120);
+    std::fs::File::options()
+        .write(true)
+        .open(&orphan)
+        .expect("open orphan")
+        .set_times(std::fs::FileTimes::new().set_modified(stale))
+        .expect("backdate orphan mtime");
+
+    let report =
+        orgsidian_vault::clean_orphan_temp_files(dir.path()).expect("cleanup must succeed");
+
+    assert_eq!(report.removed_count(), 1, "exactly the orphan is collected");
+    assert!(!orphan.exists(), "orphan temp must be gone");
+    assert!(legit.exists(), "legitimate file must survive");
 }
 
 #[test]

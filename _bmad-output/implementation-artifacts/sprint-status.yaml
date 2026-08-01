@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-06-11 (stories 2.5–2.8 done — Epic 2 story stack merged)
+# last_updated: 2026-07-14 (story 3.1 code review passed → done)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-06-11 (stories 2.5–2.8 done — Epic 2 story stack merged)
+last_updated: 2026-07-14 (story 3.1 code review passed → done)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -43,7 +43,7 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1: Foundation & CI Baseline
-  epic-1: in-progress
+  epic-1: done
   1-1-bootstrap-tauri-2-x-react-19-ts-scaffold: done
   1-2-refactor-scaffold-to-9-crate-cargo-workspace-shell-ui-at-root: done
   1-3-install-tauri-plugin-set-tailwind-4-shadcn-ui-forked-tanstack-router: done
@@ -65,7 +65,7 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Parser & Round-trip Fidelity
-  epic-2: in-progress
+  epic-2: done
   2-1-vendor-tree-sitter-org-as-sha-pinned-git-submodule: done
   2-2-implement-orgsidian-parser-grammar-wrapper: done
   2-3-implement-semantic-layer-todo-cycling-drawer-types-timestamps-link-types: done
@@ -77,8 +77,8 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Vault & SQLite Index Foundation
-  epic-3: backlog
-  3-1-implement-atomic-write-subsystem-with-av-retry-wrapper: backlog
+  epic-3: in-progress
+  3-1-implement-atomic-write-subsystem-with-av-retry-wrapper: done
   3-2-scaffold-dirty-buffer-manager: backlog
   3-3-define-sqlite-schema-locked-pragmas: backlog
   3-4-wire-rusqlite-migration-forward-only-migrations: backlog

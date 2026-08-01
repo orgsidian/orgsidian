@@ -10,13 +10,11 @@ Status `#[ignore] (implemented in Epic N)` means the placeholder is still red-ph
 | Category | Owning Epic | Mechanism | Status |
 |---|---|---|---|
 | Malformed `.org` file in Vault | Epic 2 | Fixture corpus with deliberately broken files | #[ignore] (implemented in Epic 2) |
-| Disk full / ENOSPC during atomic write | Epic 3 | `fail::cfg("atomic-write::after-tmp-rename", "panic")` | #[ignore] (implemented in Epic 3) |
 | Config corruption (`settings.json` malformed) | Epic 3 | `proptest` random byte corruption of `settings.json` | #[ignore] (implemented in Epic 3) |
 | Vault folder deleted at runtime | Epic 5 | CI integration test: `rm -rf` vault mid-session | #[ignore] (implemented in Epic 5) |
 | Plugin `init()` panic | Epic 1 | `crates/test-plugin-panic-init` chaos plugin (LD-38) | #[ignore] (implemented in Epic 1) |
 | Plugin `on_event` / hook panic | Epic 1 | `crates/test-plugin-panic-runtime` chaos plugin (LD-38) | #[ignore] (implemented in Epic 1) |
 | SQLite index corruption | Epic 3 | Fixture: pre-corrupted `.db` file; `PRAGMA integrity_check` on startup | #[ignore] (implemented in Epic 3) |
-| `.tmp` orphan files from prior crash | Epic 3 | Test: `kill -9` mid-write fixture; restart cleans orphans | #[ignore] (implemented in Epic 3) |
 | External delete with Dirty Buffer | Epic 5 | Integration test with watcher harness | #[ignore] (implemented in Epic 5) |
 | Refile partial completion (FR-25 / LD-57) | Epic 11 | Fault-injection: inject ENOSPC on source write after dest commit; verify roll-forward (LD-57) | #[ignore] (implemented in Epic 11) |
 

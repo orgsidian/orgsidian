@@ -38,3 +38,9 @@ RUSTSEC-2025-0100
 # timing on key operations) not applicable to outbound-HTTPS-only CI usage.
 # No upstream patch yet (Story 1.16 / LD-55).
 RUSTSEC-2023-0071
+# quick-xml 0.39.4 residual — pinned solely by wayland-scanner 0.31
+# (proc-macro; Linux build-time parse of trusted vendored protocol XML; no
+# untrusted input). Runtime path fixed via plist 1.10 → quick-xml 0.41
+# (Story 3.1). Re-evaluate on wayland-rs bump.
+RUSTSEC-2026-0194
+RUSTSEC-2026-0195

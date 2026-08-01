@@ -19,7 +19,7 @@ const HARNESS_SRC: &str = include_str!("./failure_modes.rs");
 /// removal in `tests/failure_modes.rs` + regen of `docs/failure-modes/coverage-matrix.md`.
 /// A catalog growth (new LD-41 row) instead INCREMENTS this AND requires
 /// adding a placeholder fn AND updating architecture.md L1196-L1209.
-const EXPECTED_REMAINING_PLACEHOLDERS: usize = 10;
+const EXPECTED_REMAINING_PLACEHOLDERS: usize = 8;
 
 /// Returns `(unimplemented_categories, total_categories)` parsed from the
 /// `#[ignore = "implemented in Epic N"]` annotations in HARNESS_SRC.

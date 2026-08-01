@@ -14,7 +14,10 @@ repository.workspace = true
 # Story 1.12 (LD-32 / NFR-20): perf baseline JSON I/O is gated under the same
 # test-support feature so production builds exclude serde_json from the leaf
 # crate's transitive set.
-test-support = ["dep:serde_json"]
+# Story 3.1 (LD-41): activates the vault's atomic-write fail-point so the
+# workspace-root failure-mode harness (required-features = ["test-support"])
+# can inject disk-full errors via `fail::cfg`.
+test-support = ["dep:serde_json", "orgsidian-vault/failpoints"]
 
 [dependencies]
 # Cross-crate edges wired incrementally per first-use story (see Dev Notes §1).
