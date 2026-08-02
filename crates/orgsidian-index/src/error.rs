@@ -26,7 +26,14 @@ pub enum IndexError {
     /// which would leave the index running with the durability and concurrency
     /// characteristics LD-4 specifically chose against. Every locked PRAGMA is
     /// therefore read back and compared.
+    ///
+    /// `#[non_exhaustive]` on the variant as well as the enum: the enum
+    /// attribute keeps a new VARIANT from breaking downstream exhaustive
+    /// matches, but only this one keeps a new FIELD (a connection path, say)
+    /// from breaking every `IndexError::Pragma { name, expected, actual }`
+    /// pattern.
     #[error("pragma {name} did not take effect: expected {expected}, got {actual}")]
+    #[non_exhaustive]
     Pragma {
         name: &'static str,
         expected: String,

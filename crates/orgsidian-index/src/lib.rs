@@ -11,7 +11,8 @@
 //!
 //! [`open`] returns a connection with the LD-4 locked PRAGMAs applied and
 //! verified by read-back, including the `foreign_keys=ON` without which every
-//! `ON DELETE CASCADE` in the schema is a silent no-op.
+//! `ON DELETE CASCADE` in the schema is a silent no-op. [`apply_schema`]
+//! installs the DDL on such a connection inside a transaction.
 //!
 //! The index is a derived artifact (LD-13, LD-17): every row here is
 //! reconstructible from the Vault's .org files.
@@ -19,14 +20,21 @@
 pub mod connection;
 pub mod error;
 
-pub use connection::open;
+pub use connection::{apply_schema, open};
 pub use error::IndexError;
 
 /// The version-1 schema DDL, verbatim from `sql/schema.sql`.
 ///
 /// Executable top-to-bottom in one `execute_batch` against a fresh database.
-/// It is not `IF NOT EXISTS`-guarded: applying it twice fails, so a
-/// half-initialized database cannot pass for a healthy one.
+/// It is not `IF NOT EXISTS`-guarded: applying it twice fails with a
+/// duplicate-object error, so a migration bug cannot hide behind silent
+/// idempotency.
+///
+/// The text carries no `BEGIN;`/`COMMIT;`, so that a migration runner can
+/// include it inside its own transaction. Prefer [`apply_schema`] over
+/// executing this constant directly — run bare, a mid-batch failure leaves a
+/// half-built database that reports the same duplicate-object error a healthy
+/// one does.
 ///
 /// Per LD-12 the file is forward-only — schema changes belong in new migration
 /// files rather than in edits to this text.

@@ -9,11 +9,20 @@
 -- files and never as edits here. Editing this file after 3.4 silently diverges
 -- fresh databases from migrated ones.
 --
--- The whole file is executed top-to-bottom in a single `execute_batch` against
--- a fresh database (statements are in dependency order). It is deliberately
--- NOT `IF NOT EXISTS`-guarded: re-applying it to an initialized database must
--- fail loudly rather than half-succeed, so a migration bug cannot hide behind
--- silent idempotency.
+-- The whole file is executed top-to-bottom in one batch against a fresh
+-- database (statements are in dependency order). It is deliberately NOT
+-- `IF NOT EXISTS`-guarded: re-applying it to an initialized database fails with
+-- a duplicate-object error, so a migration bug cannot hide behind silent
+-- idempotency.
+--
+-- This file carries NO `BEGIN;`/`COMMIT;`, also deliberately: a migration
+-- runner already wraps each migration in its own transaction, and a nested
+-- BEGIN would fail with "cannot start a transaction within a transaction" the
+-- moment Story 3.4 includes this text. Atomicity is supplied by the caller —
+-- `orgsidian_index::apply_schema` does it for direct callers. Applying the
+-- batch WITHOUT a transaction leaves a permanently half-built database on any
+-- mid-batch failure, and a half-built database reports the same
+-- "table files already exists" as a healthy one.
 --
 -- The index is a DERIVED artifact (LD-13, LD-17): everything here is
 -- reconstructible from the Vault's .org files, so a corrupt or stale database
@@ -29,8 +38,12 @@
 -- for anyone outside the assumed zone. ISO-8601 text sorts lexicographically in
 -- chronological order, so BETWEEN range scans on the agenda indices work.
 -- Dates and times are SEPARATE columns because an all-day SCHEDULED has no
--- time, and '2026-08-02' < '2026-08-02T09:00' would sort all-day entries
--- inconsistently against timed ones in a single-column encoding.
+-- time. In a single-column encoding a day-scoped scan cannot be written as
+-- `BETWEEN '2026-08-02' AND '2026-08-02'` — that matches the all-day entry and
+-- silently drops every timed one, since '2026-08-02' < '2026-08-02T09:00'.
+-- Every caller would have to remember the half-open `>= d AND < d+1` form
+-- instead. A date-only column takes the obvious form and indexes it directly.
+-- (`clock_entries` does NOT follow this split — see the note on that table.)
 --
 -- NOT MODELLED IN v1 (deliberate, recorded in deferred-work.md):
 --   * Ranged/repeating timestamp fields — Timestamp.active, .end_date,
@@ -66,7 +79,10 @@ CREATE TABLE files (
     -- ISO-8601 datetime of the last successful index pass for this file.
     indexed_at        TEXT    NOT NULL,
     quarantined       INTEGER NOT NULL DEFAULT 0 CHECK (quarantined IN (0, 1)),
-    quarantine_reason TEXT
+    quarantine_reason TEXT,
+    -- A quarantined file with nothing to show the user is a sync-engine bug,
+    -- not a document the parser produced. See "structural CHECKs" below.
+    CHECK (quarantined = 0 OR quarantine_reason IS NOT NULL)
 );
 
 -- The flattened headline tree, one row per section.
@@ -83,16 +99,51 @@ CREATE TABLE files (
 -- because the parser already emits level 0 as a degenerate sentinel inside
 -- ERROR regions — conflating the two makes every `WHERE level = 0` ambiguous.
 --
+-- STRUCTURAL CHECKs vs PARSER OUTPUT — the line this schema draws.
+--
 -- `level` has no CHECK constraint on purpose: the parser saturates at 255 and
 -- emits 0 for malformed input, so a `BETWEEN 1 AND 6` guard would reject
--- documents the parser accepts.
+-- documents the parser accepts. That rationale is about PARSER OUTPUT, and it
+-- extends to every other content-shaped value: duplicate tags on one headline,
+-- empty `tag`/`target`/`path` strings, and a clock entry that is both running
+-- and carries a duration all stay representable, because a real .org file can
+-- produce them and rejecting one would turn a malformed document into a failed
+-- index instead of a quarantined row.
+--
+-- The CHECKs that ARE declared cover the complement: states the parser cannot
+-- emit, where a violation is by construction a Story 3.6 sync-engine bug. A
+-- self-parent (which makes any WITH RECURSIVE subtree walk non-terminating), an
+-- inverted byte span (which panics a consumer slicing `source[start..end]`),
+-- and a half-populated TODO pair (`Headline.todo_state` is one `Option`, so
+-- both columns are NULL together or neither is) are all in that set.
 --
 -- Populating these rows is the Story 3.6 sync engine's job.
 CREATE TABLE headlines (
     id             INTEGER PRIMARY KEY,
-    file_id        INTEGER NOT NULL REFERENCES files (id) ON DELETE CASCADE,
+    -- NO `ON DELETE CASCADE`, deliberately — this is the one cascade the schema
+    -- must not have. Both FTS5 tables below are EXTERNAL-content over this
+    -- table, and an external-content index can only be told about a deletion
+    -- while the original text is still readable. A cascade fires inside SQLite:
+    -- by the time the headline rows are gone there is no application hook and
+    -- nothing left to write the `'delete'` command rows from, and the FTS index
+    -- is then not merely stale but unqueryable (`snippet()` raises
+    -- SQLITE_CORRUPT, a bare MATCH returns a stale hit for a row that no longer
+    -- exists). With NO ACTION instead, `DELETE FROM files` is REJECTED while
+    -- headlines remain, so the sync engine is forced through the delete path
+    -- that owns the FTS obligation. Every other cascade in this schema is safe
+    -- because nothing indexes those tables.
+    file_id        INTEGER NOT NULL REFERENCES files (id),
     -- NULL at top level; self-referential for subtree traversal.
-    parent_id      INTEGER REFERENCES headlines (id) ON DELETE CASCADE,
+    --
+    -- INVARIANT (not enforced here): a parent is always in the SAME file. The
+    -- parser's tree is per-file, so a cross-file parent_id is already a sync
+    -- bug — but the FK alone cannot see file_id, so such a row would let one
+    -- file's delete reach another file's headlines. Enforcing it needs a
+    -- `UNIQUE (file_id, id)` plus a composite FK, i.e. a wholly redundant index
+    -- updated on every headline insert; Story 3.6 carries the invariant and the
+    -- test instead.
+    parent_id      INTEGER REFERENCES headlines (id) ON DELETE CASCADE
+                       CHECK (parent_id IS NULL OR parent_id <> id),
     kind           TEXT    NOT NULL DEFAULT 'headline'
                        CHECK (kind IN ('headline', 'preamble')),
     level          INTEGER NOT NULL,
@@ -102,7 +153,9 @@ CREATE TABLE headlines (
     -- from Headline.span.
     byte_start     INTEGER NOT NULL,
     byte_end       INTEGER NOT NULL,
-    -- Both NULL together when the headline carries no TODO state.
+    -- Both NULL together when the headline carries no TODO state — enforced by
+    -- the table CHECK below, because `todo_done IN (0, 1)` alone evaluates to
+    -- NULL (and therefore passes) whenever the column is NULL.
     todo_keyword   TEXT,
     todo_done      INTEGER CHECK (todo_done IN (0, 1)),
     -- Stars, TODO keyword and trailing tags already stripped by the parser.
@@ -116,7 +169,13 @@ CREATE TABLE headlines (
     deadline_date  TEXT,
     deadline_time  TEXT,
     closed_date    TEXT,
-    closed_time    TEXT
+    closed_time    TEXT,
+    -- Headline.span is a Rust Range, so the parser cannot invert it; a consumer
+    -- slicing `source[byte_start..byte_end]` on an inverted range panics.
+    CHECK (byte_end >= byte_start),
+    -- Headline.todo_state is a single Option: the keyword and the done flag are
+    -- present together or absent together, never one without the other.
+    CHECK ((todo_keyword IS NULL) = (todo_done IS NULL))
 );
 
 -- Headline tags, colons already stripped by the parser. `position` preserves
@@ -143,6 +202,12 @@ CREATE TABLE properties (
 -- running clock" prompt reads exactly this condition, so the column must stay
 -- nullable. `duration_seconds` mirrors the parser, which already serializes
 -- the delta as whole seconds.
+--
+-- `start_at`/`end_at` are COMBINED datetimes, unlike the split date/time pairs
+-- on `headlines`. The parser can emit a date-only `CLOCK:` line, so a
+-- day-scoped filter here must be written half-open (`>= d AND < d+1`) rather
+-- than as the `BETWEEN d AND d` that works on `scheduled_date`. Recorded in
+-- deferred-work for the Epic 7 clock-report consumer.
 CREATE TABLE clock_entries (
     id               INTEGER PRIMARY KEY,
     headline_id      INTEGER NOT NULL REFERENCES headlines (id) ON DELETE CASCADE,
@@ -175,8 +240,12 @@ CREATE TABLE links (
 -- (notably `quarantined`) live as columns on `files`, where they can be
 -- indexed, joined, and filtered by `WHERE quarantined = 0`; a synthesized
 -- `quarantined:/path/to/file.org` key here would be none of those things.
+-- `key` needs the explicit NOT NULL: only an INTEGER PRIMARY KEY implies it,
+-- so a bare `TEXT PRIMARY KEY` accepts NULL — and accepts it repeatedly, since
+-- the PK index treats NULLs as distinct. `tags` and `properties` are safe for
+-- the same reason: their PK columns declare NOT NULL.
 CREATE TABLE vault_meta (
-    key        TEXT PRIMARY KEY,
+    key        TEXT NOT NULL PRIMARY KEY,
     value      TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -218,9 +287,23 @@ CREATE TABLE _schema_version (
 -- NO TRIGGERS, BY MANDATE (LD-11): FTS sync is application-managed. The Story
 -- 3.6 sync engine owns the obligation to INSERT into these tables alongside
 -- every `headlines` insert AND to write the `'delete'` command rows that
--- external-content tables require before an update or delete — an
+-- external-content tables require BEFORE an update or delete — an
 -- external-content FTS5 table cannot recover the old text on its own. Adding a
 -- CREATE TRIGGER here is a schema violation, not an optimization.
+--
+-- That obligation is only satisfiable while the text is still readable, which
+-- is why `headlines.file_id` carries no ON DELETE CASCADE: deleting a file must
+-- go through its headlines, in this order and in one transaction —
+--
+--   1. INSERT INTO fts_headlines(fts_headlines, rowid, title)
+--          VALUES('delete', :id, :old_title);      -- same for fts_content
+--   2. DELETE FROM headlines WHERE file_id = :file_id;
+--   3. DELETE FROM files WHERE id = :file_id;
+--
+-- Skipping step 1 does not merely leave the index stale: a bare MATCH returns a
+-- hit for a row that no longer exists, reading any column raises `fts5: missing
+-- row`, and snippet()/highlight() raise SQLITE_CORRUPT. Taking step 3 first is
+-- now rejected by the foreign key rather than silently producing that state.
 CREATE VIRTUAL TABLE fts_headlines USING fts5(
     title,
     content='headlines',

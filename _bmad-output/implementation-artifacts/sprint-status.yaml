@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-08-02 (story 3.3 implemented → review)
+# last_updated: 2026-08-02 (story 3.3 reviewed → done)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-08-02 (story 3.3 implemented → review)
+last_updated: 2026-08-02 (story 3.3 reviewed → done)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -80,7 +80,7 @@ development_status:
   epic-3: in-progress
   3-1-implement-atomic-write-subsystem-with-av-retry-wrapper: done
   3-2-scaffold-dirty-buffer-manager: done
-  3-3-define-sqlite-schema-locked-pragmas: review
+  3-3-define-sqlite-schema-locked-pragmas: done
   3-4-wire-rusqlite-migration-forward-only-migrations: backlog
   3-5-add-deadpool-sqlite-reader-pool-dedicated-writer-task: backlog
   3-6-vault-designation-ui-initial-scan-progress: backlog

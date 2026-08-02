@@ -17,5 +17,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 # Story 3.3 (AC6): temp-file DB fixtures. The PRAGMA assertions need a real
 # on-disk database (`:memory:` cannot enter WAL), so every test gets its own
-# TempDir. Dev-only, per-crate — mirrors orgsidian-vault/Cargo.toml.
+# TempDir. Dev-only. Declared via the workspace pin, matching orgsidian-core and
+# orgsidian-watcher — the workspace entry's own comment states it replaces the
+# bare `tempfile = "3"` that orgsidian-vault still carries from before the hoist.
 tempfile = { workspace = true }

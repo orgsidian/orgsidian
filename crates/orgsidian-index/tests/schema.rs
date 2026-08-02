@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use rusqlite::Connection;
 use tempfile::TempDir;
 
-use orgsidian_index::{open, SCHEMA_SQL};
+use orgsidian_index::{apply_schema, open, IndexError, SCHEMA_SQL};
 
 /// The eight normalized tables mandated by LD-11.
 const EXPECTED_TABLES: &[&str] = &[
@@ -79,9 +79,8 @@ fn temp_db_path() -> (TempDir, PathBuf) {
 /// An open connection with the locked PRAGMAs applied and the schema created.
 fn initialized_db() -> (TempDir, Connection) {
     let (dir, path) = temp_db_path();
-    let conn = open(&path).expect("open index database");
-    conn.execute_batch(SCHEMA_SQL)
-        .expect("apply schema to a fresh database");
+    let mut conn = open(&path).expect("open index database");
+    apply_schema(&mut conn).expect("apply schema to a fresh database");
     (dir, conn)
 }
 
@@ -126,15 +125,46 @@ fn re_applying_the_schema_fails_loudly() {
     // The DDL is deliberately NOT `IF NOT EXISTS`-guarded: a migration runner
     // that re-applies version 1 over an initialized database has a bug, and a
     // silently idempotent schema would hide it.
-    let (_dir, conn) = initialized_db();
+    let (_dir, mut conn) = initialized_db();
 
-    let err = conn
-        .execute_batch(SCHEMA_SQL)
-        .expect_err("re-applying the schema must fail");
+    let err = apply_schema(&mut conn).expect_err("re-applying the schema must fail");
 
     assert!(
         err.to_string().contains("already exists"),
         "expected a duplicate-object error, got: {err}"
+    );
+}
+
+#[test]
+fn a_failed_schema_application_leaves_no_partial_database() {
+    // The duplicate-object error above is NOT sufficient on its own: a
+    // half-built database raises the byte-identical "table files already
+    // exists". What distinguishes the two is whether a failed apply leaves
+    // anything behind — and executing SCHEMA_SQL bare does, permanently,
+    // because execute_batch commits each DDL statement in its own implicit
+    // transaction. apply_schema wraps the batch so the failure rolls back.
+    let (_dir, path) = temp_db_path();
+    let mut conn = open(&path).expect("open index database");
+
+    // A plausible botched prior run: one table from the middle of the file
+    // already present, so the batch gets a long way in before colliding.
+    conn.execute_batch(
+        "CREATE TABLE vault_meta (
+             key        TEXT NOT NULL PRIMARY KEY,
+             value      TEXT NOT NULL,
+             updated_at TEXT NOT NULL
+         );",
+    )
+    .expect("seed a partially-initialized database");
+
+    apply_schema(&mut conn).expect_err("applying over a partial database must fail");
+
+    let tables = master_names(&conn, "table");
+    assert_eq!(
+        tables,
+        expected_set(&["vault_meta"]),
+        "the rolled-back apply must leave exactly what was there before, but \
+         found: {tables:?}"
     );
 }
 
@@ -160,9 +190,13 @@ fn table_set_is_exactly_the_eight_tables_plus_fts_machinery() {
 fn named_index_set_is_exactly_the_ld_11_set() {
     let (_dir, conn) = initialized_db();
 
+    // Filtering on the `idx_` prefix would let an index that VIOLATES the
+    // naming convention (`files_path_ix`, `tmp_debug_idx2`) slip through
+    // unnoticed — precisely the case worth catching. Only SQLite's own
+    // autoindexes, which we do not name, are excluded.
     let named: BTreeSet<String> = master_names(&conn, "index")
         .into_iter()
-        .filter(|name| name.starts_with("idx_"))
+        .filter(|name| !name.starts_with("sqlite_autoindex_"))
         .collect();
 
     // A future dropped index must fail CI rather than silently degrade agenda
@@ -229,9 +263,12 @@ fn open_applies_every_locked_pragma() {
     assert_eq!(pragma::<i64>(&conn, "cache_size"), -64_000);
     assert_eq!(pragma::<i64>(&conn, "wal_autocheckpoint"), 4_000);
 
-    // foreign_keys is per-connection and non-persistent — this is the
-    // assertion that fails if `open` ever stops setting it, and every
-    // ON DELETE CASCADE in the schema depends on it.
+    // foreign_keys is per-connection and non-persistent. NOTE: this assertion
+    // cannot catch its removal from the locked set on THIS build — the bundled
+    // amalgamation compiles with -DSQLITE_DEFAULT_FOREIGN_KEYS=1, so a bare
+    // connection already reports 1. It only pins the value; what makes the
+    // explicit PRAGMA load-bearing is that the default is a build flag, not a
+    // guarantee. Recorded in deferred-work.
     assert_eq!(pragma::<i64>(&conn, "foreign_keys"), 1);
 
     // mmap_size is asserted as "enabled", not as an exact match: the build's
@@ -250,8 +287,8 @@ fn wal_mode_persists_into_the_database_file() {
     // "the PRAGMA statement returned a row we believed".
     let (_dir, path) = temp_db_path();
     {
-        let conn = open(&path).expect("open index database");
-        conn.execute_batch(SCHEMA_SQL).expect("apply schema");
+        let mut conn = open(&path).expect("open index database");
+        apply_schema(&mut conn).expect("apply schema");
     }
 
     let plain = Connection::open(&path).expect("reopen without going through open()");
@@ -260,41 +297,72 @@ fn wal_mode_persists_into_the_database_file() {
 }
 
 #[test]
-fn cascades_are_a_no_op_without_foreign_keys() {
+fn schema_sql_executes_inside_a_caller_supplied_transaction() {
+    // The Story 3.4 seam: a migration runner wraps every migration in its own
+    // transaction, so SCHEMA_SQL must contain no BEGIN of its own — a nested
+    // one fails with "cannot start a transaction within a transaction". This
+    // asserts the property behaviorally rather than grepping the DDL text.
+    let (_dir, path) = temp_db_path();
+    let mut conn = open(&path).expect("open index database");
+
+    let tx = conn
+        .transaction()
+        .expect("begin a caller-owned transaction");
+    tx.execute_batch(SCHEMA_SQL)
+        .expect("the DDL must be executable inside someone else's transaction");
+    tx.commit().expect("commit");
+
+    let mut expected = expected_set(EXPECTED_TABLES);
+    expected.extend(expected_set(EXPECTED_FTS_TABLES));
+    assert_eq!(master_names(&conn, "table"), expected);
+}
+
+#[test]
+fn foreign_keys_off_disables_both_the_cascade_and_the_restriction() {
     // Why open() sets foreign_keys explicitly instead of trusting the build.
     //
     // SQLite's own default is OFF; the bundled amalgamation flips it ON via
     // -DSQLITE_DEFAULT_FOREIGN_KEYS=1, so a bare Connection::open on THIS
     // build happens to enforce keys. That is a property of a build flag, not
-    // of the schema — turn it off and every ON DELETE CASCADE silently stops
-    // working, leaving orphans behind rather than raising an error. This test
-    // pins the consequence, so the `foreign_keys = ON` line in the locked set
-    // can never be read as redundant tuning.
-    let (_dir, path) = temp_db_path();
-    let conn = open(&path).expect("open index database");
-    conn.execute_batch(SCHEMA_SQL).expect("apply schema");
+    // of the schema. With foreign keys off, BOTH referential behaviors this
+    // schema relies on evaporate at once: the ON DELETE CASCADEs stop firing
+    // (leaving orphans instead of raising), and the deliberate NO ACTION on
+    // headlines.file_id stops rejecting the delete that would corrupt the FTS
+    // index. This test pins both consequences, so the `foreign_keys = ON` line
+    // in the locked set can never be read as redundant tuning.
+    let (_dir, conn) = initialized_db();
 
     let file_id = insert_file(&conn, "/vault/orphans.org");
     let headline_id = insert_headline(&conn, file_id, "Doomed", "");
+    conn.execute(
+        "INSERT INTO tags (headline_id, tag, position) VALUES (?1, 'work', 0)",
+        [headline_id],
+    )
+    .expect("insert tag");
 
     conn.execute_batch("PRAGMA foreign_keys = OFF;")
         .expect("disable foreign keys");
     assert_eq!(pragma::<i64>(&conn, "foreign_keys"), 0);
 
-    conn.execute("DELETE FROM files WHERE id = ?1", [file_id])
-        .expect("delete file");
-
-    let orphans: i64 = conn
-        .query_row(
-            "SELECT count(*) FROM headlines WHERE id = ?1",
-            [headline_id],
-            |row| row.get(0),
-        )
-        .expect("count orphans");
+    // (a) The cascade does not fire: the tag outlives its headline.
+    conn.execute("DELETE FROM headlines WHERE id = ?1", [headline_id])
+        .expect("delete headline");
     assert_eq!(
-        orphans, 1,
+        count_where(&conn, "tags", "headline_id", headline_id),
+        1,
         "with foreign_keys OFF the cascade must not fire — if it did, this \
          test is no longer proving anything about open()"
+    );
+
+    // (b) The restriction does not hold either. Re-insert a headline so the
+    // file delete has something to be rejected over, and watch it succeed.
+    let orphan_id = insert_headline(&conn, file_id, "Also doomed", "");
+    conn.execute("DELETE FROM files WHERE id = ?1", [file_id])
+        .expect("with foreign_keys OFF nothing rejects this");
+    assert_eq!(
+        count_where(&conn, "headlines", "id", orphan_id),
+        1,
+        "the headline should have been orphaned, not deleted"
     );
 }
 
@@ -334,12 +402,18 @@ fn insert_headline(conn: &Connection, file_id: i64, title: &str, body: &str) -> 
     conn.last_insert_rowid()
 }
 
-#[test]
-fn deleting_a_file_cascades_to_every_descendant() {
-    let (_dir, conn) = initialized_db();
+fn count_where(conn: &Connection, table: &str, column: &str, id: i64) -> i64 {
+    conn.query_row(
+        &format!("SELECT count(*) FROM {table} WHERE {column} = ?1"),
+        [id],
+        |row| row.get(0),
+    )
+    .unwrap_or_else(|e| panic!("count {table}.{column} = {id}: {e}"))
+}
 
-    let file_id = insert_file(&conn, "/vault/project.org");
-    let headline_id = insert_headline(&conn, file_id, "Ship the report", "Body text");
+/// Insert a headline, a child headline, and one row in every dependent table.
+fn insert_a_full_subtree(conn: &Connection, file_id: i64) -> (i64, i64) {
+    let headline_id = insert_headline(conn, file_id, "Ship the report", "Body text");
     let child_id = conn
         .execute(
             "INSERT INTO headlines
@@ -373,8 +447,53 @@ fn deleting_a_file_cascades_to_every_descendant() {
     )
     .expect("insert link");
 
+    (headline_id, child_id)
+}
+
+#[test]
+fn deleting_a_file_is_rejected_while_its_headlines_remain() {
+    // headlines.file_id deliberately carries NO cascade. A cascade fires inside
+    // SQLite, which would tear the rows out from under both external-content
+    // FTS5 tables with no application hook and no recoverable text — leaving an
+    // index that raises SQLITE_CORRUPT on snippet(). NO ACTION converts that
+    // silent corruption into a loud, immediate rejection, which forces the sync
+    // engine through the delete path that owns the FTS obligation.
+    let (_dir, conn) = initialized_db();
+
+    let file_id = insert_file(&conn, "/vault/project.org");
+    let (headline_id, _child_id) = insert_a_full_subtree(&conn, file_id);
+
+    let err = conn
+        .execute("DELETE FROM files WHERE id = ?1", [file_id])
+        .expect_err("deleting a file with live headlines must be rejected");
+    assert!(
+        err.to_string().contains("FOREIGN KEY constraint failed"),
+        "expected a foreign-key rejection, got: {err}"
+    );
+
+    assert_eq!(count_where(&conn, "headlines", "id", headline_id), 1);
+    assert_eq!(count_where(&conn, "files", "id", file_id), 1);
+
+    // Once the headlines are gone the file row deletes cleanly.
+    conn.execute("DELETE FROM headlines WHERE file_id = ?1", [file_id])
+        .expect("delete the file's headlines first");
     conn.execute("DELETE FROM files WHERE id = ?1", [file_id])
-        .expect("delete file");
+        .expect("the file row now has no dependents");
+    assert_eq!(count_where(&conn, "files", "id", file_id), 0);
+}
+
+#[test]
+fn deleting_a_headline_cascades_to_every_descendant() {
+    let (_dir, conn) = initialized_db();
+
+    let file_id = insert_file(&conn, "/vault/project.org");
+    let (headline_id, child_id) = insert_a_full_subtree(&conn, file_id);
+
+    // Deleting the PARENT headline — not the file — is what exercises the
+    // self-referential parent_id cascade. Deleting the file would explain the
+    // child's disappearance through its own file_id and prove nothing about it.
+    conn.execute("DELETE FROM headlines WHERE id = ?1", [headline_id])
+        .expect("delete the parent headline");
 
     for (table, column, id) in [
         ("headlines", "id", headline_id),
@@ -384,18 +503,64 @@ fn deleting_a_file_cascades_to_every_descendant() {
         ("clock_entries", "headline_id", headline_id),
         ("links", "headline_id", headline_id),
     ] {
-        let remaining: i64 = conn
-            .query_row(
-                &format!("SELECT count(*) FROM {table} WHERE {column} = ?1"),
-                [id],
-                |row| row.get(0),
-            )
-            .expect("count survivors");
         assert_eq!(
-            remaining, 0,
+            count_where(&conn, table, column, id),
+            0,
             "{table}.{column} = {id} survived the cascade — is foreign_keys = ON?"
         );
     }
+
+    // The file row itself is untouched: only headlines cascade from headlines.
+    assert_eq!(count_where(&conn, "files", "id", file_id), 1);
+}
+
+#[test]
+fn the_sanctioned_delete_order_leaves_the_fts_index_queryable() {
+    // The contract schema.sql spells out for Story 3.6: write the 'delete'
+    // command rows while the text is still readable, THEN delete the headlines,
+    // THEN the file. Following it, search stays healthy.
+    //
+    // This test does NOT guard the missing cascade — verified by mutation: it
+    // stays green with ON DELETE CASCADE reinstated, because it never takes the
+    // path the cascade would hijack. `deleting_a_file_is_rejected_while_its_
+    // headlines_remain` is the test that fails there. What this one pins is
+    // that the sanctioned order actually works, so the contract is executable
+    // rather than merely written down in a comment.
+    let (_dir, conn) = initialized_db();
+
+    let file_id = insert_file(&conn, "/vault/doomed.org");
+    let headline_id = insert_indexed_headline(&conn, file_id, "Quarterly", "revenue projections");
+    assert_eq!(match_count(&conn, "fts_content", "revenue"), 1);
+
+    conn.execute(
+        "INSERT INTO fts_headlines (fts_headlines, rowid, title) VALUES ('delete', ?1, 'Quarterly')",
+        [headline_id],
+    )
+    .expect("retire the fts_headlines row while its text is still readable");
+    conn.execute(
+        "INSERT INTO fts_content (fts_content, rowid, body)
+         VALUES ('delete', ?1, 'revenue projections')",
+        [headline_id],
+    )
+    .expect("retire the fts_content row");
+
+    conn.execute("DELETE FROM headlines WHERE file_id = ?1", [file_id])
+        .expect("delete headlines");
+    conn.execute("DELETE FROM files WHERE id = ?1", [file_id])
+        .expect("delete file");
+
+    // No stale hit, and — the part that fails on the cascade path — reading a
+    // column and calling snippet() succeed instead of raising SQLITE_CORRUPT.
+    assert_eq!(match_count(&conn, "fts_content", "revenue"), 0);
+    let rows: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM (SELECT body, snippet(fts_content, 0, '[', ']', '...', 8)
+                                   FROM fts_content WHERE fts_content MATCH 'revenue')",
+            [],
+            |row| row.get(0),
+        )
+        .expect("reading through the external content table must not raise SQLITE_CORRUPT");
+    assert_eq!(rows, 0);
 }
 
 #[test]
@@ -537,17 +702,33 @@ fn match_count(conn: &Connection, table: &str, query: &str) -> i64 {
 }
 
 #[test]
-fn fts_headlines_folds_diacritics() {
-    // `remove_diacritics 2` is the reason an unaccented query finds accented
-    // text. A mis-ordered tokenize argument list would degrade this silently
-    // rather than failing at DDL time.
+fn fts_headlines_folds_diacritics_at_level_two() {
+    // The assertions below must discriminate `remove_diacritics 2` from `1`,
+    // not merely from `0`. Latin-1 accents do not: `café` matches `cafe` under
+    // both levels, so a test built only on those stays green if someone drops
+    // the `2`. Level 1 handles only diacritics encoded as separate codepoints;
+    // level 2 (SQLite >= 3.27) also folds those baked into the base codepoint,
+    // which is what Vietnamese needs — verified: matching `nguyen` against an
+    // indexed `Nguyễn` returns 0 under level 1 and 1 under level 2.
+    //
+    // A mis-ordered tokenize argument list is NOT a risk this test covers: both
+    // wrong orders fail loudly at CREATE VIRTUAL TABLE with "error in tokenizer
+    // constructor", so the schema could not have been created at all.
     let (_dir, conn) = initialized_db();
     let file_id = insert_file(&conn, "/vault/travel.org");
     insert_indexed_headline(&conn, file_id, "Réunion au café", "");
+    insert_indexed_headline(&conn, file_id, "Nguyễn Việt Hải", "");
 
+    // Level 1 or 2 — folding is live at all.
     assert_eq!(match_count(&conn, "fts_headlines", "reunion"), 1);
     assert_eq!(match_count(&conn, "fts_headlines", "cafe"), 1);
     assert_eq!(match_count(&conn, "fts_headlines", "café"), 1);
+
+    // Level 2 only.
+    assert_eq!(match_count(&conn, "fts_headlines", "nguyen"), 1);
+    assert_eq!(match_count(&conn, "fts_headlines", "viet"), 1);
+    assert_eq!(match_count(&conn, "fts_headlines", "hai"), 1);
+
     assert_eq!(match_count(&conn, "fts_headlines", "brunch"), 0);
 }
 
@@ -598,5 +779,210 @@ fn fts_reads_text_back_through_the_external_content_table() {
     assert_eq!(
         rowid, headline_id,
         "content_rowid must resolve to headlines.id"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC5 / AC6 — open() failure paths
+// ---------------------------------------------------------------------------
+//
+// `IndexError::Pragma` is not reachable from here: every locked PRAGMA takes
+// correctly on a healthy on-disk database, and there is no portable way to make
+// one refuse. The failing side of the read-back verification is unit-tested in
+// `src/connection.rs` instead, where the variant can be constructed.
+
+fn assert_is_sqlite_error(err: IndexError, context: &str) {
+    assert!(
+        matches!(err, IndexError::Sqlite(_)),
+        "{context}: expected IndexError::Sqlite, got {err:?}"
+    );
+}
+
+#[test]
+fn open_fails_when_the_parent_directory_does_not_exist() {
+    let (dir, _path) = temp_db_path();
+    let missing = dir.path().join("no-such-dir").join("index.db");
+
+    let err = open(&missing).expect_err("a missing parent directory must not be created");
+    assert_is_sqlite_error(err, "missing parent directory");
+}
+
+#[test]
+fn open_fails_when_the_path_is_a_directory() {
+    let (dir, _path) = temp_db_path();
+    let as_dir = dir.path().join("index.db");
+    std::fs::create_dir(&as_dir).expect("create a directory where the database should be");
+
+    let err = open(&as_dir).expect_err("a directory is not a database");
+    assert_is_sqlite_error(err, "path is a directory");
+}
+
+#[test]
+fn open_fails_when_the_file_is_not_a_database() {
+    // Connection::open is lazy — it does not touch the file — so this failure
+    // surfaces from the first locked PRAGMA rather than from the open itself.
+    // Either way the caller gets an error instead of a connection to garbage.
+    let (dir, _path) = temp_db_path();
+    let junk = dir.path().join("index.db");
+    std::fs::write(&junk, b"this is an .org file, not a database\n").expect("write junk");
+
+    let err = open(&junk).expect_err("a non-database file must be rejected");
+    assert_is_sqlite_error(err, "file is not a database");
+}
+
+// ---------------------------------------------------------------------------
+// AC2 / AC6 — the structural CHECKs
+// ---------------------------------------------------------------------------
+//
+// These cover states the PARSER CANNOT EMIT, where a violation is by
+// construction a Story 3.6 sync-engine bug. Content-shaped values a real .org
+// file can produce (duplicate tags, empty strings, `level` outside 1..6, a
+// clock that is both running and timed) stay deliberately representable — see
+// the rationale block above `CREATE TABLE headlines`.
+
+#[test]
+fn a_headline_cannot_be_its_own_parent() {
+    // A parent_id cycle makes any WITH RECURSIVE subtree walk — the stated
+    // purpose of idx_headlines_parent_id — non-terminating.
+    let (_dir, conn) = initialized_db();
+    let file_id = insert_file(&conn, "/vault/cycles.org");
+    let headline_id = insert_headline(&conn, file_id, "Root", "");
+
+    let err = conn
+        .execute(
+            "UPDATE headlines SET parent_id = id WHERE id = ?1",
+            [headline_id],
+        )
+        .expect_err("a self-parent must be rejected");
+    assert!(
+        err.to_string().contains("CHECK constraint failed"),
+        "expected a CHECK constraint violation, got: {err}"
+    );
+}
+
+#[test]
+fn a_headline_span_cannot_be_inverted() {
+    // Headline.span is a Rust Range, so the parser cannot produce this; a
+    // consumer slicing `source[byte_start..byte_end]` on it would panic.
+    let (_dir, conn) = initialized_db();
+    let file_id = insert_file(&conn, "/vault/spans.org");
+
+    let err = conn
+        .execute(
+            "INSERT INTO headlines
+                 (file_id, parent_id, kind, level, position, byte_start, byte_end, title, body)
+             VALUES (?1, NULL, 'headline', 1, 0, 500, 100, 'Backwards', '')",
+            [file_id],
+        )
+        .expect_err("byte_end < byte_start must be rejected");
+    assert!(
+        err.to_string().contains("CHECK constraint failed"),
+        "expected a CHECK constraint violation, got: {err}"
+    );
+}
+
+#[test]
+fn a_todo_keyword_and_its_done_flag_are_present_or_absent_together() {
+    // Headline.todo_state is a single Option, so a half-populated pair is a
+    // sync bug. `todo_done IN (0, 1)` alone does not catch it: a CHECK over a
+    // NULL column evaluates to NULL and passes.
+    let (_dir, conn) = initialized_db();
+    let file_id = insert_file(&conn, "/vault/todos.org");
+
+    for (keyword, done) in [(Some("DONE"), None), (None, Some(1))] {
+        let err = conn
+            .execute(
+                "INSERT INTO headlines
+                     (file_id, parent_id, kind, level, position, byte_start, byte_end,
+                      todo_keyword, todo_done, title, body)
+                 VALUES (?1, NULL, 'headline', 1, 0, 0, 10, ?2, ?3, 'Half', '')",
+                rusqlite::params![file_id, keyword, done],
+            )
+            .expect_err("a half-populated TODO pair must be rejected");
+        assert!(
+            err.to_string().contains("CHECK constraint failed"),
+            "expected a CHECK constraint violation for ({keyword:?}, {done:?}), got: {err}"
+        );
+    }
+
+    // Both present and both absent are the two legal shapes.
+    conn.execute(
+        "INSERT INTO headlines
+             (file_id, parent_id, kind, level, position, byte_start, byte_end,
+              todo_keyword, todo_done, title, body)
+         VALUES (?1, NULL, 'headline', 1, 0, 0, 10, 'TODO', 0, 'Open', '')",
+        [file_id],
+    )
+    .expect("a fully-populated TODO pair is accepted");
+    conn.execute(
+        "INSERT INTO headlines
+             (file_id, parent_id, kind, level, position, byte_start, byte_end, title, body)
+         VALUES (?1, NULL, 'headline', 1, 1, 10, 20, 'Plain', '')",
+        [file_id],
+    )
+    .expect("no TODO state at all is accepted");
+}
+
+#[test]
+fn a_quarantined_file_must_carry_a_reason() {
+    // The LD-41 malformed-file row exists to be shown to the user; one with
+    // nothing to show is a sync bug, not a document.
+    let (_dir, conn) = initialized_db();
+
+    let err = conn
+        .execute(
+            "INSERT INTO files (path, mtime_ns, size_bytes, indexed_at, quarantined)
+             VALUES ('/vault/broken.org', 0, 0, '2026-08-02T10:00:00', 1)",
+            [],
+        )
+        .expect_err("quarantined = 1 with no reason must be rejected");
+    assert!(
+        err.to_string().contains("CHECK constraint failed"),
+        "expected a CHECK constraint violation, got: {err}"
+    );
+
+    conn.execute(
+        "INSERT INTO files (path, mtime_ns, size_bytes, indexed_at, quarantined, quarantine_reason)
+         VALUES ('/vault/broken.org', 0, 0, '2026-08-02T10:00:00', 1, 'parse error at line 4')",
+        [],
+    )
+    .expect("a quarantined file with a reason is accepted");
+}
+
+#[test]
+fn vault_meta_rejects_a_null_key() {
+    // Only an INTEGER PRIMARY KEY implies NOT NULL: a bare `TEXT PRIMARY KEY`
+    // accepts NULL, and accepts it repeatedly, because the PK index treats
+    // NULLs as distinct. The explicit NOT NULL is what closes it.
+    let (_dir, conn) = initialized_db();
+
+    let err = conn
+        .execute(
+            "INSERT INTO vault_meta (key, value, updated_at)
+             VALUES (NULL, 'x', '2026-08-02T10:00:00')",
+            [],
+        )
+        .expect_err("a NULL key must be rejected");
+    assert!(
+        err.to_string().contains("NOT NULL constraint failed"),
+        "expected a NOT NULL constraint violation, got: {err}"
+    );
+
+    conn.execute(
+        "INSERT INTO vault_meta (key, value, updated_at)
+         VALUES ('tokenizer', 'porter unicode61 remove_diacritics 2', '2026-08-02T10:00:00')",
+        [],
+    )
+    .expect("a real key is accepted");
+    let err = conn
+        .execute(
+            "INSERT INTO vault_meta (key, value, updated_at)
+             VALUES ('tokenizer', 'other', '2026-08-02T10:00:00')",
+            [],
+        )
+        .expect_err("the primary key must still reject a duplicate");
+    assert!(
+        err.to_string().contains("UNIQUE constraint failed"),
+        "expected a UNIQUE constraint violation, got: {err}"
     );
 }
