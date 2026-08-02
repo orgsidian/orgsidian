@@ -1,6 +1,6 @@
 # Story 3.3: Define SQLite schema + locked PRAGMAs
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -108,28 +108,28 @@ This story is the **DDL + connection-initialization scaffold** inside `crates/or
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Dependencies (AC7)
-  - [ ] Root `Cargo.toml`: add `rusqlite` to `[workspace.dependencies]` with the story-attributed comment block
-  - [ ] `crates/orgsidian-index/Cargo.toml`: `rusqlite` + `thiserror` deps, `tempfile` dev-dep, replace the placeholder comment
-  - [ ] `cargo build --workspace --locked` (first build compiles the SQLite amalgamation — expect ~30-60s once, then cached); commit `Cargo.lock`
-- [ ] Task 2 — DDL (AC1, AC2, AC3, AC4)
-  - [ ] `crates/orgsidian-index/sql/schema.sql`: header comment + 8 tables + FK/CHECK constraints
-  - [ ] FTS5 virtual tables with `content=`/`content_rowid=`/`tokenize=`; no triggers; sync-obligation comment
-  - [ ] Named indices per AC4
-  - [ ] `pub const SCHEMA_SQL` in `lib.rs`
-- [ ] Task 3 — Connection init (AC5)
-  - [ ] `src/error.rs`: `#[non_exhaustive] IndexError` (thiserror), `Sqlite` + `Pragma` variants
-  - [ ] `src/connection.rs`: `open()` — `execute_batch` PRAGMAs, then read-back verification
-  - [ ] `lib.rs`: module decls + re-exports + crate-doc rewrite to present tense
-- [ ] Task 4 — Tests (AC6)
-  - [ ] `tests/schema.rs`: temp-file DB fixture; table set, index set, zero triggers
-  - [ ] PRAGMA read-back assertions (all seven, with the `mmap_size` caveat comment)
-  - [ ] FK cascade delete; nullable `headline_id` on `links`; CHECK rejection on bad `kind`
-  - [ ] FTS5 round-trip + diacritics + porter-stemming assertions
-- [ ] Task 5 — Gates + hygiene (AC7)
-  - [ ] fmt / clippy / build / test / deny / audit
-  - [ ] Verify sentinels untouched: `git diff main...HEAD --name-only` shows only the intended files (branch-scoped form — `git diff HEAD` is non-probative for already-committed changes, per Story 3.2's review)
-  - [ ] Add deferred-work entries for the items in Dev Note 8
+- [x] Task 1 — Dependencies (AC7)
+  - [x] Root `Cargo.toml`: add `rusqlite` to `[workspace.dependencies]` with the story-attributed comment block
+  - [x] `crates/orgsidian-index/Cargo.toml`: `rusqlite` + `thiserror` deps, `tempfile` dev-dep, replace the placeholder comment
+  - [x] `cargo build --workspace --locked` (first build compiles the SQLite amalgamation — expect ~30-60s once, then cached); commit `Cargo.lock`
+- [x] Task 2 — DDL (AC1, AC2, AC3, AC4)
+  - [x] `crates/orgsidian-index/sql/schema.sql`: header comment + 8 tables + FK/CHECK constraints
+  - [x] FTS5 virtual tables with `content=`/`content_rowid=`/`tokenize=`; no triggers; sync-obligation comment
+  - [x] Named indices per AC4
+  - [x] `pub const SCHEMA_SQL` in `lib.rs`
+- [x] Task 3 — Connection init (AC5)
+  - [x] `src/error.rs`: `#[non_exhaustive] IndexError` (thiserror), `Sqlite` + `Pragma` variants
+  - [x] `src/connection.rs`: `open()` — `execute_batch` PRAGMAs, then read-back verification
+  - [x] `lib.rs`: module decls + re-exports + crate-doc rewrite to present tense
+- [x] Task 4 — Tests (AC6)
+  - [x] `tests/schema.rs`: temp-file DB fixture; table set, index set, zero triggers
+  - [x] PRAGMA read-back assertions (all seven, with the `mmap_size` caveat comment)
+  - [x] FK cascade delete; nullable `headline_id` on `links`; CHECK rejection on bad `kind`
+  - [x] FTS5 round-trip + diacritics + porter-stemming assertions
+- [x] Task 5 — Gates + hygiene (AC7)
+  - [x] fmt / clippy / build / test / deny / audit
+  - [x] Verify sentinels untouched: `git diff main...HEAD --name-only` shows only the intended files (branch-scoped form — `git diff HEAD` is non-probative for already-committed changes, per Story 3.2's review)
+  - [x] Add deferred-work entries for the items in Dev Note 8
 
 ## Dev Notes
 
@@ -271,12 +271,55 @@ No `project-context.md` exists in the repo at story-creation (checked 2026-08-01
 
 ### Agent Model Used
 
+claude-opus-5[1m] (bmad-dev-story)
+
 ### Debug Log References
+
+- `cargo test -p orgsidian-index` — 17/17 green (`tests/schema.rs`).
+- `cargo test --workspace --locked` — full suite green, no regressions (parser 34+15+24+4+1, core 17, CLI 5, plugin-api 5, failure-modes 2 passed / 8 ignored placeholders unchanged, perf canary 7, settings 7+3+1, index 17).
+- `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings` — clean (only the pre-existing vendored `scanner.c` `-Wsign-compare` warnings from `orgsidian-parser`'s build script).
+- `cargo deny --locked check all` — `advisories ok, bans ok, licenses ok, sources ok`. **No duplicate version fired from the `rusqlite` tree**, so `deny.toml` is untouched and no `docs/security/advisory-exceptions.md` row was needed (AC7's conditional branch did not trigger).
+- `cargo audit` — exit 0; 18 allowed warnings, all pre-existing gtk-rs `unmaintained` advisories.
+- **Anti-placebo mutation check** (Story 1.9 discipline): temporarily replaced the tokenizer with `unicode61 remove_diacritics 0` and re-ran the FTS tests — `fts_headlines_folds_diacritics`, `fts_content_applies_porter_stemming` and `fts_reads_text_back_through_the_external_content_table` all failed; schema restored and re-verified green. The tokenizer assertions test real behavior, not the DDL string.
+- **One test was written wrong and the DB corrected it:** `wal_mode_persists_into_the_database_file` originally also asserted that a bare `Connection::open` reports `foreign_keys = 0` (SQLite's documented default). It reported `1` — the bundled amalgamation is compiled with `-DSQLITE_DEFAULT_FOREIGN_KEYS=1`, exactly as Dev Note 4 warned. The assertion was replaced by `cascades_are_a_no_op_without_foreign_keys`, which explicitly turns the pragma off and proves the cascade stops firing. That is the honest form of the claim: the guarantee comes from `open()`, not from a build flag.
 
 ### Completion Notes List
 
+**What shipped.** `crates/orgsidian-index/` went from a 3-line placeholder to its first real surface: `sql/schema.sql` (version-1 DDL — 8 tables, 2 FTS5 external-content tables, 11 named indices), `SCHEMA_SQL` as the single in-Rust handle to it, `open()` with the LD-4 locked PRAGMAs applied *and verified by read-back*, `IndexError`, and 17 integration tests driving real on-disk databases.
+
+**Disclosed variances — read these before approving:**
+
+1. **`foreign_keys=ON` is a superset of the LD-4 locked set (AC5, deliberate).** LD-4/LD-14 name six PRAGMAs; `open()` applies seven. Foreign-key enforcement is per-connection, non-persistent, and OFF by SQLite default — without it every `ON DELETE CASCADE` in the schema is a silent no-op, so deleting a file row would orphan its headlines, tags, properties, clock entries and links rather than removing them. Rationale is in the `open()` doc comment; `cascades_are_a_no_op_without_foreign_keys` pins the consequence in a test.
+2. **`files.quarantined` instead of LD-41's `vault_meta` wording (Dev Note 5, deliberate).** Per-file state modelled as columns on `files`, not as synthesized keys in the vault-scoped bag. Rationale in `schema.sql`'s `vault_meta` comment; deferred-work row filed asking for an architecture.md addendum. `architecture.md` itself is untouched (process archive).
+3. **Index superset over LD-11 (AC4, disclosed).** LD-11 names five index targets; the schema ships eleven indices. The four extras are `idx_headlines_file_id`, `idx_headlines_parent_id`, `idx_links_file_id` (the FK columns the CASCADEs traverse — unindexed, every `DELETE FROM files` becomes a full scan of `headlines`/`links`) and `idx_links_target` (the FR-13 backlink traversal, without which the `links` table cannot answer the question it exists for). Recorded in a comment above the index block.
+4. **DDL is NOT `IF NOT EXISTS`-guarded (AC6, first branch taken).** Re-applying `SCHEMA_SQL` to an initialized database fails with a duplicate-object error, asserted by `re_applying_the_schema_fails_loudly`. A silently idempotent schema would let a Story 3.4 migration bug pass unnoticed.
+5. **`tempfile` declared as `{ workspace = true }`, not the bare `tempfile = "3"` AC7 quotes.** AC7 pointed at `orgsidian-vault/Cargo.toml`, which predates the Story 1.12-review hoist of `tempfile` into `[workspace.dependencies]`; `orgsidian-core` and `orgsidian-watcher` both use the workspace form, and the workspace entry's own comment states it "replaces the bare `tempfile = "3"` previously declared at the crate level". Followed the majority convention and `[[feedback_version_policy]]` single-source-of-truth rather than the AC's literal text. Same crate, same version — pin behavior is identical.
+
+**Scope fence held.** No migration runner, no `rusqlite_migration`, no `migrations/`, no `PRAGMA user_version` write. No pool, no `deadpool-sqlite`, no Tokio. No `query/` module, no `IndexQuery`. No parser dependency — the schema is designed *against* the Story 2.3 semantic types (every column has a named source field in Dev Note 2) but imports nothing. No DB-path policy: `open(path: &Path)` takes what it is handed. No `[workspace.dependencies]` entry for `orgsidian-index` and no `orgsidian-core` edit (LEAF rule holds).
+
+**Sentinels verified byte-untouched** via the branch-scoped form `git diff main...HEAD --name-only` (per Story 3.2's review, `git diff HEAD` is non-probative): `deny.toml`, every `crates/*/tests/anchor.rs`, `crates/orgsidian-vault/`, `crates/orgsidian-parser/`, `.github/workflows/*`, `tests/failure_modes.rs`, `tests/failure_modes_coverage.rs`, `docs/failure-modes/coverage-matrix.md` (`EXPECTED_REMAINING_PLACEHOLDERS` stays at 8 — the coverage test passes unchanged).
+
+**Dependency delta is exactly what AC7 allowed.** `rusqlite 0.40.1` (MIT) with `bundled`, pulling `libsqlite3-sys`, `hashlink`, `hashbrown`, `fallible-iterator`, `fallible-streaming-iterator`, `vcpkg`, plus two wasm-target-only crates (`sqlite-wasm-rs`, `rsqlite-vfs`) that appear in `Cargo.lock` but are never built for a native target. `cargo deny check bans` passes with `deny.toml` untouched.
+
+**Seam left for Story 3.4 (Dev Note 7).** One DDL text (`sql/schema.sql`), one Rust handle (`SCHEMA_SQL`), forward-only rule stated in the file header. 3.4 must pick one of the two documented resolutions and keep exactly one copy — filed as the first deferred-work row.
+
+**Deferred-work rows filed:** 7 (schema-to-migration fork risk, `busy_timeout` unset, LD-41 wording, `Preamble.directives` untabled, ranged/repeating timestamps unmodelled, index DB text duplication, path-identity policy).
+
 ### File List
+
+- `Cargo.toml` (modified) — `rusqlite` in `[workspace.dependencies]`
+- `Cargo.lock` (modified) — 9 new crate entries
+- `crates/orgsidian-index/Cargo.toml` (modified) — deps + dev-deps, placeholder comment replaced
+- `crates/orgsidian-index/sql/schema.sql` (new) — version-1 DDL
+- `crates/orgsidian-index/src/lib.rs` (modified) — module decls, re-exports, `SCHEMA_SQL`, crate doc rewritten to present tense
+- `crates/orgsidian-index/src/connection.rs` (new) — `open()` + locked-PRAGMA application and verification
+- `crates/orgsidian-index/src/error.rs` (new) — `IndexError`
+- `crates/orgsidian-index/tests/schema.rs` (new) — 17 integration tests
+- `_bmad-output/implementation-artifacts/deferred-work.md` (modified) — story-3.3 section, 7 rows
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — 3.3 → in-progress → review
+- `_bmad-output/implementation-artifacts/3-3-define-sqlite-schema-locked-pragmas.md` (modified) — this file
 
 ## Change Log
 
 - 2026-08-01 — Story created (bmad-create-story). Status → ready-for-dev.
+- 2026-08-02 — Implementation complete (bmad-dev-story): version-1 SQLite schema, FTS5 external-content tables with the LD-4 tokenizer, LD-11 index set, `open()` with verified locked PRAGMAs, `IndexError`, 17 integration tests. All gates green. Status → review.

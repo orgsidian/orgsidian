@@ -8,4 +8,14 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Real deps (rusqlite, deadpool-sqlite, etc.) added in Story 3.x.
+# Story 3.3 (LD-4): SQLite driver. `bundled` carries the amalgamation with
+# FTS5 enabled — see the workspace entry for the full rationale.
+rusqlite = { workspace = true }
+# Story 3.3 (AC5): IndexError derives per the VaultError/SettingsError precedent.
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# Story 3.3 (AC6): temp-file DB fixtures. The PRAGMA assertions need a real
+# on-disk database (`:memory:` cannot enter WAL), so every test gets its own
+# TempDir. Dev-only, per-crate — mirrors orgsidian-vault/Cargo.toml.
+tempfile = { workspace = true }
