@@ -109,6 +109,16 @@ clap_mangen = "0.3"
 # `orgsidian` binary; architecture assert_cmd convention). Latest stable
 # 2.x at impl time. MIT/Apache-2.0.
 assert_cmd = "2"
+# Story 3.3 (LD-4/LD-11/LD-14, FR-17): SQLite driver for the derived index.
+# `bundled` is mandatory, not a convenience — it compiles the SQLite
+# amalgamation through `cc` with `-DSQLITE_ENABLE_FTS5`, which LD-4's FTS5
+# requirement depends on. A system SQLite is not guaranteed to carry FTS5, is
+# absent on the Windows CI cell, and would give the four LD-32 matrix targets
+# four different SQLite versions. 0.40.x is the current stable line
+# (verified 2026-08-02) per [[feedback_version_policy]] latest-stable.
+# LD-37 canonical-version invariant: rusqlite must NEVER be added to
+# `[bans].skip`/`skip-tree` (deny.toml:127-131). MIT.
+rusqlite = { version = "0.40", features = ["bundled"] }
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a
