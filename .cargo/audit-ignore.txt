@@ -44,3 +44,10 @@ RUSTSEC-2023-0071
 # (Story 3.1). Re-evaluate on wayland-rs bump.
 RUSTSEC-2026-0194
 RUSTSEC-2026-0195
+# rkyv 0.7.46 — archive-validation OOB read (Rc/Arc). OPTIONAL dependency of
+# rust_decimal with its feature OFF, so it is NOT in the build graph
+# (`cargo tree -i rkyv` prints nothing); a lockfile-only phantom. Transitive
+# root: byte-unit → tauri-plugin-log → orgsidian-shell-app. No rkyv archive is
+# ever deserialized. Surfaced during Story 3.4 (unrelated to that change).
+# Re-evaluate on tauri-plugin-log / byte-unit bump.
+RUSTSEC-2026-0235

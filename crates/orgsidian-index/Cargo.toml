@@ -13,6 +13,9 @@ repository.workspace = true
 rusqlite = { workspace = true }
 # Story 3.3 (AC5): IndexError derives per the VaultError/SettingsError precedent.
 thiserror = { workspace = true }
+# Story 3.4 (LD-12/LD-13): forward-only migration runner. Version-locked to
+# rusqlite 0.40 at the workspace entry; no cargo features (NOT `from-directory`).
+rusqlite_migration = { workspace = true }
 
 [dev-dependencies]
 # Story 3.3 (AC6): temp-file DB fixtures. The PRAGMA assertions need a real
