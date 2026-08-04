@@ -17,6 +17,15 @@ pub enum IndexError {
     #[error("sqlite error: {0}")]
     Sqlite(#[from] rusqlite::Error),
 
+    /// A forward-only migration failed to apply (LD-12). Wraps the runner's own
+    /// error, which already distinguishes a malformed migration, a failed
+    /// up-migration SQL statement, and a failed hook.
+    ///
+    /// Mirrors the `Sqlite` variant's `#[from]` shape so `migrate` can map the
+    /// runner error with `?` rather than a hand-written match.
+    #[error("migration failed: {0}")]
+    Migration(#[from] rusqlite_migration::Error),
+
     /// A connection PRAGMA did not take the value it was set to.
     ///
     /// Applying a PRAGMA is not the same as it having an effect: SQLite

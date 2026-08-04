@@ -119,6 +119,20 @@ assert_cmd = "2"
 # LD-37 canonical-version invariant: rusqlite must NEVER be added to
 # `[bans].skip`/`skip-tree` (deny.toml:127-131). MIT.
 rusqlite = { version = "0.40", features = ["bundled"] }
+# Story 3.4 (LD-12/LD-13, FR-17): forward-only migration runner over rusqlite.
+# The version is LOCK-STEP with rusqlite, not free: rusqlite_migration re-exports
+# rusqlite types in its public API (the up_with_hook hook takes a
+# &rusqlite::Transaction), so each release pins a single rusqlite minor —
+# 2.6 -> rusqlite ^0.40, 2.5 -> ^0.39, 2.4 -> ^0.38 (crates.io, 2026-08-04).
+# Only 2.6.x matches the rusqlite 0.40 above, so "2.6" (not a bare "2") is
+# mandatory: a bare "2" would let Cargo select a line incompatible with 0.40.
+# WHEN rusqlite IS NEXT BUMPED (e.g. 0.41), rusqlite_migration MUST bump in the
+# same PR (to 2.7+) or the workspace fails to resolve — a coupled pair like the
+# Tauri exception in [[feedback_version_policy]]. Default features only: NOT
+# `from-directory` (it pulls include_dir for a directory-loading path unused
+# here — we load with include_str! + M::up_with_hook). Only mandatory transitive
+# dep is `log ^0.4`, already in Cargo.lock. MIT (matches rusqlite).
+rusqlite_migration = "2.6"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

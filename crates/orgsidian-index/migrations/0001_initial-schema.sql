@@ -1,13 +1,14 @@
 -- Orgsidian SQLite index — schema version 1.
 --
 -- Traces: LD-4 (rusqlite + locked PRAGMAs + FTS5 tokenizer), LD-11 (normalized
--- schema + index list; this file's location is mandated there), LD-14
--- (connection management), FR-17 (SQLite derived index).
+-- schema + index list), LD-14 (connection management), FR-17 (SQLite derived
+-- index).
 --
--- FORWARD-ONLY RULE (LD-12): this file is the DDL for schema version 1. Once
--- Story 3.4 lands the migration runner, schema changes arrive as NEW migration
--- files and never as edits here. Editing this file after 3.4 silently diverges
--- fresh databases from migrated ones.
+-- FORWARD-ONLY RULE (LD-12): this file IS migration 0001 — the DDL for schema
+-- version 1, loaded by the runner via `M::up_with_hook(SCHEMA_SQL, …)`. Schema
+-- changes arrive as NEW migration files (`0002_*.sql`, `0003_*.sql`, …) and
+-- never as edits here. Editing this file silently diverges fresh databases from
+-- already-migrated ones.
 --
 -- The whole file is executed top-to-bottom in one batch against a fresh
 -- database (statements are in dependency order). It is deliberately NOT
@@ -15,10 +16,11 @@
 -- a duplicate-object error, so a migration bug cannot hide behind silent
 -- idempotency.
 --
--- This file carries NO `BEGIN;`/`COMMIT;`, also deliberately: a migration
+-- This file carries NO `BEGIN;`/`COMMIT;`, also deliberately: the migration
 -- runner already wraps each migration in its own transaction, and a nested
--- BEGIN would fail with "cannot start a transaction within a transaction" the
--- moment Story 3.4 includes this text. Atomicity is supplied by the caller —
+-- BEGIN would fail with "cannot start a transaction within a transaction" —
+-- rusqlite_migration runs this text inside that transaction. Atomicity is
+-- supplied by the caller —
 -- `orgsidian_index::apply_schema` does it for direct callers. Applying the
 -- batch WITHOUT a transaction leaves a permanently half-built database on any
 -- mid-batch failure, and a half-built database reports the same

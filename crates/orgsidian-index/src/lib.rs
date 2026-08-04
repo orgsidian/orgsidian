@@ -6,24 +6,32 @@
 //! (`files`, `headlines`, `tags`, `properties`, `clock_entries`, `links`,
 //! `vault_meta`, `_schema_version`), the two FTS5 external-content search
 //! tables over `headlines`, and the LD-11 index set. It is the single
-//! committed copy of that text: `sql/schema.sql` on disk, this constant in
-//! Rust, and nothing else.
+//! committed copy of that text: `migrations/0001_initial-schema.sql` on disk,
+//! this constant in Rust, and nothing else.
 //!
 //! [`open`] returns a connection with the LD-4 locked PRAGMAs applied and
 //! verified by read-back, including the `foreign_keys=ON` without which every
 //! `ON DELETE CASCADE` in the schema is a silent no-op. [`apply_schema`]
 //! installs the DDL on such a connection inside a transaction.
 //!
+//! [`migrate`] is the versioned production path (LD-12): it runs the
+//! forward-only migration set — currently the single `0001` that installs
+//! `SCHEMA_SQL` — bumping `PRAGMA user_version` (LD-13's drift signal) and
+//! writing the `_schema_version` audit row. `apply_schema` stays a DDL-only
+//! primitive for schema-shape tests.
+//!
 //! The index is a derived artifact (LD-13, LD-17): every row here is
 //! reconstructible from the Vault's .org files.
 
 pub mod connection;
 pub mod error;
+pub mod migrations;
 
 pub use connection::{apply_schema, open};
 pub use error::IndexError;
+pub use migrations::migrate;
 
-/// The version-1 schema DDL, verbatim from `sql/schema.sql`.
+/// The version-1 schema DDL, verbatim from `migrations/0001_initial-schema.sql`.
 ///
 /// Executable top-to-bottom in one `execute_batch` against a fresh database.
 /// It is not `IF NOT EXISTS`-guarded: applying it twice fails with a
@@ -38,4 +46,4 @@ pub use error::IndexError;
 ///
 /// Per LD-12 the file is forward-only — schema changes belong in new migration
 /// files rather than in edits to this text.
-pub const SCHEMA_SQL: &str = include_str!("../sql/schema.sql");
+pub const SCHEMA_SQL: &str = include_str!("../migrations/0001_initial-schema.sql");
