@@ -215,6 +215,6 @@ fn foreign_key_cascade_works_on_a_migrated_database() {
         .expect("count survivors");
     assert_eq!(
         survivors, 0,
-        "the child survived the cascade — did foreign_keys=ON not carry through migrate?"
+        "the child survived the cascade — is foreign_keys=ON (set by open()) still in effect after migrate?"
     );
 }

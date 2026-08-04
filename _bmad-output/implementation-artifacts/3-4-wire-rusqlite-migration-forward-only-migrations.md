@@ -1,6 +1,6 @@
 # Story 3.4: Wire `rusqlite_migration` forward-only migrations
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -113,6 +113,21 @@ This story wires the **migration runner** onto the Story 3.3 schema, inside `cra
   - [x] fmt / clippy / build / test / deny / audit
   - [x] `git diff main...HEAD --name-only` scope check; sentinels + `tests/schema.rs` + `architecture.md` untouched; `EXPECTED_REMAINING_PLACEHOLDERS` == 8
   - [x] Update `deferred-work.md`: mark the fork-risk row resolved; update/re-file the `application_id`/`user_version` guard and any FK-during-destructive-migration follow-up (Dev Note 7)
+
+### Review Findings
+
+_Code review 2026-08-04 (bmad-code-review — Blind Hunter · Edge Case Hunter · Acceptance Auditor). Gates re-run and verified locally: `fmt` ✅ · `clippy -D warnings` ✅ · `test` (workspace) ✅._
+
+- [x] [Review][Decision] Supply-chain ledger edited outside the AC6 fence — `.cargo/audit-ignore.txt` + `docs/security/advisory-exceptions.md` add `RUSTSEC-2026-0235` (rkyv), but AC6 pre-authorized ledger edits **only** paired with a `deny.toml` duplicate-ban, which did **not** fire (`deny check bans` = ok). The rkyv advisory is genuinely unrelated (feature-off, not in build graph, `Cargo.lock` delta is `rusqlite_migration` alone), freshly published 2026-08-04, and blocks the `cargo audit` gate. **RESOLVED 2026-08-04 — maintainer ratified the approval; the disclosed fence-widening stands as a ratified decision.** [auditor+blind]
+- [x] [Review][Patch] `Cargo.toml` version-lock comment overstates what `"2.6"` enforces — a bare Cargo version is a caret req, so `"2.6"` (= `^2.6`) permits 2.7+ exactly as `"2"` would; the actual line-lock to 2.6.x comes from the `rusqlite = "0.40"` pin (2.7 needs rusqlite 0.41). **FIXED** — comment reworded to attribute the lock to the transitive rusqlite pin. [Cargo.toml] [blind]
+- [x] [Review][Patch] FK-cascade test failure message misattributed `foreign_keys=ON` to `migrate` — the PRAGMA is set by `open()`, not `migrate`. **FIXED** — message now reads "is foreign_keys=ON (set by open()) still in effect after migrate?". [crates/orgsidian-index/tests/migrations.rs:218] [blind]
+- [x] [Review][Defer] `migrate` on a DB at `user_version > 1` surfaces a raw `IndexError::Migration` instead of the LD-13 drift/rebuild reaction — LD-13 reaction is assigned to Stories 3.6/3.7 by the Scope Fence; this story only makes the drift value detectable. [crates/orgsidian-index/src/migrations.rs:85] — deferred, out-of-scope by spec [edge]
+- [x] [Review][Defer] Foreign SQLite file already at `user_version=1` makes `migrate` a silent `Ok` no-op; no `application_id`/foreign-file guard — explicitly Story 3.6 (path policy) per Dev Note 6; already re-filed in deferred-work. [crates/orgsidian-index/src/migrations.rs:85] — deferred, out-of-scope by spec [edge+blind]
+- [x] [Review][Defer] No `busy_timeout`: concurrent `migrate` from a second connection/process returns `SQLITE_BUSY` immediately instead of waiting — connection PRAGMA set is Story 3.3 turf, concurrency is Story 3.5's single-writer model. [crates/orgsidian-index/src/connection.rs] — deferred, out-of-scope by spec [edge]
+- [x] [Review][Defer] `IndexError::Migration` error path + `migrate` failure/mixed-state paths have no test — coverage gap; low risk (`#[from]` is idiomatic) and no clean failure-injection harness exists without a second bad migration. [crates/orgsidian-index/tests/migrations.rs] — deferred, low-value [blind+edge]
+- [x] [Review][Defer] `apply_schema` then `migrate` on one DB fails with a duplicate-object error (the two install paths don't compose) — `apply_schema` is a test-only primitive; production uses `migrate` alone, so this is theoretical. [crates/orgsidian-index/src/migrations.rs:85] — deferred, non-production path [edge+blind]
+
+_Dismissed as spec-prescribed or non-issues (7): explicit `version=1` literal (AC4-mandated bind); `applied_at` `LIKE '____-...'` shape (AC5-mandated exact pattern); `Migration` vs `Sqlite` variant split (AC3-mandated design); anti-fork test compares two distinct execution paths, not a string to itself (byte-equality is covered by unchanged `tests/schema.rs`); `validate()` placed in `src/` unit test (forced by the AC3-private factory — correct); stale `sql/schema.sql` refs in future-owned deferred-work rows (cosmetic, AC2 grep scope clean); "gates self-reported" (independently re-run green above)._
 
 ## Dev Notes
 

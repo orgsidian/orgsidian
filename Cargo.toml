@@ -124,8 +124,11 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 # rusqlite types in its public API (the up_with_hook hook takes a
 # &rusqlite::Transaction), so each release pins a single rusqlite minor —
 # 2.6 -> rusqlite ^0.40, 2.5 -> ^0.39, 2.4 -> ^0.38 (crates.io, 2026-08-04).
-# Only 2.6.x matches the rusqlite 0.40 above, so "2.6" (not a bare "2") is
-# mandatory: a bare "2" would let Cargo select a line incompatible with 0.40.
+# Today only 2.6.x resolves — but it is the `rusqlite = "0.40"` pin above that
+# excludes 2.7+ (they require rusqlite 0.41+), NOT this string: `"2.6"` is a
+# caret req (>=2.6.0, <3.0.0), so it would permit 2.7 exactly as a bare "2"
+# would. We write "2.6" to floor the line and document the lock-step, not
+# because the string itself locks it — the transitive rusqlite pin does.
 # WHEN rusqlite IS NEXT BUMPED (e.g. 0.41), rusqlite_migration MUST bump in the
 # same PR (to 2.7+) or the workspace fails to resolve — a coupled pair like the
 # Tauri exception in [[feedback_version_policy]]. Default features only: NOT
