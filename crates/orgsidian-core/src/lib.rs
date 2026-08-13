@@ -26,3 +26,10 @@ pub mod settings;
 /// `orgsidian_core::parser::{analyze, serialize_document}` instead of
 /// depending on the leaf directly.
 pub use orgsidian_parser as parser;
+
+// Story 3.6 (LD-37 / FR-15 / FR-17): the index façade — the scan orchestrator
+// that wires the parser and index LEAVES together (the only module naming
+// both). Owns Vault designation, the initial-scan engine, and the incremental
+// `Document` → index-row mapping.
+pub mod index;
+pub use index::{designate_vault, open_index, scan_vault, IndexHandle, ScanOutcome, ScanProgress};

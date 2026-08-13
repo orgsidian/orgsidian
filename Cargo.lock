@@ -3013,6 +3013,7 @@ version = "0.0.0"
 dependencies = [
  "dirs",
  "fail",
+ "orgsidian-index",
  "orgsidian-parser",
  "orgsidian-vault",
  "proptest",
@@ -3021,6 +3022,7 @@ dependencies = [
  "specta",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "toml 1.1.2+spec-1.1.0",
  "tracing",
 ]
@@ -3098,6 +3100,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tracing",
+ "walkdir",
 ]
 
 [[package]]

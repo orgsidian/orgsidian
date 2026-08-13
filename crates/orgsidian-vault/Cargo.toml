@@ -26,6 +26,10 @@ tracing = { workspace = true }
 # Story 3.1 (LD-41): fault injection for the disk-full harness row. Optional —
 # see the `failpoints` feature above.
 fail = { workspace = true, optional = true }
+# Story 3.6 (FR-15 / LD-42): recursive `.org` discovery walk in `src/path.rs`.
+# Pinned `"2"` at the workspace unifies on the `walkdir 2.5.0` already in the
+# lock (transitive) — no new download. The walk lives HERE, not in core.
+walkdir = { workspace = true }
 
 [dev-dependencies]
 # Story 1.9: tempfile is dev-only; per-crate (no workspace pin needed for dev deps).

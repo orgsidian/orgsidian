@@ -75,4 +75,13 @@ pub enum IndexError {
     /// "the index writer is gone" from "the write ran and its SQL failed".
     #[error("index writer unavailable: {0}")]
     WriterUnavailable(String),
+
+    /// A sync-engine invariant the SQL layer cannot express was violated
+    /// (Story 3.6). The transactional sync path (`sync::upsert_file` and
+    /// friends) reaches a state that "cannot happen" — e.g. the `files` row it
+    /// just upserted is not found when its rowid is read back. Returned rather
+    /// than `unwrap`/`expect`/`panic!`-ing (no panics in committed non-test
+    /// code) so the writer task survives and surfaces the failure on its ack.
+    #[error("index sync invariant violated: {0}")]
+    Sync(String),
 }

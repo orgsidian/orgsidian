@@ -31,17 +31,34 @@
 //!
 //! The index is a derived artifact (LD-13, LD-17): every row here is
 //! reconstructible from the Vault's .org files.
+//!
+//! [`sync`] is the Story 3.6 write path: a parser-agnostic, transactional sync
+//! engine ([`upsert_file`]/[`delete_file`]/[`quarantine_file`] and the batched
+//! [`SyncOp`]) that maps index-native input structs into the tables and the two
+//! external-content FTS5 tables, structurally pairing every headline mutation
+//! with its FTS `'delete'` command row. [`identity`] is the LD-13 guard:
+//! [`stamp_application_id`] marks a fresh index and [`check_index_identity`] /
+//! [`inspect_index_file`] classify a file as ours, foreign, or version-drifted.
 
 pub mod connection;
 pub mod error;
+pub mod identity;
 pub mod migrations;
 pub mod pool;
+pub mod sync;
 pub mod writer;
 
 pub use connection::{apply_schema, open};
 pub use error::IndexError;
+pub use identity::{
+    check_index_identity, inspect_index_file, stamp_application_id, IndexIdentity, APPLICATION_ID,
+};
 pub use migrations::migrate;
 pub use pool::IndexPool;
+pub use sync::{
+    delete_file, file_is_unchanged, quarantine_file, set_vault_meta, upsert_file, ClockInput,
+    FileIndexInput, HeadlineInput, LinkInput, PreambleInput, SyncOp,
+};
 pub use writer::{IndexUpdate, IndexWriter};
 
 /// The version-1 schema DDL, verbatim from `migrations/0001_initial-schema.sql`.
