@@ -16,7 +16,8 @@
 //! query is valid. Readers (the [`crate::pool`]) never migrate. A consumer must
 //! therefore construct the writer before issuing reads on a fresh path.
 
-use std::path::Path;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 use tokio::sync::{mpsc, oneshot};
@@ -91,20 +92,33 @@ impl IndexWriter {
     ///
     /// # Errors
     ///
-    /// [`IndexError::Sqlite`] if the connection cannot be opened or
-    /// `busy_timeout` fails; [`IndexError::Pragma`] if a locked PRAGMA does not
-    /// take; [`IndexError::Migration`] if migration fails.
+    /// [`IndexError::WriterUnavailable`] if called outside a Tokio runtime (the
+    /// documented precondition, surfaced as an error rather than a panic from
+    /// `spawn_blocking`); [`IndexError::Sqlite`] if the connection cannot be
+    /// opened or `busy_timeout` fails; [`IndexError::Pragma`] if a locked PRAGMA
+    /// does not take; [`IndexError::Migration`] if migration fails.
     pub fn spawn(db_path: &Path) -> Result<IndexWriter, IndexError> {
+        // `spawn_blocking` panics without an ambient Tokio runtime. This function
+        // returns `Result`, so surface the missing-runtime precondition as an
+        // error instead of letting the panic escape a fallible-looking call.
+        if tokio::runtime::Handle::try_current().is_err() {
+            return Err(IndexError::WriterUnavailable(
+                "IndexWriter::spawn must be called from within a Tokio runtime".to_owned(),
+            ));
+        }
+
         let mut conn = open(db_path)?;
         conn.busy_timeout(BUSY_TIMEOUT)?;
         migrate(&mut conn)?;
 
         let (tx, rx) = mpsc::channel::<IndexUpdate>(WRITER_CHANNEL_CAPACITY);
+        let db_path = db_path.to_path_buf();
         // The loop OWNS `conn` and runs on Tokio's blocking-thread pool: every
         // rusqlite call blocks, and `blocking_recv` blocks between messages, so
         // it must stay off the async worker threads (LD-16). A plain async task
-        // calling blocking rusqlite would stall a worker thread.
-        let handle = spawn_blocking(move || writer_loop(conn, rx));
+        // calling blocking rusqlite would stall a worker thread. `db_path` rides
+        // along so the loop can rebuild the connection after a panicked thunk.
+        let handle = spawn_blocking(move || writer_loop(conn, rx, db_path));
         Ok(IndexWriter { tx, handle })
     }
 
@@ -164,9 +178,40 @@ impl IndexWriter {
 /// dropped its `execute` future leaves a closed ack channel; the failed
 /// `ack.send` is ignored — the write already ran or failed, so the loop simply
 /// moves to the next unit of work.
-fn writer_loop(mut conn: Connection, mut rx: mpsc::Receiver<IndexUpdate>) {
+///
+/// A thunk that *panics* (rather than returning `Err`) must not tear down the
+/// sole writer — otherwise one bad write would fail every future write for the
+/// process lifetime. The panic is caught, reported on the ack as a distinct
+/// [`IndexError::WriterUnavailable`], and the connection is **rebuilt**: a panic
+/// mid-transaction can leave `conn` with an open transaction, so it is discarded
+/// rather than reused. If the rebuild fails (the database is unreachable) the
+/// writer cannot recover and the loop exits; pending senders then observe the
+/// closed channel.
+fn writer_loop(mut conn: Connection, mut rx: mpsc::Receiver<IndexUpdate>, db_path: PathBuf) {
     while let Some(update) = rx.blocking_recv() {
-        let result = (update.thunk)(&mut conn);
-        let _ = update.ack.send(result);
+        let IndexUpdate { thunk, ack } = update;
+        match catch_unwind(AssertUnwindSafe(|| thunk(&mut conn))) {
+            Ok(result) => {
+                let _ = ack.send(result);
+            }
+            Err(_) => {
+                let _ = ack.send(Err(IndexError::WriterUnavailable(
+                    "a write thunk panicked; the write did not commit".to_owned(),
+                )));
+                match reopen(&db_path) {
+                    Ok(fresh) => conn = fresh,
+                    Err(_) => break,
+                }
+            }
+        }
     }
+}
+
+/// Reopen the one writable connection after a panicked write poisoned the old
+/// one, applying the LD-4 PRAGMAs + [`BUSY_TIMEOUT`] but **not** `migrate` — the
+/// schema already exists (the writer migrated once at [`IndexWriter::spawn`]).
+fn reopen(db_path: &Path) -> Result<Connection, IndexError> {
+    let conn = open(db_path)?;
+    conn.busy_timeout(BUSY_TIMEOUT)?;
+    Ok(conn)
 }

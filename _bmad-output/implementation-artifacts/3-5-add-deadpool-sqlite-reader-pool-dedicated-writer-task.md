@@ -1,6 +1,6 @@
 # Story 3.5: Add `deadpool` reader pool + dedicated writer task
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -106,6 +106,13 @@ This story adds the **concurrency plumbing** on top of the existing `open()` (St
   - [x] fmt / clippy / build / test / deny / audit
   - [x] `git diff main...HEAD --name-only` scope check; sentinels + `connection.rs`/`migrations.rs`/`tests/schema.rs`/`tests/migrations.rs`/`architecture.md` untouched; `EXPECTED_REMAINING_PLACEHOLDERS` unchanged
   - [x] Update `deferred-work.md`: mark both `busy_timeout` rows RESOLVED; file the LD-14 `deadpool-sqlite`→`deadpool` wording deviation, the read-only-reader hardening, the bounded-channel/backpressure follow-up, and the `deadpool`↔`rusqlite` re-check-on-bump coupling (Dev Note 7)
+
+### Review Findings
+
+_Code review 2026-08-13 (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Acceptance Auditor verdict: **fully compliant** — no AC violation, no Scope-Fence breach. Items below are robustness hardening, not acceptance blockers._
+
+- [x] [Review][Decision→Fixed] Panicking write thunk permanently kills the single writer — **RESOLVED (option 1: `catch_unwind` + rebuild)**. `writer_loop` now wraps `thunk(&mut conn)` in `std::panic::catch_unwind(AssertUnwindSafe(..))`; on unwind it acks a distinct `WriterUnavailable("a write thunk panicked; the write did not commit")` and **rebuilds** the connection via `reopen()` (LD-4 PRAGMAs + `busy_timeout`, no `migrate`) since a panic mid-transaction may poison `conn`. The writer survives a bad thunk; if the rebuild itself fails (DB unreachable) the loop exits and pending senders observe the closed channel. Regression test `a_panicking_write_thunk_does_not_kill_the_writer` added (anti-placebo: removing `catch_unwind` fails it). Subsumes the `shutdown` silent-`JoinError` note.
+- [x] [Review][Patch→Fixed] `IndexWriter::spawn` panics outside a Tokio runtime despite its `-> Result` signature [`writer.rs`] — **FIXED**. `spawn` now short-circuits with `IndexError::WriterUnavailable` when `tokio::runtime::Handle::try_current().is_err()`, turning the `spawn_blocking` runtime-context panic into a clean error consistent with the fallible signature.
 
 ## Dev Notes
 

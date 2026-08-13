@@ -227,6 +227,46 @@ async fn reads_interleaved_with_writes_observe_committed_state() {
     assert_eq!(seen, "v1", "the latest committed write is observed");
 }
 
+/// A write thunk that *panics* (rather than returning `Err`) does not tear down
+/// the single writer: its own `execute` returns an error, and a subsequent write
+/// still commits — the loop caught the unwind and rebuilt the connection.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_panicking_write_thunk_does_not_kill_the_writer() {
+    let (_dir, path) = temp_db();
+    let writer = IndexWriter::spawn(&path).expect("spawn writer");
+
+    // Seed a row so the post-panic write has something to observe.
+    writer
+        .execute(|conn| write_meta(conn, "k", "before"))
+        .await
+        .expect("seed");
+
+    // This thunk panics instead of returning Err; `execute` must report an error,
+    // not hang and not propagate the panic.
+    let panicked = writer
+        .execute(|_conn| panic!("boom inside a write thunk"))
+        .await;
+    assert!(
+        panicked.is_err(),
+        "a panicking write reports an error rather than Ok"
+    );
+
+    // The writer survived the panic: a later write still commits.
+    writer
+        .execute(|conn| write_meta(conn, "k", "after"))
+        .await
+        .expect("writer survived the panicked thunk and still serves writes");
+
+    let pool = IndexPool::new(&path).expect("build reader pool");
+    let seen = pool
+        .interact(|conn| read_meta(conn, "k"))
+        .await
+        .expect("read k");
+    assert_eq!(seen, "after", "the post-panic write is visible");
+
+    writer.shutdown().await;
+}
+
 /// The `busy_timeout` customizer actually ran: a pooled connection reports the
 /// configured value (5000 ms), not SQLite's fail-immediately default of 0. This
 /// behaviourally verifies the deferred-work resolution rather than asserting it
