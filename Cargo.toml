@@ -136,6 +136,30 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 # here — we load with include_str! + M::up_with_hook). Only mandatory transitive
 # dep is `log ^0.4`, already in Cargo.lock. MIT (matches rusqlite).
 rusqlite_migration = "2.6"
+# Story 3.5 (LD-14/LD-16, FR-17): the GENERIC deadpool pool crate — NOT
+# `deadpool-sqlite`. LD-14 names `deadpool-sqlite`, but `deadpool-sqlite 0.13`
+# (latest, 2026-02-17) still pins `rusqlite ^0.38` and would pull a SECOND
+# rusqlite (0.38) into the graph next to the workspace's `rusqlite 0.40`. That
+# trips `cargo deny check bans` (`multiple-versions = "deny"`), and LD-37
+# (deny.toml:127-131) FORBIDS ever adding `rusqlite` to `skip`/`skip-tree`. So
+# the crate uses generic `deadpool` (no rusqlite edge — deps are
+# `deadpool-runtime`, `num_cpus`, `tokio` feature `sync`; verified crates.io
+# 2026-08-13) with a ~30-line local `Manager` over our own rusqlite-0.40
+# `Connection` — same "deadpool, default size 4" per LD-14's intent, one
+# canonical rusqlite. Features: `managed` (the pool) + `rt_tokio_1`
+# (`Runtime::Tokio1`); native async-fn-in-traits, so NOT `async-trait`. When
+# rusqlite is next bumped, re-check whether `deadpool-sqlite` has caught up and
+# the local Manager can be retired (deferred-work coupling). MIT OR Apache-2.0.
+deadpool = { version = "0.13", default-features = false, features = ["managed", "rt_tokio_1"] }
+# Story 3.5 (LD-14/LD-16): async runtime primitives for the connection model —
+# `mpsc`/`oneshot` (the writer channel), `spawn_blocking` (every blocking
+# rusqlite call runs off the async worker threads, LD-16), and `Runtime::Tokio1`
+# for deadpool. LD-37 canonical-version invariant: `tokio` must NEVER be added
+# to `[bans].skip`/`skip-tree` (deny.toml:127-131, architecture.md:1168). Pin
+# `"1"` so Cargo UNIFIES on the `tokio 1.52.3` already in Cargo.lock (Tauri's) —
+# no second tokio major. `default-features = false` here; each consumer opts
+# into exactly the features it needs. MIT.
+tokio = { version = "1", default-features = false }
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

@@ -20,16 +20,29 @@
 //! writing the `_schema_version` audit row. `apply_schema` stays a DDL-only
 //! primitive for schema-shape tests.
 //!
+//! [`IndexPool`] is the LD-14 reader pool: four `deadpool`-managed connections,
+//! each carrying the LD-4 PRAGMAs and a `busy_timeout`, handed out through the
+//! blocking-safe [`IndexPool::interact`] helper (rusqlite runs on
+//! `spawn_blocking`, LD-16). [`IndexWriter`] is the single dedicated writer
+//! task (LD-7 Single Writer Rule at the index layer): it owns the one writable,
+//! migrated connection and serializes every write submitted through
+//! [`IndexWriter::execute`] over an `mpsc` channel. The query API those reads
+//! and writes will carry is a later concern and not provided here.
+//!
 //! The index is a derived artifact (LD-13, LD-17): every row here is
 //! reconstructible from the Vault's .org files.
 
 pub mod connection;
 pub mod error;
 pub mod migrations;
+pub mod pool;
+pub mod writer;
 
 pub use connection::{apply_schema, open};
 pub use error::IndexError;
 pub use migrations::migrate;
+pub use pool::IndexPool;
+pub use writer::{IndexUpdate, IndexWriter};
 
 /// The version-1 schema DDL, verbatim from `migrations/0001_initial-schema.sql`.
 ///
