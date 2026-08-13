@@ -16,8 +16,22 @@ thiserror = { workspace = true }
 # Story 3.4 (LD-12/LD-13): forward-only migration runner. Version-locked to
 # rusqlite 0.40 at the workspace entry; no cargo features (NOT `from-directory`).
 rusqlite_migration = { workspace = true }
+# Story 3.5 (LD-14): generic deadpool for the reader pool + a local `Manager`
+# over our rusqlite-0.40 `Connection` (NOT `deadpool-sqlite` — see workspace
+# entry). `managed` + `rt_tokio_1` come from the workspace features.
+deadpool = { workspace = true }
+# Story 3.5 (LD-14/LD-16): `sync` = mpsc/oneshot for the single-writer channel;
+# `rt` = `spawn_blocking` so every blocking rusqlite call runs off the async
+# worker threads.
+tokio = { workspace = true, features = ["sync", "rt"] }
 
 [dev-dependencies]
+# Story 3.5 (AC4): `#[tokio::test(flavor = "multi_thread")]` in
+# tests/concurrency.rs needs the macros + a multi-thread runtime so the pool
+# reads and `spawn_blocking` bodies genuinely overlap. Additive with the normal
+# `sync`/`rt` features above, so the test binary gets sync + rt + macros +
+# rt-multi-thread.
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 # Story 3.3 (AC6): temp-file DB fixtures. The PRAGMA assertions need a real
 # on-disk database (`:memory:` cannot enter WAL), so every test gets its own
 # TempDir. Dev-only. Declared via the workspace pin, matching orgsidian-core and

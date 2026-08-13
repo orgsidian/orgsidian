@@ -48,4 +48,31 @@ pub enum IndexError {
         expected: String,
         actual: String,
     },
+
+    /// Building the reader connection pool failed (LD-14). Wraps `deadpool`'s
+    /// `BuildError` as a message: the workspace supplies the runtime
+    /// explicitly (`Runtime::Tokio1`), so this is a construction-time failure a
+    /// caller can surface but cannot retry.
+    #[error("failed to build the reader connection pool: {0}")]
+    PoolBuild(String),
+
+    /// Acquiring a connection from the reader pool failed (LD-14): the pool
+    /// timed out or was closed, or the connection's `create`/`recycle` errored.
+    ///
+    /// `deadpool`'s `PoolError<IndexError>` NESTS this very type as its inner
+    /// error, so it is flattened to a message here rather than wrapped with
+    /// `#[from]` — a `#[from]` would make `IndexError` recursively contain
+    /// itself. The nested cause, when present, is rendered into the string.
+    #[error("failed to acquire a connection from the reader pool: {0}")]
+    PoolAcquire(String),
+
+    /// The dedicated writer task is unavailable, so a write could not be
+    /// serialized through it (LD-7/LD-14). Either the task has shut down (its
+    /// channel `Receiver` was dropped, so the send failed) or the per-write
+    /// acknowledgement was canceled before the result arrived.
+    ///
+    /// Deliberately distinct from [`IndexError::Sqlite`] so a caller can tell
+    /// "the index writer is gone" from "the write ran and its SQL failed".
+    #[error("index writer unavailable: {0}")]
+    WriterUnavailable(String),
 }
