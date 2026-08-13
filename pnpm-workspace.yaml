@@ -10,3 +10,12 @@ packages:
 allowBuilds:
   '@swc/core': true
   esbuild: true
+# Transitive-dependency security overrides. pnpm 11.x reads `overrides` from
+# here, not from package.json's `pnpm.overrides` (same relocation as the
+# settings note above). nanoid <3.3.17 is GHSA-2v37-7h3g-55p8 (high: custom
+# generators loop indefinitely when size is zero); it arrives only via
+# @tailwindcss/vite > vite > postcss, which needs the nanoid 3.x line (4.x+
+# are ESM-only). The scoped selector patches just the vulnerable range and
+# leaves any future major untouched.
+overrides:
+  nanoid@<3.3.17: ^3.3.17
