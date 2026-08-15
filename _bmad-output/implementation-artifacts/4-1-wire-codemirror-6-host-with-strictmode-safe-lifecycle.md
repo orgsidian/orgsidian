@@ -123,3 +123,20 @@ Minimal extension set for 4.1: an editable, source-faithful view only (e.g. `Edi
 
 - CM6 packages (exact-pinned), `happy-dom` devDep, and the new `test` script.
   [`package.json:22`](../../shell-ui/package.json#L22)
+
+## Review Findings
+
+_Code review 2026-08-15 — 4 layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Triage: 1 decision-needed, 4 patch, 1 defer, 14 dismissed. All 4 layers returned findings; none failed._
+
+**Patch**
+
+- [x] [Review][Patch] (applied 2026-08-15) `Editor.test.tsx` suite never runs in CI — the new `"test": "vitest run"` script is unwired. `pnpm a11y` only runs `test:contrast` (scoped to `src/themes/contrast.test.ts`), and `pnpm build` merely typechecks the file. The 238-line StrictMode leak-safety suite therefore gives zero enforced merge-gate protection. **Resolved (decision, 2026-08-15): wire `pnpm --filter shell-ui test` into `pr.yml` in this PR** (user chose to close the gap now rather than defer to a follow-up) [.github/workflows/pr.yml]
+- [x] [Review][Patch] (applied 2026-08-15) Rust happy-path test proves consistency, not byte-faithfulness for non-ASCII — fixture `0002_map.org` is pure ASCII (0 non-ASCII bytes) and asserts `read_to_string` against itself (tautological); add a multibyte/emoji (and ideally CRLF) case to actually exercise the byte-faithful claim [crates/orgsidian-shell-app/src/lib.rs:258]
+- [x] [Review][Patch] (applied 2026-08-15) `open_file` doc-comment says "read a `.org` file's ... text" but the command reads any path/type — soften the wording (extension enforcement is correctly deferred to the vault-scoping story) [crates/orgsidian-shell-app/src/lib.rs:126]
+- [x] [Review][Patch] (applied 2026-08-15) `happy-dom` added with caret `^20.11.2`; project version policy pins new deps to latest stable (CM6 deps are exact-pinned). Pin exact for consistency [shell-ui/package.json:68]
+- [x] [Review][Patch] (applied 2026-08-15) PR #157 title omits `, closes #32` — convention is `<type>(<scope>): <subject> (Story X.Y, closes #N)` [gh PR #157 title]
+
+**Defer**
+
+- [x] [Review][Defer] Error path renders no user-visible message (only a `data-error` attribute) and there is no loading state — full error/loading UI belongs to the routed-surface story; pairs with the a11y deferral [shell-ui/src/components/editor/Editor.tsx:104] — deferred, out of scope for the unwired primitive
+- [x] [Review][Defer] Re-confirmed (already tracked): `open_file` unscoped (arbitrary host path, symlink-follow, unbounded read, non-regular files) and missing editor-region a11y (role/aria-label) — both already in `deferred-work.md` under the Story 4.1 entries; no new action.

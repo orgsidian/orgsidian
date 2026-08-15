@@ -123,8 +123,11 @@ async fn designate_and_scan(
     Ok(handle)
 }
 
-/// Story 4.1: read a `.org` file's full UTF-8 source text for the CodeMirror 6
-/// editor host. Both IO failures (missing path, permission denied) and
+/// Story 4.1: read a file's full UTF-8 source text (a `.org` file in normal
+/// use) for the CodeMirror 6 editor host. The `path` is taken verbatim — this
+/// command does no extension check nor Vault-root scoping yet; that hardening is
+/// deferred to the file-open UI story (see `deferred-work.md`). Both IO failures
+/// (missing path, permission denied) and
 /// invalid-UTF-8 content collapse to [`OrgError::Io`]: `read_to_string` already
 /// surfaces non-UTF-8 bytes as an `InvalidData` IO error, so one mapping covers
 /// the whole matrix. The returned buffer is byte-faithful — CM6 owns it; it is
@@ -301,5 +304,25 @@ mod tests {
             "non-UTF-8 content should map to OrgError::Io, got {err:?}"
         );
         // `dir` drops here, removing the temp file.
+    }
+
+    #[test]
+    fn open_file_is_byte_faithful_for_multibyte_utf8() {
+        // Prove the "byte-faithful" contract for non-ASCII: multibyte UTF-8
+        // (accents, CJK, emoji) and a CR must survive the round-trip unchanged.
+        // Writing our own fixture keeps the assertion honest — the shared
+        // fixture is pure ASCII, so comparing it against `read_to_string` only
+        // proves the function agrees with itself.
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("multibyte.org");
+        let source = "* Café ☕ 東京\n- naïve façade 🚀\r\nτίτλος\n";
+        std::fs::write(&path, source).expect("write multibyte fixture");
+
+        let got = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+            .expect("open_file should read multibyte UTF-8");
+
+        // Byte-for-byte identical — no Unicode normalization, no CRLF rewrite.
+        assert_eq!(got, source);
+        assert_eq!(got.as_bytes(), source.as_bytes());
     }
 }

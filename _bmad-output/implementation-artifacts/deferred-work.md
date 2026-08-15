@@ -302,3 +302,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/4-1-wire-codemirror-6-host-with-strictmode-safe-lifecycle.md`
   summary: Add accessibility affordances to the editor region (role/aria-label, focus semantics) when the CM6 host becomes a routed surface.
   evidence: The Story 4.1 container div has no role/accessible name; the project hard-gates a11y (contrast matrix + axe). Proper a11y is best designed with the real mounting/routing context (mode switcher / editor screen, Epic 4 later stories), not on the unwired primitive.
+
+## Deferred from: code review of story-4-1 (2026-08-15)
+
+- **Editor error path renders no user-visible message; no loading state** [`shell-ui/src/components/editor/Editor.tsx:104`] [LOW] — on a rejected `openFile` the host only writes `data-error` on an otherwise-empty container (no message, no retry affordance), and while the load is pending it renders a bare empty div (no spinner/placeholder). The spec matrix requires only "empty/error state, no crash", which `data-error` satisfies, and the component is unwired (test-only consumer), so a real error/loading UI is best designed with the routed mounting context. Owner: the file-open UI / routed-surface story (pairs with the Story 4.1 a11y deferral above). Surfaced by the Blind Hunter review layer.
