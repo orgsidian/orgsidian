@@ -15,9 +15,13 @@
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test --grep @a11y",
     "e2e:setup": "playwright install chromium",
-    "a11y": "pnpm run test:contrast && pnpm run test:e2e:a11y"
+    "a11y": "pnpm run test:contrast && pnpm run test:e2e:a11y",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@codemirror/commands": "6.10.4",
+    "@codemirror/state": "6.7.1",
+    "@codemirror/view": "6.43.8",
     "@lingui/core": "^6.0.1",
     "@lingui/react": "^6.0.1",
     "@tailwindcss/vite": "^4.3.0",
@@ -61,6 +65,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^4.0.0",
     "eslint-plugin-lingui": "^0.13.1",
+    "happy-dom": "^20.11.2",
     "jsdom": "^29.1.1",
     "typescript": "~5.8.3",
     "vite": "^7.3.6",

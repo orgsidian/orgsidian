@@ -71,6 +71,7 @@ fn export_bindings() {
         "kind",
         "designateVault",
         "cancelIndexScan",
+        "openFile",
         "export const events",
         "indexProgress",
         "index-progress",
