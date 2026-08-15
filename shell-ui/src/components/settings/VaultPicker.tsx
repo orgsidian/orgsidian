@@ -35,7 +35,16 @@ export function VaultPicker() {
 
   async function chooseVault() {
     setError(null);
-    const selection = await open({ directory: true, multiple: false });
+
+    let selection: string | string[] | null;
+    try {
+      selection = await open({ directory: true, multiple: false });
+    } catch (err) {
+      // A dialog-plugin failure must surface via the same alert path, not a
+      // swallowed unhandled rejection.
+      setError(errorMessage(err));
+      return;
+    }
     if (typeof selection !== "string") {
       // Dialog dismissed (null) — leave the current phase untouched.
       return;

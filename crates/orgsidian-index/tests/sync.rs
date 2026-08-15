@@ -245,3 +245,41 @@ fn unstamped_sqlite_file_classifies_as_foreign() {
         IndexIdentity::Foreign
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn migrated_but_unstamped_index_classifies_as_ours_unstamped() {
+    use orgsidian_index::{inspect_index_file, IndexIdentity};
+
+    let (_dir, db_path) = temp_db();
+    // A first-time creation interrupted AFTER the migration (user_version → 1,
+    // full schema) but BEFORE `stamp_application_id`: application_id stays 0.
+    // This must be recoverable (re-stamp), not refused as foreign.
+    let writer = IndexWriter::spawn(&db_path).expect("spawn writer"); // migrates only, no stamp
+    writer.shutdown().await; // release the file before the read-only inspect
+
+    assert_eq!(
+        inspect_index_file(&db_path).expect("inspect ours-unstamped"),
+        IndexIdentity::OursUnstamped
+    );
+}
+
+#[test]
+fn foreign_file_at_user_version_1_without_our_schema_stays_foreign() {
+    use orgsidian_index::{inspect_index_file, IndexIdentity};
+
+    let (_dir, db_path) = temp_db();
+    // A foreign SQLite file that merely happens to carry user_version = 1 must
+    // NOT be adopted as ours — the full-schema check is what separates it from
+    // a genuine half-created (migrated-but-unstamped) index.
+    let conn = rusqlite::Connection::open(&db_path).expect("open plain sqlite");
+    conn.execute_batch("CREATE TABLE not_ours (x);")
+        .expect("seed foreign schema");
+    conn.pragma_update(None, "user_version", 1)
+        .expect("bump user_version");
+    drop(conn);
+
+    assert_eq!(
+        inspect_index_file(&db_path).expect("inspect foreign"),
+        IndexIdentity::Foreign
+    );
+}

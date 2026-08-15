@@ -17,7 +17,7 @@
 
 use std::path::Path;
 
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
 use crate::error::IndexError;
 
@@ -34,6 +34,25 @@ pub const APPLICATION_ID: i32 = 0x4F52_4753;
 /// the migration runner, Story 3.4). LD-13's drift check compares against it.
 const EXPECTED_USER_VERSION: i32 = 1;
 
+/// The tables a fully-migrated version-1 Orgsidian index must contain. Used to
+/// distinguish a half-created index of ours (migrated but not yet
+/// `application_id`-stamped — see [`IndexIdentity::OursUnstamped`]) from a
+/// foreign SQLite file that merely happens to carry `user_version = 1`. A
+/// foreign file would need this exact table set to be misclassified as ours,
+/// which no unrelated tool produces.
+const REQUIRED_TABLES: &[&str] = &[
+    "_schema_version",
+    "files",
+    "headlines",
+    "tags",
+    "properties",
+    "clock_entries",
+    "links",
+    "vault_meta",
+    "fts_headlines",
+    "fts_content",
+];
+
 /// The three states the identity guard distinguishes — the concrete form of
 /// LD-13's rebuild triggers (architecture.md:402).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,8 +60,15 @@ pub enum IndexIdentity {
     /// Our index at the expected schema version: open it (incrementally
     /// re-scan; unchanged files are skipped → the cached fast-open).
     Ours,
-    /// `application_id` is not ours (`0` or some other tool's magic): this is
-    /// not our file. Refuse rather than rewrite someone else's database.
+    /// Our schema at the expected `user_version`, but `application_id` is still
+    /// the SQLite default (`0`): a first-time creation whose stamp step was
+    /// interrupted (a crash between the migration and [`stamp_application_id`]).
+    /// Recoverable — the caller re-stamps and opens it, rather than refusing as
+    /// [`Foreign`](IndexIdentity::Foreign) and stranding a valid index.
+    OursUnstamped,
+    /// `application_id` is not ours (`0` or some other tool's magic) and the
+    /// file does not carry our schema: this is not our file. Refuse rather than
+    /// rewrite someone else's database.
     Foreign,
     /// Our index, but at a different `user_version` than expected: an LD-13
     /// drift signal → drop and rebuild from the vault's `.org` files.
@@ -72,13 +98,44 @@ pub fn check_index_identity(conn: &Connection) -> Result<IndexIdentity, IndexErr
     let application_id: i32 = conn.pragma_query_value(None, "application_id", |row| row.get(0))?;
     let user_version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
 
-    Ok(if application_id != APPLICATION_ID {
-        IndexIdentity::Foreign
-    } else if user_version == EXPECTED_USER_VERSION {
-        IndexIdentity::Ours
-    } else {
-        IndexIdentity::VersionMismatch
-    })
+    if application_id == APPLICATION_ID {
+        return Ok(if user_version == EXPECTED_USER_VERSION {
+            IndexIdentity::Ours
+        } else {
+            IndexIdentity::VersionMismatch
+        });
+    }
+
+    // `application_id` is the SQLite default (0) but the file otherwise carries
+    // our full schema at the expected version: a first-time creation whose
+    // stamp step was interrupted (crash between migrate and stamp). Recoverable
+    // — the caller re-stamps. A foreign file with a coincidental
+    // `user_version == 1` fails the full-schema check and stays `Foreign`.
+    if application_id == 0 && user_version == EXPECTED_USER_VERSION && has_our_schema(conn)? {
+        return Ok(IndexIdentity::OursUnstamped);
+    }
+
+    Ok(IndexIdentity::Foreign)
+}
+
+/// Whether `conn`'s database carries every table in [`REQUIRED_TABLES`] — the
+/// signal that an `application_id`-less file is a half-created Orgsidian index
+/// rather than an unrelated SQLite file.
+fn has_our_schema(conn: &Connection) -> Result<bool, IndexError> {
+    for table in REQUIRED_TABLES {
+        let present = conn
+            .query_row(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                [table],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some();
+        if !present {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 /// Classify the database file at `db_path` WITHOUT mutating it. Opens

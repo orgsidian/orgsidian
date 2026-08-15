@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-08-13 (story 3.6 -> review)
+# last_updated: 2026-08-15 (story 3.6 -> done)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-19
-last_updated: 2026-08-13 (story 3.6 -> review)
+last_updated: 2026-08-15 (story 3.6 -> done)
 project: orgsidian
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   3-3-define-sqlite-schema-locked-pragmas: done
   3-4-wire-rusqlite-migration-forward-only-migrations: done
   3-5-add-deadpool-sqlite-reader-pool-dedicated-writer-task: done
-  3-6-vault-designation-ui-initial-scan-progress: review
+  3-6-vault-designation-ui-initial-scan-progress: done
   3-7-ship-orgsidian-index-init-rebuild-stats-integrity-cli-commands: backlog
   epic-3-retrospective: optional
 

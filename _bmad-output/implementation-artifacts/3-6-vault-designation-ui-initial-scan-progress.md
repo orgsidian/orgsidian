@@ -1,6 +1,6 @@
 # Story 3.6: Vault designation UI + initial scan progress
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -293,3 +293,35 @@ Implemented the full five-crate write-path + designation surface:
 
 - 2026-08-13 — Implemented (bmad-dev-story). Five-crate write-path + FR-15 designation surface delivered: `orgsidian-index` parser-agnostic transactional sync engine (structural FTS `'delete'` pairing) + `application_id` identity guard; `orgsidian-vault` `.org` discovery + path canonicalization + orphan-temp wiring; `orgsidian-core` scan orchestrator (incremental, cancellable, checkpoint-batched) + `designate_vault`; two Tauri commands + first specta event `IndexProgress`; `shell-ui` VaultPicker + non-modal progress. All gates green (fmt/clippy/build/test/deny; shell-ui build/i18n/vitest); 1000-file scan ~388ms. Deferred-work cluster resolved (FTS staleness/rowid-reuse, application_id guard, path-identity canonicalization, orphan-temp wiring, writer-channel bulk calibration, non-UTF-8 skip). Status → review.
 - 2026-08-13 — Story created (bmad-create-story). Maintainer decisions at creation: (1) **single comprehensive story** (honor the epic's single-story definition, not split backend/UI); (2) **cached-open = mechanism only** (idempotent re-designation of an unchanged vault via `application_id` + per-file mtime skip; app-launch auto-open deferred to Epic 6). Central design finding: `orgsidian-index` is a LEAF that cannot depend on `orgsidian-parser` (deny.toml:193), so the `Document`→rows mapping lives in `orgsidian-core`; the index crate ships a parser-agnostic transactional sync API (`upsert_file`/`delete_file` with structural FTS `'delete'`-row pairing) + an `application_id` identity guard. Story absorbs the deferred-work cluster routed to 3.6 (FTS staleness/rowid-reuse, application_id/foreign-file guard, path-identity canonicalization, orphan-temp wiring, writer-channel bulk calibration via per-checkpoint batching, non-UTF-8 skip policy). Status → ready-for-dev.
+
+## Review Findings
+
+_Code review (2026-08-15, bmad-code-review). Two adversarial layers completed: **Edge Case Hunter** + **Acceptance Auditor**. **Blind Hunter did NOT complete** — four consecutive environmental failures (host slept mid-response); its diff-only correctness lens is only partially covered by the Edge Case Hunter's source-level pass. A re-run is recommended when the host stays awake._
+
+### Patch
+
+- [x] [Review][Patch] Interrupted first-time index creation is permanently misclassified as `Foreign` and refused [crates/orgsidian-core/src/index/mod.rs:149-157; crates/orgsidian-index/src/identity.rs] — `IndexWriter::spawn` migrates the fresh DB (`user_version=1`) BEFORE `stamp_application_id` runs in a separate `execute`; a crash between the two leaves `application_id=0, user_version=1` on disk, classified `Foreign` and refused with no recovery. **Resolved decision (2026-08-15): schema-aware guard** — classify `application_id=0 + user_version=1 + structurally-ours schema` (e.g. `_schema_version` at version 1 + the known table set) as an "ours-but-unstamped" state and re-stamp instead of refusing, so a foreign SQLite file that merely has `user_version=1` is still refused.
+- [x] [Review][Patch] `.expect()` in Tauri command code — literal AC5 violation ("no unwrap/expect/panic! in committed non-test command code") [crates/orgsidian-shell-app/src/lib.rs:57,72,73,82]
+- [x] [Review][Patch] Re-designating a vault double-opens a second writer on the same WAL file and bare-drops the old handle without `shutdown().await` [crates/orgsidian-shell-app/src/lib.rs:72; crates/orgsidian-core/src/index/mod.rs:149]
+- [x] [Review][Patch] Unavailable/pre-epoch mtime maps to `0` and is then treated as UNCHANGED on rescan — the doc comment claims the opposite; content edits that keep byte-size constant are silently missed after the first index [crates/orgsidian-core/src/index/scan.rs:326-338]
+- [x] [Review][Patch] Cancel flag is published only AFTER the pre-scan open await (a Cancel during open is lost / flips the previous scan's flag) and is left stale on the `scan_vault(...)?` error path (the clears are unreachable past `?`) [crates/orgsidian-shell-app/src/lib.rs:52-73]
+- [x] [Review][Patch] React `progress` state is never reset between scans — after vault A completes, choosing vault B flashes A's counts (and the "N files unparseable" line) until B's first event lands [shell-ui/src/components/settings/IndexScanProgress.tsx:29]
+- [x] [Review][Patch] `mtime_ns` `as_nanos() as i64` truncating cast has no saturation (wraps to garbage/negative past ~year 2262 or on an absurd future mtime) [crates/orgsidian-core/src/index/scan.rs:336]
+
+### Deferred (out of scope / needs later machinery)
+
+- [x] [Review][Defer] Quarantined files are invisible on cached reopen — `errors=0`, the "N files unparseable" notice vanishes though `quarantined=1` rows persist [crates/orgsidian-core/src/index/scan.rs:166-185] — deferred, needs a quarantine-count read API (Epics 7/8, explicitly out of scope)
+- [x] [Review][Defer] Non-UTF-8 vault ROOT path fails designation AFTER the index is created + stamped (orphan DB left behind, `vault_meta` stored lossy) [crates/orgsidian-core/src/index/mod.rs:159,233-238] — deferred, rare; clean fix is an early reject with a clear message
+- [x] [Review][Defer] AC1 frontend gates `pnpm -C shell-ui lint`/`test` were never run — the npm scripts do not exist (disclosed deviation #2) [shell-ui] — deferred, CI-hardening follow-up
+
+_Dismissed as noise (1): checkpoint interval is a `const` not read from `GlobalSettings` — pre-authorized by Dev Note 7 + Scope Fence (settings frozen), disclosed and filed. Disclosed deviations #1 (vitest alias) and #4 (preamble links) were audited and cleared as genuinely minor — not raised._
+
+### Round 2 — Blind Hunter re-run (2026-08-15)
+
+_The Blind Hunter layer (diff-only correctness, no context) was re-run against the post-patch state after the four earlier host-sleep failures. It confirmed the round-1 fixes hold (mtime saturating cast + None-path, FTS `'delete'` pairing, panic-freedom, React effect cleanup all clean). New findings below; BH#2 duplicates the already-deferred quarantine-visibility item, and BH#7 (`errorMessage` may not unwrap `OrgError`) was dismissed — `OrgError` is `#[serde(tag="kind")]` so `{ kind, reason }` has a flat `reason` and the extractor is correct._
+
+- [x] [Review][Patch] Concurrent/overlapping `designate_vault` invocations bare-drop a live handle + cross-wire the cancel flag [crates/orgsidian-shell-app/src/lib.rs] — **Resolved decision (serialize): `AppState.designating: tauri::async_runtime::Mutex<()>`** held for the whole designation, so a second overlapping call waits until the first has stored/failed its handle (the shutdown-of-previous then sees the real predecessor, never a still-empty slot mid-scan).
+- [x] [Review][Patch] `aria-live` region was inserted into the DOM already-populated (component returned `null` while idle) → the first "indexing" announcement could be missed [shell-ui/src/components/settings/IndexScanProgress.tsx] — now mounted persistently (visually `sr-only` while idle) so the region exists before its first content mutation.
+- [x] [Review][Patch] Dialog `open()` rejection in `chooseVault` was unhandled (outside the try/catch) → a plugin failure was swallowed to the console [shell-ui/src/components/settings/VaultPicker.tsx] — now caught and surfaced via the existing `role="alert"` path.
+- [x] [Review][Defer] One SQL error in a 100-file checkpoint rolls back the whole batch and aborts the scan (LD-42 atomic-checkpoint tradeoff) [crates/orgsidian-core/src/index/scan.rs] — deferred, documented tradeoff (parse failures already quarantine, not abort; only a genuine SQL/CHECK error trips it)
+- [x] [Review][Defer] `inspect_index_file` opens WAL read-only; any inspection `Err` maps to drop+rebuild, so a transient read-only-open failure on our own index silently triggers a full rebuild [crates/orgsidian-index/src/identity.rs; crates/orgsidian-core/src/index/mod.rs] — deferred, fail-safe (rebuild is free derived data); a future refinement could distinguish transient-lock from corrupt

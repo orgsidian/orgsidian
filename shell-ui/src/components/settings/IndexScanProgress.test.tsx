@@ -68,9 +68,12 @@ function emit(payload: Payload) {
 }
 
 describe("IndexScanProgress", () => {
-  it("renders nothing while idle", () => {
+  it("shows no text while idle but keeps a persistent aria-live region", () => {
     render("idle");
     expect(container.textContent).toBe("");
+    // The live region must already exist in the DOM before the first
+    // "indexing" update, or screen readers may miss that announcement.
+    expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();
   });
 
   it("shows live N-of-M counts and a Cancel button while indexing", () => {

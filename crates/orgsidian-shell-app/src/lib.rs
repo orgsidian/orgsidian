@@ -29,14 +29,31 @@ pub struct IndexProgress {
 }
 
 /// Story 3.6 (AC5): managed state holding the active vault's index handle (the
-/// LD-14 writer + reader pool) and the current scan's cancel flag. Both behind
-/// a `std::sync::Mutex` — neither guard is ever held across an `.await` (the
-/// handle is stored only AFTER the scan completes; the cancel flag is stored
-/// before and read by [`cancel_index_scan`]).
+/// LD-14 writer + reader pool) and the current scan's cancel flag, plus a
+/// designation lock that serializes overlapping [`designate_vault`] calls.
+///
+/// `index`/`cancel` are `std::sync::Mutex` whose guards are never held across an
+/// `.await` (trivial take/store/read). `designating` is an ASYNC mutex, held for
+/// the whole of one designation: Tauri runs async commands in parallel and
+/// `AppState` is process-wide, so without it two overlapping designations could
+/// open two writers on one WAL file and cross-wire the cancel flag (the UI's
+/// per-window button-disable is not a backend serialization guarantee).
 #[derive(Default)]
 pub struct AppState {
+    designating: tauri::async_runtime::Mutex<()>,
     index: Mutex<Option<IndexHandle>>,
     cancel: Mutex<Option<Arc<AtomicBool>>>,
+}
+
+/// Lock a managed-state mutex, tolerating poisoning. The critical sections are
+/// trivial assignments/reads never held across an `.await`, so a poisoned lock
+/// (a panic while held, which cannot happen here) still yields usable state
+/// rather than propagating a panic out of a `#[tauri::command]` (AC5: no
+/// `unwrap`/`expect`/`panic!` in command code).
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Designate `path` as the active vault (FR-15): open/guard the derived index,
@@ -49,14 +66,49 @@ async fn designate_vault(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> OrgResult<()> {
-    let handle = orgsidian_core::designate_vault(Path::new(&path)).await?;
+    // Serialize concurrent/overlapping designations: a second invocation waits
+    // here until this one has stored (or failed to store) its handle, so the
+    // shutdown-of-previous below always sees the real predecessor rather than a
+    // still-empty slot mid-scan (which would open a second writer on one WAL).
+    let _designating = state.designating.lock().await;
 
-    // A fresh cancel flag for THIS scan, published before the scan starts so
-    // `cancel_index_scan` can flip it mid-run.
+    // Close any previously-designated vault's index BEFORE opening the next one
+    // (drain the writer + drop the pool via the async `shutdown`, never a bare
+    // drop) so two writers never share one WAL file when the same vault is
+    // re-designated, and no connection outlives its handle.
+    let previous = lock(&state.index).take();
+    if let Some(previous) = previous {
+        previous.shutdown().await;
+    }
+
+    // A fresh cancel flag for THIS designation, published BEFORE the open+scan
+    // so a Cancel click during vault-open (canonicalize/spawn/migrate) is
+    // honored by the scan's first checkpoint check rather than lost.
     let cancel = Arc::new(AtomicBool::new(false));
-    *state.cancel.lock().expect("cancel mutex poisoned") = Some(Arc::clone(&cancel));
+    *lock(&state.cancel) = Some(Arc::clone(&cancel));
 
-    orgsidian_core::scan_vault(&handle, &cancel, |progress| {
+    // Run open + scan, then clear the now-finished scan's flag on EVERY exit
+    // path (success or error) — the `?` below must not leave a stale flag.
+    let outcome = designate_and_scan(&path, &app, &cancel).await;
+    *lock(&state.cancel) = None;
+
+    let handle = outcome?;
+    // Retain the handle for later reads.
+    *lock(&state.index) = Some(handle);
+    Ok(())
+}
+
+/// Open + guard the derived index for `path` and run the initial scan, emitting
+/// [`IndexProgress`] every checkpoint. Returns the handle on success; the caller
+/// owns cancel-flag lifecycle and managed-state storage.
+async fn designate_and_scan(
+    path: &str,
+    app: &tauri::AppHandle,
+    cancel: &AtomicBool,
+) -> OrgResult<IndexHandle> {
+    let handle = orgsidian_core::designate_vault(Path::new(path)).await?;
+
+    orgsidian_core::scan_vault(&handle, cancel, |progress| {
         // Emitting is best-effort: a failed emit (no listener / window gone)
         // must not abort the scan.
         let _ = IndexProgress {
@@ -64,14 +116,11 @@ async fn designate_vault(
             total: progress.total,
             errors: progress.errors,
         }
-        .emit(&app);
+        .emit(app);
     })
     .await?;
 
-    // Retain the handle for later reads; drop the now-finished scan's flag.
-    *state.index.lock().expect("index mutex poisoned") = Some(handle);
-    *state.cancel.lock().expect("cancel mutex poisoned") = None;
-    Ok(())
+    Ok(handle)
 }
 
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
@@ -79,7 +128,7 @@ async fn designate_vault(
 #[tauri::command]
 #[specta::specta]
 fn cancel_index_scan(state: tauri::State<'_, AppState>) -> OrgResult<()> {
-    if let Some(flag) = state.cancel.lock().expect("cancel mutex poisoned").as_ref() {
+    if let Some(flag) = lock(&state.cancel).as_ref() {
         flag.store(true, Ordering::Release);
     }
     Ok(())

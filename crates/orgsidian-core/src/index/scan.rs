@@ -125,7 +125,7 @@ pub async fn scan_vault(
             continue;
         };
 
-        let (mtime_ns, size_bytes) = match file_stat(file) {
+        let (mtime_opt, size_bytes) = match file_stat(file) {
             Ok(stat) => stat,
             Err(err) => {
                 batch.push(SyncOp::Quarantine {
@@ -155,14 +155,24 @@ pub async fn scan_vault(
             }
         };
 
+        // A file with no usable mtime is never trusted as "unchanged" — the
+        // incremental key would be unreliable, so it is always re-indexed. The
+        // stored mtime falls back to `0` (never matched against a `None` probe).
+        let mtime_ns = mtime_opt.unwrap_or(0);
+
         // Incremental skip: an unchanged file is neither re-read, re-parsed, nor
-        // re-written. Read through the pool (a single indexed lookup).
-        let probe_path = rel_path.clone();
-        let unchanged = index
-            .pool()
-            .interact(move |conn| file_is_unchanged(conn, &probe_path, mtime_ns, size_bytes))
-            .await
-            .map_err(index_err)?;
+        // re-written. Read through the pool (a single indexed lookup). Skipped
+        // only when the mtime is known.
+        let unchanged = if let Some(mtime_ns) = mtime_opt {
+            let probe_path = rel_path.clone();
+            index
+                .pool()
+                .interact(move |conn| file_is_unchanged(conn, &probe_path, mtime_ns, size_bytes))
+                .await
+                .map_err(index_err)?
+        } else {
+            false
+        };
         if unchanged {
             skipped += 1;
             maybe_checkpoint(
@@ -323,17 +333,21 @@ fn read_and_parse(path: &Path) -> ReadParse {
     }
 }
 
-/// Filesystem `(mtime_ns, size_bytes)` for the incremental-skip key. A missing
-/// or pre-epoch mtime maps to `0` (the file is then never "unchanged", so it is
-/// always re-indexed — the safe direction).
-fn file_stat(path: &Path) -> std::io::Result<(i64, i64)> {
+/// Filesystem `(mtime_ns, size_bytes)` for the incremental-skip key. The mtime
+/// is `None` when the platform/filesystem cannot report a usable modified time
+/// (missing or pre-epoch); the caller then never treats the file as
+/// "unchanged", so it is always re-read + re-indexed — the safe direction.
+///
+/// A far-future mtime whose nanoseconds exceed `i64::MAX` (past ~year 2262, or
+/// a filesystem reporting garbage metadata) saturates to `i64::MAX` rather than
+/// wrapping to a negative value.
+fn file_stat(path: &Path) -> std::io::Result<(Option<i64>, i64)> {
     let metadata = std::fs::metadata(path)?;
     let size_bytes = metadata.len() as i64;
     let mtime_ns = metadata
         .modified()
         .ok()
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|delta| delta.as_nanos() as i64)
-        .unwrap_or(0);
+        .map(|delta| i64::try_from(delta.as_nanos()).unwrap_or(i64::MAX));
     Ok((mtime_ns, size_bytes))
 }

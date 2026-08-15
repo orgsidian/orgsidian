@@ -123,6 +123,12 @@ pub async fn open_index(vault_root: &Path, db_path: &Path) -> Result<IndexHandle
     if db_path.exists() {
         match inspect_index_file(db_path) {
             Ok(IndexIdentity::Ours) => {}
+            Ok(IndexIdentity::OursUnstamped) => {
+                // First-time creation was interrupted after the migration but
+                // before the `application_id` stamp (a crash between the two).
+                // Re-stamp below — do NOT drop the file or refuse it.
+                fresh = true;
+            }
             Ok(IndexIdentity::VersionMismatch) => {
                 // LD-13 drift → drop + rebuild (the rebuild is just a fresh
                 // scan, free because the scan engine exists here).
