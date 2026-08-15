@@ -7,7 +7,7 @@
 // items — it is `include!`-shared with `build.rs` (the crate is not built
 // yet at build-script time), so anything else here breaks the build script.
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 /// Top-level `orgsidian` CLI arguments.
@@ -46,4 +46,45 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Create, rebuild, inspect, or verify a vault's derived SQLite index.
+    #[command(long_about = "Manage a vault's derived SQLite index (LD-49 \
+        rebuild-index, LD-27 CLI-as-integration-surface).\n\n\
+        `init` creates and populates the index (incremental on re-run); \
+        `rebuild` drops it and re-scans from scratch; `stats` prints counts, \
+        schema version, and the last-indexed timestamp; `integrity` runs the \
+        SQLite and FTS5 consistency checks and exits non-zero on any failure. \
+        The index lives outside the vault, under the OS data dir (or the \
+        ORGSIDIAN_DATA_DIR override). Each subcommand takes a <vault> path and \
+        an optional --json flag that emits a single JSON object with no \
+        progress noise.")]
+    Index {
+        /// The index operation to run.
+        #[command(subcommand)]
+        action: IndexAction,
+    },
+}
+
+/// The `orgsidian index` operations (Story 3.7). Each carries the shared
+/// [`IndexArgs`] (`<vault>` positional + `--json`).
+#[derive(Subcommand)]
+pub enum IndexAction {
+    /// Create + populate the index for a vault (incremental on re-run).
+    Init(IndexArgs),
+    /// Drop the index and fully rebuild it from scratch.
+    Rebuild(IndexArgs),
+    /// Print index statistics: counts, schema version, last-indexed time.
+    Stats(IndexArgs),
+    /// Verify index integrity (SQLite + FTS5 consistency checks).
+    Integrity(IndexArgs),
+}
+
+/// Shared arguments for every `orgsidian index` subcommand.
+#[derive(Args)]
+pub struct IndexArgs {
+    /// Path to the vault root directory to index.
+    pub vault: PathBuf,
+    /// Emit a single JSON object to stdout instead of human-readable text
+    /// (no progress lines).
+    #[arg(long)]
+    pub json: bool,
 }

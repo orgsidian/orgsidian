@@ -14,16 +14,18 @@ pub mod scan;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 
 use orgsidian_index::{
-    inspect_index_file, set_vault_meta, stamp_application_id, IndexError, IndexIdentity, IndexPool,
-    IndexWriter,
+    check_integrity, collect_stats, inspect_index_file, set_vault_meta, stamp_application_id,
+    IndexError, IndexIdentity, IndexPool, IndexWriter,
 };
 use orgsidian_vault::VaultError;
 
 use crate::error::OrgError;
 use crate::settings;
 
+pub use orgsidian_index::{IndexStats, IntegrityCheck, IntegrityReport};
 pub use scan::{scan_vault, ScanOutcome, ScanProgress};
 
 /// The `vault_meta` key under which the canonical vault root is recorded.
@@ -176,21 +178,136 @@ pub async fn open_index(vault_root: &Path, db_path: &Path) -> Result<IndexHandle
     })
 }
 
+/// Collect read-only aggregate [`IndexStats`] for `vault_root`'s derived index
+/// (`orgsidian index stats`). Resolves the DB path, refuses if the index is
+/// absent, and reads through a fresh [`IndexPool`] — it does **not** call
+/// [`open_index`], which drop-rebuilds on a version mismatch (wrong for
+/// inspection), and it never spawns the writer.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault (run `index init` first) or a read fails.
+pub async fn index_stats(vault_root: &Path) -> Result<IndexStats, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(collect_stats).await.map_err(index_err)
+}
+
+/// Run the read-only [`IntegrityReport`] checks for `vault_root`'s derived index
+/// (`orgsidian index integrity`). Same read-only posture as [`index_stats`]:
+/// resolve, refuse if absent, open just an [`IndexPool`]. A non-`ok` report is
+/// a successful `Ok(report)` (the caller maps it to a non-zero exit); only a
+/// resolve/absent/read failure is an `Err`.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault or a check cannot be run.
+pub async fn index_integrity(vault_root: &Path) -> Result<IntegrityReport, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(check_integrity).await.map_err(index_err)
+}
+
+/// Explicitly rebuild `vault_root`'s derived index from scratch (LD-13 /
+/// LD-49 / `orgsidian index rebuild`): delete the existing DB (plus its
+/// `-wal`/`-shm` sidecars), then re-run the fresh create + full [`scan_vault`]
+/// — reusing Story 3.6 wholesale. `cancel` and `progress` are forwarded to the
+/// scan; the handle is shut down cleanly before returning.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Io`] if a DB
+/// file cannot be removed; [`OrgError::Index`] if the fresh create or scan
+/// fails.
+pub async fn rebuild_index(
+    vault_root: &Path,
+    cancel: &AtomicBool,
+    progress: impl FnMut(ScanProgress),
+) -> Result<ScanOutcome, OrgError> {
+    let canonical = orgsidian_vault::canonicalize_vault_root(vault_root).map_err(vault_err)?;
+    let db_path = default_index_db_path(&canonical)?;
+    remove_index_files(&db_path)?;
+
+    let handle = designate_vault(vault_root).await?;
+    let outcome = scan_vault(&handle, cancel, progress).await;
+    handle.shutdown().await;
+    outcome
+}
+
+/// The [`OrgError::Index`] returned when `stats`/`integrity` find no index for
+/// the target vault — it names the missing path and points at `index init`,
+/// and (per the read-only contract) is raised *without* creating a DB.
+fn index_absent_err(db_path: &Path) -> OrgError {
+    OrgError::Index {
+        reason: format!(
+            "no index found at {} — run `orgsidian index init <vault>` first",
+            db_path.display()
+        ),
+    }
+}
+
+/// The environment override for the index base directory (Story 3.7). When set,
+/// its value is used verbatim as the directory the derived index databases live
+/// in, in place of `<data-dir>/orgsidian/index`. It makes the CLI integration
+/// tests hermetic (`dirs::data_dir()` is not XDG-overridable on macOS) and
+/// doubles as a CI / power-user knob for relocating the index store.
+const DATA_DIR_ENV: &str = "ORGSIDIAN_DATA_DIR";
+
 /// Resolve the derived index DB path for a canonical vault root:
-/// `<data-dir>/orgsidian/index/index-<hash>.sqlite3`. The filename hashes the
-/// canonical root (stable FNV-1a) so re-designating the same folder finds the
-/// same DB (LD-40; the index lives outside the vault).
+/// `<index-base-dir>/index-<hash>.sqlite3`. The filename hashes the canonical
+/// root (stable FNV-1a) so re-designating the same folder finds the same DB
+/// (LD-40; the index lives outside the vault). The base directory is
+/// [`index_base_dir`] (the `ORGSIDIAN_DATA_DIR` override or
+/// `<data-dir>/orgsidian/index`).
 fn default_index_db_path(canonical_root: &Path) -> Result<PathBuf, OrgError> {
+    let dir = index_base_dir()?;
+    std::fs::create_dir_all(&dir).map_err(|err| OrgError::Io {
+        reason: format!("failed to create index directory {}: {err}", dir.display()),
+    })?;
+    Ok(dir.join(vault_db_filename(canonical_root)))
+}
+
+/// The directory the derived index databases live in: the [`DATA_DIR_ENV`]
+/// override used verbatim when set, else `<os-data-dir>/orgsidian/index`
+/// (LD-40 — the index lives OUTSIDE the vault).
+fn index_base_dir() -> Result<PathBuf, OrgError> {
+    if let Some(override_dir) = std::env::var_os(DATA_DIR_ENV) {
+        return Ok(PathBuf::from(override_dir));
+    }
     let mut dir = dirs::data_dir().ok_or_else(|| OrgError::Io {
         reason: "OS data directory is unavailable (no usable HOME/APPDATA)".to_string(),
     })?;
     for part in INDEX_SUBDIR {
         dir.push(part);
     }
-    std::fs::create_dir_all(&dir).map_err(|err| OrgError::Io {
-        reason: format!("failed to create index directory {}: {err}", dir.display()),
-    })?;
-    Ok(dir.join(vault_db_filename(canonical_root)))
+    Ok(dir)
+}
+
+/// Resolve the derived index DB path for `vault_root` **without opening,
+/// creating, or provisioning any directory** for it. Canonicalizes the vault
+/// root (so it must exist) and returns where its index would live. Used by the
+/// read-only `stats`/`integrity` commands to locate — and then existence-check
+/// — the index; it deliberately does NOT go through [`default_index_db_path`]
+/// (which `create_dir_all`s the base dir for the write paths), so a `stats`/
+/// `integrity` run that then refuses via [`index_absent_err`] leaves the
+/// filesystem untouched.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the vault root cannot be resolved; [`OrgError::Io`]
+/// only if the OS data directory itself is unavailable (never from directory
+/// creation — this function creates nothing).
+pub fn resolve_index_db_path(vault_root: &Path) -> Result<PathBuf, OrgError> {
+    let canonical = orgsidian_vault::canonicalize_vault_root(vault_root).map_err(vault_err)?;
+    Ok(index_base_dir()?.join(vault_db_filename(&canonical)))
 }
 
 /// Stable per-vault DB filename: FNV-1a 64-bit over the canonical root's bytes.

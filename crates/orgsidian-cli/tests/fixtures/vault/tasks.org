@@ -1,0 +1,6 @@
+* TODO Write the integration tests :dev:
+SCHEDULED: <2026-06-10 Wed>
+Remember to cover the malformed-file path.
+
+* DONE Ship the index CLI
+CLOSED: [2026-06-09 Tue 14:00]

@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH orgsidian-index-rebuild 1  "rebuild " 
+.SH NAME
+orgsidian\-index\-rebuild \- Drop the index and fully rebuild it from scratch
+.SH SYNOPSIS
+\fBorgsidian index rebuild\fR [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIVAULT\fR> 
+.SH DESCRIPTION
+Drop the index and fully rebuild it from scratch
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Emit a single JSON object to stdout instead of human\-readable text (no progress lines)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIVAULT\fR>
+Path to the vault root directory to index
