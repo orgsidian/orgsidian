@@ -218,6 +218,14 @@ jobs:
       - name: i18n catalog drift check
         run: pnpm --filter shell-ui i18n:check
 
+      # Story 4.1 (review): run the shell-ui Vitest suite so component unit
+      # tests gate merges — notably the CM6 host StrictMode leak-safety suite,
+      # which `pnpm build` only typechecks and the a11y gate's scoped
+      # `test:contrast` never collects. `vitest run` picks up all
+      # src/**/*.test.{ts,tsx} per vitest.config.ts.
+      - name: shell-ui unit tests (Vitest)
+        run: pnpm --filter shell-ui test
+
       # Slot reservations (filled by later stories — do NOT pre-implement
       # the bodies here; the supporting deps + scaffolding don't exist yet):
       # Story 1.17: pnpm a11y hard gate (contrast + axe-core + keyboard scenarios) lands here

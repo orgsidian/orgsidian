@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use orgsidian_core::{IndexHandle, Result as OrgResult};
+use orgsidian_core::{IndexHandle, OrgError, Result as OrgResult};
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, collect_events, Builder, ErrorHandlingMode, Event};
@@ -123,6 +123,25 @@ async fn designate_and_scan(
     Ok(handle)
 }
 
+/// Story 4.1: read a file's full UTF-8 source text (a `.org` file in normal
+/// use) for the CodeMirror 6 editor host. The `path` is taken verbatim — this
+/// command does no extension check nor Vault-root scoping yet; that hardening is
+/// deferred to the file-open UI story (see `deferred-work.md`). Both IO failures
+/// (missing path, permission denied) and
+/// invalid-UTF-8 content collapse to [`OrgError::Io`]: `read_to_string` already
+/// surfaces non-UTF-8 bytes as an `InvalidData` IO error, so one mapping covers
+/// the whole matrix. The returned buffer is byte-faithful — CM6 owns it; it is
+/// never duplicated into state nor persisted apart from the `.org` file.
+#[tauri::command]
+#[specta::specta]
+async fn open_file(path: String) -> OrgResult<String> {
+    tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|err| OrgError::Io {
+            reason: format!("failed to read {path}: {err}"),
+        })
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -148,7 +167,12 @@ fn cancel_index_scan(state: tauri::State<'_, AppState>) -> OrgResult<()> {
 pub fn build_specta() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .error_handling(ErrorHandlingMode::Throw)
-        .commands(collect_commands![ping, designate_vault, cancel_index_scan])
+        .commands(collect_commands![
+            ping,
+            designate_vault,
+            cancel_index_scan,
+            open_file
+        ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`.
         .events(collect_events![IndexProgress])
@@ -218,4 +242,87 @@ pub fn run() -> tauri::Result<()> {
             Ok(())
         })
         .run(tauri::generate_context!())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// Resolve a shared `.org` fixture (repo-root relative). Same `../..` hop
+    /// out of the crate manifest dir the parser tests use.
+    fn fixture(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("tests")
+            .join("fixtures")
+            .join("vault-corpus")
+            .join("extracted")
+            .join(name)
+    }
+
+    #[test]
+    fn open_file_reads_existing_fixture() {
+        let path = fixture("0002_map.org");
+        let expected = std::fs::read_to_string(&path).expect("fixture must be readable");
+
+        let got = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+            .expect("open_file should read the fixture");
+
+        // Byte-faithful: the command returns exactly the file's content.
+        assert_eq!(got, expected);
+        assert!(!got.is_empty(), "fixture should not be empty");
+    }
+
+    #[test]
+    fn open_file_missing_path_is_io_error() {
+        let path = fixture("this-file-does-not-exist.org");
+
+        let err = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+            .expect_err("a missing path must error, not read");
+
+        assert!(
+            matches!(err, OrgError::Io { .. }),
+            "missing path should map to OrgError::Io, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn open_file_non_utf8_is_io_error() {
+        // `read_to_string` surfaces non-UTF-8 bytes as an `InvalidData` IO
+        // error, so the whole non-UTF-8 matrix row collapses to `OrgError::Io`.
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("invalid.org");
+        std::fs::write(&path, [0xFF, 0xFE, 0xFF]).expect("write invalid bytes");
+
+        let err = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+            .expect_err("non-UTF-8 content must error, not partially render");
+
+        assert!(
+            matches!(err, OrgError::Io { .. }),
+            "non-UTF-8 content should map to OrgError::Io, got {err:?}"
+        );
+        // `dir` drops here, removing the temp file.
+    }
+
+    #[test]
+    fn open_file_is_byte_faithful_for_multibyte_utf8() {
+        // Prove the "byte-faithful" contract for non-ASCII: multibyte UTF-8
+        // (accents, CJK, emoji) and a CR must survive the round-trip unchanged.
+        // Writing our own fixture keeps the assertion honest — the shared
+        // fixture is pure ASCII, so comparing it against `read_to_string` only
+        // proves the function agrees with itself.
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("multibyte.org");
+        let source = "* Café ☕ 東京\n- naïve façade 🚀\r\nτίτλος\n";
+        std::fs::write(&path, source).expect("write multibyte fixture");
+
+        let got = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+            .expect("open_file should read multibyte UTF-8");
+
+        // Byte-for-byte identical — no Unicode normalization, no CRLF rewrite.
+        assert_eq!(got, source);
+        assert_eq!(got.as_bytes(), source.as_bytes());
+    }
 }

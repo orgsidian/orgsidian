@@ -23,6 +23,10 @@ tauri-plugin-opener = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 orgsidian-core = { workspace = true }
+# Story 4.1: async file I/O for `open_file` so the read never blocks the Tokio
+# executor Tauri runs commands on (`fs` feature only — the runtime itself is
+# Tauri's).
+tokio = { workspace = true, features = ["fs"] }
 # Story 1.18 (LD-40): structured logging for the bootstrap smoke that proves the
 # settings store wire is live. Facade only; subscriber wiring stays as Tauri
 # plugin-log's job (LD-35).
@@ -43,3 +47,8 @@ tauri-plugin-window-state = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
+
+[dev-dependencies]
+# Story 4.1: `open_file` unit tests write a temp file with invalid UTF-8 bytes
+# to prove the non-UTF-8 → `OrgError::Io` matrix row; tempfile handles cleanup.
+tempfile = { workspace = true }
