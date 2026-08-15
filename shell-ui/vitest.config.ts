@@ -1,4 +1,6 @@
 /// <reference types="vitest" />
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -9,7 +11,15 @@ import { defineConfig } from 'vitest/config';
  *
  * Implements NFR-9 / LD-58.
  */
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+  // Mirror the `@` → `src` alias from vite.config.ts so component tests can
+  // resolve the same `@/…` imports the app uses (Story 3.6: first component
+  // unit test that imports through the alias).
+  resolve: {
+    alias: { '@': path.resolve(rootDir, './src') },
+  },
   test: {
     environment: 'jsdom',
     globals: false,

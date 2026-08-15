@@ -66,6 +66,16 @@ orgsidian-core = { path = "crates/orgsidian-core", version = "0.0.0" }
 # `{ workspace = true }`. Same `version + path` pattern as `orgsidian-core`
 # above to keep `cargo deny check bans` happy.
 orgsidian-vault = { path = "crates/orgsidian-vault", version = "0.0.0" }
+# Story 3.6 (LD-37 / FR-15 / FR-17): THIRD cross-crate LEAF edge — from
+# `orgsidian-core` to the index LEAF, following the `orgsidian-vault` and
+# `orgsidian-parser` precedents above. The LEAF graph rule at deny.toml:193-194
+# lists `orgsidian-core` as the ONLY permitted wrapper of `orgsidian-index`, so
+# the workspace entry exists so `orgsidian-core` can consume it via
+# `{ workspace = true }`. The edge lands now because 3.6 is the first story that
+# turns real `.org` files into index rows (the scan orchestrator wires
+# parser → index inside core — Dev Note 1). Same `version + path` pattern to
+# keep `cargo deny check bans` happy.
+orgsidian-index = { path = "crates/orgsidian-index", version = "0.0.0" }
 # Story 1.18 (LD-40): TOML 1.x for authoritative settings (de)serialization.
 # Story 12.3 may swap the writer to `toml_edit` for format-preserving GUI
 # round-trip; the reader stays on `toml` core. MIT/Apache-2.0.
@@ -160,6 +170,14 @@ deadpool = { version = "0.13", default-features = false, features = ["managed", 
 # no second tokio major. `default-features = false` here; each consumer opts
 # into exactly the features it needs. MIT.
 tokio = { version = "1", default-features = false }
+# Story 3.6 (FR-15 / LD-42): recursive directory iterator for the vault's
+# `.org` discovery walk (`orgsidian-vault/src/path.rs`). `walkdir 2.5.0` is
+# ALREADY in `Cargo.lock` transitively, so pinning `"2"` UNIFIES the graph on
+# it — no new crate download, no duplicate major (`cargo tree -i walkdir` shows
+# a single version after this direct edge is added). Consumed by
+# `orgsidian-vault` only (the walk lives there); NOT added to `orgsidian-core`,
+# which reaches the walk through the vault. MIT/Unlicense (allowlist-compatible).
+walkdir = "2"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

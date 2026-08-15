@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { commands } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
+import { VaultPicker } from "@/components/settings/VaultPicker";
 
 export const Route = createFileRoute("/_layout/today")({
   component: TodayPlaceholder,
@@ -26,6 +27,11 @@ function TodayPlaceholder() {
         </Button>
       </div>
       <p className="mt-3 text-sm">{reply}</p>
+
+      {/* Story 3.6: minimal mount for the FR-15 Vault designation surface.
+          Story 6.2 / 11.1 place the real picker in the onboarding/settings
+          flow; this placeholder route hosts it until then. */}
+      <VaultPicker />
     </main>
   );
 }

@@ -6,7 +6,13 @@
 //! (the `io::Result<()>` surface from Story 1.9 is upgraded per the Epic 3
 //! AC — `.expect(...)` call sites keep compiling since `VaultError: Debug`).
 //! [`clean_orphan_temp_files`] collects temp residue from dead writers; Story
-//! 3.6 wires it into the Vault-open flow.
+//! 3.6's [`open_vault_root`] wires it into the Vault-open flow (warn-not-fail).
+//!
+//! Story 3.6 ships vault designation ([`path`]): [`canonicalize_vault_root`]
+//! normalizes the root once (the path-identity owner), [`scan_org_files`]
+//! discovers `.org` files deterministically (skipping `.orgsidian/`), and
+//! [`to_rel_path`] defines the vault-relative, `/`-normalized path form the
+//! index keys on (non-UTF-8 names → `None`, skipped by the caller).
 //!
 //! Story 3.2 ships the Dirty Buffer registry alongside: [`DirtyBufferManager`]
 //! tracks which open files hold unsaved edits (LD-7 Single Writer Rule), the
@@ -17,7 +23,9 @@
 pub mod atomic;
 pub mod dirty_buffer;
 pub mod error;
+pub mod path;
 
 pub use atomic::{atomic_write, clean_orphan_temp_files, CleanupReport};
 pub use dirty_buffer::{DirtyBufferManager, SharedDirtyBuffers};
 pub use error::VaultError;
+pub use path::{canonicalize_vault_root, open_vault_root, scan_org_files, to_rel_path};

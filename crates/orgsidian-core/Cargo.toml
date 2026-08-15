@@ -45,6 +45,18 @@ dirs = { workspace = true }
 # parser through core only, per the deny.toml LEAF graph rule. The workspace
 # entry activates the parser's opt-in `serde` feature.
 orgsidian-parser = { workspace = true }
+# Story 3.6 (LD-37 / FR-15 / FR-17): THIRD cross-crate LEAF edge — the scan
+# orchestrator (`src/index/`) is the only place both `parser` and `index` are
+# visible (Dev Note 1): it maps `Document` → the index crate's parser-agnostic
+# `FileIndexInput` and submits the writes. `orgsidian-core` is the sole
+# permitted wrapper of the `orgsidian-index` LEAF (deny.toml:193-194).
+orgsidian-index = { workspace = true }
+# Story 3.6 (LD-16): `spawn_blocking` moves each file's read + `parser::analyze`
+# (CPU-bound) off the async worker threads; the scan awaits the LD-14 writer's
+# `execute` per checkpoint. `rt` carries `spawn_blocking`; the writer/pool
+# futures need no extra feature here. Pinned `"1"` unifies on the workspace
+# tokio (Tauri's) — no second major.
+tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
@@ -57,6 +69,11 @@ fail = { workspace = true, features = ["failpoints"] }
 tempfile = { workspace = true }
 # Story 1.18 (LD-40): property-based round-trip test for the settings schema.
 proptest = { workspace = true }
+# Story 3.6 (AC4): `tests/scan.rs` spawns the LD-14 `IndexWriter` and exercises
+# the reader pool, so it needs `#[tokio::test(flavor = "multi_thread")]` (the
+# writer/pool overlap genuinely, per Story 3.5's `tests/concurrency.rs`
+# precedent) plus the test macros. Additive with the main-dep `rt` feature.
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Story 1.11 (LD-41): workspace-root failure-mode harness + coverage gate live
 # physically at `tests/` (see test-design.md §5.1 — discoverability of the

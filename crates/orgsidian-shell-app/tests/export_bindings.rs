@@ -59,8 +59,23 @@ fn export_bindings() {
     });
 
     // Story 1.4 deferred-work substance: a regression that drops any of these
-    // four anchors from the bindings would have shipped green before today.
-    for anchor in ["export const commands", "ping", "OrgError", "kind"] {
+    // anchors from the bindings would have shipped green before today. Story 3.6
+    // extends the set with the new commands + the FIRST specta event surface
+    // (`events.indexProgress` on the `index-progress` wire name), so a
+    // regression dropping the designation command or the progress event fails
+    // loudly here.
+    for anchor in [
+        "export const commands",
+        "ping",
+        "OrgError",
+        "kind",
+        "designateVault",
+        "cancelIndexScan",
+        "export const events",
+        "indexProgress",
+        "index-progress",
+        "IndexProgress",
+    ] {
         assert!(
             contents.contains(anchor),
             "generated tauri.ts missing anchor `{anchor}` — likely IPC regression. File: {}",
