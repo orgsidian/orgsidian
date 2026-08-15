@@ -1,0 +1,12 @@
+#+TITLE: Notes
+
+Intro prose before the first headline, with a [[https://example.com][link]].
+
+* First headline :work:urgent:
+Some body text mentioning [[id:abc-123][another link]].
+
+** Child headline
+:PROPERTIES:
+:CATEGORY: research
+:END:
+More body text here.

@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH orgsidian-index 1  "index " 
+.SH NAME
+orgsidian\-index \- Create, rebuild, inspect, or verify a vault\*(Aqs derived SQLite index
+.SH SYNOPSIS
+\fBorgsidian index\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Manage a vault\*(Aqs derived SQLite index (LD\-49 rebuild\-index, LD\-27 CLI\-as\-integration\-surface).
+.PP
+`init` creates and populates the index (incremental on re\-run); `rebuild` drops it and re\-scans from scratch; `stats` prints counts, schema version, and the last\-indexed timestamp; `integrity` runs the SQLite and FTS5 consistency checks and exits non\-zero on any failure. The index lives outside the vault, under the OS data dir (or the ORGSIDIAN_DATA_DIR override). Each subcommand takes a <vault> path and an optional \-\-json flag that emits a single JSON object with no progress noise.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.SH SUBCOMMANDS
+.TP
+orgsidian\-index\-init(1)
+Create + populate the index for a vault (incremental on re\-run)
+.TP
+orgsidian\-index\-rebuild(1)
+Drop the index and fully rebuild it from scratch
+.TP
+orgsidian\-index\-stats(1)
+Print index statistics: counts, schema version, last\-indexed time
+.TP
+orgsidian\-index\-integrity(1)
+Verify index integrity (SQLite + FTS5 consistency checks)

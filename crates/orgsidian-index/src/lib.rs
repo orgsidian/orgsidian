@@ -43,8 +43,10 @@
 pub mod connection;
 pub mod error;
 pub mod identity;
+pub mod integrity;
 pub mod migrations;
 pub mod pool;
+pub mod stats;
 pub mod sync;
 pub mod writer;
 
@@ -53,8 +55,10 @@ pub use error::IndexError;
 pub use identity::{
     check_index_identity, inspect_index_file, stamp_application_id, IndexIdentity, APPLICATION_ID,
 };
+pub use integrity::{check_integrity, IntegrityCheck, IntegrityReport};
 pub use migrations::migrate;
 pub use pool::IndexPool;
+pub use stats::{collect_stats, IndexStats};
 pub use sync::{
     delete_file, file_is_unchanged, quarantine_file, set_vault_meta, upsert_file, ClockInput,
     FileIndexInput, HeadlineInput, LinkInput, PreambleInput, SyncOp,

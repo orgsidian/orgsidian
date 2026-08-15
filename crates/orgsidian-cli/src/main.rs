@@ -9,6 +9,7 @@
 //! (deny.toml LEAF graph rule).
 
 mod cli;
+mod index_cmd;
 mod render;
 
 use std::io::Write as _;
@@ -20,6 +21,7 @@ use clap::Parser as _;
 fn main() -> ExitCode {
     match cli::Cli::parse().command {
         cli::Command::Parse { file, json } => run_parse(&file, json),
+        cli::Command::Index { action } => index_cmd::run(action),
     }
 }
 

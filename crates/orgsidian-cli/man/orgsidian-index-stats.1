@@ -1,0 +1,19 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH orgsidian-index-stats 1  "stats " 
+.SH NAME
+orgsidian\-index\-stats \- Print index statistics: counts, schema version, last\-indexed time
+.SH SYNOPSIS
+\fBorgsidian index stats\fR [\fB\-\-json\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fIVAULT\fR> 
+.SH DESCRIPTION
+Print index statistics: counts, schema version, last\-indexed time
+.SH OPTIONS
+.TP
+\fB\-\-json\fR
+Emit a single JSON object to stdout instead of human\-readable text (no progress lines)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fIVAULT\fR>
+Path to the vault root directory to index

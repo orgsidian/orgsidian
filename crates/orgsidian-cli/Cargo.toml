@@ -20,6 +20,11 @@ orgsidian-core = { workspace = true }
 clap = { workspace = true }
 # Story 2.8: `--json` output via `serde_json::to_string_pretty`.
 serde_json = { workspace = true }
+# Story 3.7: the `index` subcommands `block_on` the async `orgsidian-core`
+# index API (writer task + reader pool + the scan's `spawn_blocking`), so the
+# CLI owns the Tokio runtime. `rt-multi-thread` pulls in `rt`; `macros` per the
+# workspace convention. Pinned `"1"` unifies on the workspace tokio.
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [build-dependencies]
 # Story 2.8 (LD-27): build.rs `include!`s src/cli.rs (the crate is not built
@@ -30,3 +35,15 @@ clap_mangen = { workspace = true }
 [dev-dependencies]
 # Story 2.8: CLI integration tests spawn the real `orgsidian` binary.
 assert_cmd = { workspace = true }
+# Story 3.7: `tests/index_cmd.rs` gives each subcommand run its own TempDir
+# index store via the `ORGSIDIAN_DATA_DIR` override, so the assert_cmd runs are
+# hermetic and never touch the OS data dir. Declared via the workspace pin.
+tempfile = { workspace = true }
+# Story 3.7: parse `--json` output to assert on fields (never golden strings).
+serde_json = { workspace = true }
+# Story 3.7: the `integrity` corrupt-index matrix row needs a deterministic,
+# portable corruption. The test opens the just-built index directly and inserts
+# an orphan `tags` row (foreign_keys OFF) so `PRAGMA foreign_key_check` reports a
+# violation — a real, runnable integrity failure. Test-only edge on the canonical
+# workspace `rusqlite 0.40` (no new version, no runtime CLI->index edge).
+rusqlite = { workspace = true }

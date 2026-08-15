@@ -32,4 +32,8 @@ pub use orgsidian_parser as parser;
 // both). Owns Vault designation, the initial-scan engine, and the incremental
 // `Document` → index-row mapping.
 pub mod index;
-pub use index::{designate_vault, open_index, scan_vault, IndexHandle, ScanOutcome, ScanProgress};
+pub use index::{
+    designate_vault, index_integrity, index_stats, open_index, rebuild_index,
+    resolve_index_db_path, scan_vault, IndexHandle, IndexStats, IntegrityCheck, IntegrityReport,
+    ScanOutcome, ScanProgress,
+};

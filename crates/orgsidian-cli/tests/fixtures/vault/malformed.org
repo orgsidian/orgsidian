@@ -1,0 +1,2 @@
+* Headline before bad bytes
+ÿş invalid utf-8 € bytes here
