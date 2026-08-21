@@ -49,6 +49,25 @@ pub use reconcile::{
     RELOAD_NOTICE_DURATION,
 };
 
+// Story 5.5 (LD-7 / FR-16 / NFR-16): the DIRTY-branch block-save fallback — the
+// hub that runs the injected `BlockWithWarning` strategy over the Dirty Buffer,
+// records the block (`PendingConflicts`), gates saves (`save_buffer`), and
+// clears the block (`discard_external_changes`). Core is the only crate the LEAF
+// graph rule lets wrap `orgsidian-vault`, so the shell reaches the vault
+// conflict/pending/atomic surface exclusively through these re-exports.
+pub mod conflict;
+pub use conflict::{
+    discard_external_changes, resolve_dirty_conflict, save_buffer, ConflictNotice,
+    PendingConflicts, SharedPendingConflicts,
+};
+
+// Re-export the vault conflict-strategy + Dirty-Buffer surface the shell needs
+// to construct managed state and inject the active strategy (LEAF façade rule:
+// the shell depends on `orgsidian-core` only, never on `orgsidian-vault`).
+pub use orgsidian_vault::{
+    BlockWithWarning, ConflictStrategy, ResolveConflict, Sha256Hash, SharedDirtyBuffers,
+};
+
 // Story 5.4 (FR-16): re-export the vault's pure cursor-preservation types so the
 // shell and tests name `orgsidian_core::{CursorPosition, CursorOutcome}` rather
 // than reaching into the vault leaf directly.

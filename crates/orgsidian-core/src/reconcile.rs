@@ -177,9 +177,12 @@ pub enum ExternalWriteOutcome {
     /// The buffer was clean — it was reloaded from disk and the index re-synced.
     CleanReload(CleanReload),
     /// The buffer was dirty (or its lock was poisoned). Nothing was written or
-    /// reloaded and the index is untouched — the **SEAM for Story 5.5**, which
-    /// builds the `ConflictState` and runs the injected `BlockWithWarning`
-    /// strategy from here.
+    /// reloaded and the index is untouched. The Story 5.5 consumer —
+    /// [`crate::conflict::resolve_dirty_conflict`] — takes this `path`, builds
+    /// the `ConflictState` from the Dirty Buffer + fresh disk content, runs the
+    /// injected `BlockWithWarning` strategy, records the block, and returns the
+    /// `ConflictDetected` notice. Wiring that call in sits on the (deferred)
+    /// watcher event-consumption loop that also drives the CLEAN branch.
     DirtyConflict { path: PathBuf },
 }
 

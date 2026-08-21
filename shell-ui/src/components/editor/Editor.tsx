@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { commands, type EditorMode } from "@/lib/tauri";
 
+import { ConflictBanner } from "./ConflictBanner";
 import { modeExtensions } from "./editorMode";
 import { sourceFidelity } from "./decorations/sourceFidelity";
 import { createSplitEditor, type SplitSurface } from "./SplitEditor";
@@ -388,6 +389,11 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
       data-editor-mode={modeState}
       data-error={error ?? undefined}
     >
+      {/* Story 5.5 (FR-16): the dirty-buffer external-conflict banner. Renders
+          nothing until a `conflict-detected` event lands for this file; then it
+          surfaces the blocked-save warning + the discard / view-file actions,
+          inline at the top of the editor surface (never a modal — Epic 9). */}
+      <ConflictBanner filePath={filePath} />
       <div
         ref={containerRef}
         className="h-full w-full overflow-auto bg-[var(--org-bg-canvas)] text-[var(--org-fg-default)]"

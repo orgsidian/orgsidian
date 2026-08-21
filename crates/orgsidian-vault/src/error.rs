@@ -36,6 +36,17 @@ pub enum VaultError {
         #[source]
         source: io::Error,
     },
+
+    /// Story 5.5 (FR-16 / NFR-16 Single Writer Rule): a save was refused because
+    /// an external write landed on this file while its buffer held unsaved edits,
+    /// and the resulting conflict has not yet been resolved (the v0.1
+    /// `BlockWithWarning` fallback — the full Merge Dialog is Epic 9). Unlike the
+    /// other variants this is NOT a filesystem failure: nothing was written and
+    /// there is no underlying `io::Error` — the write was deliberately blocked to
+    /// protect unsaved work. The user clears it by discarding the external
+    /// changes (or, in Epic 9, merging), after which the save proceeds.
+    #[error("external write conflict on {path}: save blocked until the conflict is resolved")]
+    ExternalConflict { path: PathBuf },
 }
 
 impl VaultError {
@@ -47,6 +58,10 @@ impl VaultError {
         match self {
             VaultError::Io { source, .. } => source,
             VaultError::RetriesExhausted { source, .. } => source,
+            // No underlying `io::Error` — the write was deliberately blocked, not
+            // attempted. Synthesize one carrying the same message so the escape
+            // hatch stays total for callers whose error type is `io::Error`.
+            other @ VaultError::ExternalConflict { .. } => io::Error::other(other.to_string()),
         }
     }
 }
