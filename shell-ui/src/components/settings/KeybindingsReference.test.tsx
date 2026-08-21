@@ -3,8 +3,13 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { KeybindingsReference } from "./KeybindingsReference";
+import { KeybindingsReference, KeybindingsSettings } from "./KeybindingsReference";
 import { DEFAULT_KEYMAP } from "@/components/editor/keybindings/default";
+import {
+  getKeymapMode,
+  setKeymapMode,
+  __resetKeymapModeForTests,
+} from "@/components/editor/keybindings/keymapMode";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -13,6 +18,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  __resetKeymapModeForTests();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -97,5 +103,110 @@ describe("KeybindingsReference (Story 4.6, FR-5)", () => {
         `missing category ${category}`,
       ).not.toBeNull();
     }
+  });
+
+  it("renders an 'Active' badge only when the set is active", () => {
+    act(() => {
+      root.render(<KeybindingsReference isMac={false} active />);
+    });
+    expect(
+      container.querySelector("[data-badge='active']")?.textContent,
+    ).toContain("Active");
+    act(() => {
+      root.render(<KeybindingsReference isMac={false} active={false} />);
+    });
+    expect(container.querySelector("[data-badge='active']")).toBeNull();
+  });
+});
+
+/** The section (native or Emacs) whose heading contains `title`. */
+function panelByTitle(title: string): HTMLElement | undefined {
+  return [...container.querySelectorAll<HTMLElement>("section")].find((s) =>
+    s.querySelector("h2")?.textContent?.includes(title),
+  );
+}
+
+describe("KeybindingsSettings — Emacs mode toggle + panels (Story 4.7, FR-5)", () => {
+  function renderSettings() {
+    act(() => {
+      root.render(<KeybindingsSettings isMac={false} />);
+    });
+  }
+
+  it("renders BOTH the native and the Emacs reference panels", () => {
+    renderSettings();
+    expect(panelByTitle("Native keybindings")).toBeTruthy();
+    expect(panelByTitle("Emacs mode")).toBeTruthy();
+  });
+
+  it("documents the Emacs chords in Emacs (C-…) notation under the Emacs panel", () => {
+    renderSettings();
+    const emacs = panelByTitle("Emacs mode")!;
+    expect(
+      emacs.querySelector("[data-action='save'] [data-chord]")?.textContent,
+    ).toBe("C-x C-s");
+    expect(
+      emacs.querySelector("[data-action='cycleTodo'] [data-chord]")?.textContent,
+    ).toBe("C-c C-t");
+    expect(
+      emacs.querySelector("[data-action='clockIn'] [data-chord]")?.textContent,
+    ).toBe("C-c C-x C-i");
+  });
+
+  it("defaults to native active (toggle off) and marks the native panel Active", () => {
+    renderSettings();
+    const toggle = container.querySelector<HTMLInputElement>(
+      "[data-testid='emacs-mode-toggle']",
+    );
+    expect(toggle?.checked).toBe(false);
+    expect(getKeymapMode()).toBe("default");
+    expect(
+      panelByTitle("Native keybindings")?.querySelector("[data-badge='active']"),
+    ).not.toBeNull();
+    expect(
+      panelByTitle("Emacs mode")?.querySelector("[data-badge='active']"),
+    ).toBeNull();
+  });
+
+  it("enabling the toggle persists Emacs mode and moves the Active badge", () => {
+    renderSettings();
+    const toggle = container.querySelector<HTMLInputElement>(
+      "[data-testid='emacs-mode-toggle']",
+    )!;
+    // A click flips the checkbox and drives React's controlled onChange.
+    act(() => {
+      toggle.click();
+    });
+    // Set through the shared keymapMode store.
+    expect(getKeymapMode()).toBe("emacs");
+    // Active badge is now on the Emacs panel, not the native one.
+    expect(
+      panelByTitle("Emacs mode")?.querySelector("[data-badge='active']"),
+    ).not.toBeNull();
+    expect(
+      panelByTitle("Native keybindings")?.querySelector("[data-badge='active']"),
+    ).toBeNull();
+  });
+
+  it("reflects an external keymap-mode change (shared store subscription)", () => {
+    renderSettings();
+    act(() => {
+      setKeymapMode("emacs");
+    });
+    const toggle = container.querySelector<HTMLInputElement>(
+      "[data-testid='emacs-mode-toggle']",
+    );
+    expect(toggle?.checked).toBe(true);
+  });
+
+  it("exposes the toggle as an accessible switch with a programmatic label", () => {
+    renderSettings();
+    const toggle = container.querySelector<HTMLInputElement>(
+      "[data-testid='emacs-mode-toggle']",
+    );
+    expect(toggle?.getAttribute("role")).toBe("switch");
+    // The <label htmlFor> associates a visible name with the control.
+    const label = container.querySelector(`label[for='${toggle?.id}']`);
+    expect(label?.textContent).toContain("Emacs keybindings mode");
   });
 });
