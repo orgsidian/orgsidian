@@ -12,6 +12,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { commands, type EditorMode } from "@/lib/tauri";
 
 import { modeExtensions } from "./editorMode";
+import { sourceFidelity } from "./decorations/sourceFidelity";
 import { createSplitEditor, type SplitSurface } from "./SplitEditor";
 
 /**
@@ -43,6 +44,9 @@ const baseEditorExtensions = [
   EditorView.editable.of(true),
   keymap.of(defaultKeymap),
   editorFontTheme,
+  // Mode-independent: find/replace and clipboard operate on the source document
+  // in every mode and in both Split panes (Story 4.3g / FR-3, FR-4).
+  sourceFidelity(),
 ];
 
 /**
@@ -235,7 +239,9 @@ export function Editor({ filePath, ref }: EditorProps) {
       setModeState(mode);
       // Build the persisted surface directly — a file whose stored mode is
       // "split" opens straight into the two-view surface (no single-view flash,
-      // no reload). Every other mode opens the single view.
+      // no reload). Every other mode opens the single view. Find/replace and
+      // clipboard source-fidelity (Story 4.3g) are wired into every view inside
+      // buildSurface, so they apply in single and split surfaces alike.
       buildSurface(mode, source, parent);
     }
 
