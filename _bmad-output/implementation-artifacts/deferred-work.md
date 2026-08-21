@@ -306,3 +306,7 @@
 ## Deferred from: code review of story-4-1 (2026-08-15)
 
 - **Editor error path renders no user-visible message; no loading state** [`shell-ui/src/components/editor/Editor.tsx:104`] [LOW] — on a rejected `openFile` the host only writes `data-error` on an otherwise-empty container (no message, no retry affordance), and while the load is pending it renders a bare empty div (no spinner/placeholder). The spec matrix requires only "empty/error state, no crash", which `data-error` satisfies, and the component is unwired (test-only consumer), so a real error/loading UI is best designed with the routed mounting context. Owner: the file-open UI / routed-surface story (pairs with the Story 4.1 a11y deferral above). Surfaced by the Blind Hunter review layer.
+
+## Deferred from: code review of story-5-1 (2026-08-21)
+
+- **Watcher does not handle inotify-overflow / rescan events** [`crates/orgsidian-watcher/src/watcher.rs`] [LOW] — a raw event with an empty `paths` vector (an inotify queue overflow or FSEvents rescan signal, which means "you may have missed events") arms nothing in `Debouncer::on_event`, so it is silently dropped rather than triggering a resync. Current behavior is a safe no-op (no spurious `FileChanged`), but a dropped overflow can leave the derived index stale. Recovery belongs to the index rebuild/resync path (LD-13), not the detection layer — wire it when the watcher feeds the incremental indexer (Story 5.4) or the rebuild policy. Surfaced by the edge-case-hunter and blind-hunter review layers.
