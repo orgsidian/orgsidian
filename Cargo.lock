@@ -3016,6 +3016,7 @@ version = "0.0.0"
 dependencies = [
  "dirs",
  "fail",
+ "libc",
  "orgsidian-index",
  "orgsidian-parser",
  "orgsidian-vault",

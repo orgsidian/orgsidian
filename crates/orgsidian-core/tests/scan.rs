@@ -103,6 +103,19 @@ async fn indexes_all_valid_files_with_headlines() {
 async fn unreadable_file_is_quarantined_with_no_headlines() {
     use std::os::unix::fs::PermissionsExt;
 
+    // Root bypasses file permission bits, so `chmod 000` still reads back fine
+    // for uid 0 → `bad.org` would index instead of hitting the LD-41 read-failure
+    // quarantine path this test exercises. The scenario is not exercisable as
+    // root, so skip cleanly (the nightly arch-linux cell runs as root in a
+    // container; the hosted non-root cells still assert the quarantine path).
+    if unsafe { libc::geteuid() } == 0 {
+        eprintln!(
+            "[skip] unreadable_file_is_quarantined_with_no_headlines: root bypasses \
+             mode bits, chmod 000 cannot produce an unreadable file"
+        );
+        return;
+    }
+
     let fx = fixture();
     write(&fx.vault_root, "ok.org", "* Fine\n");
     write(&fx.vault_root, "bad.org", "* Cannot read\n");
