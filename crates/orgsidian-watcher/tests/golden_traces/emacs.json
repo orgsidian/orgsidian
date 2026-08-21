@@ -1,0 +1,15 @@
+{
+  "editor": "emacs",
+  "target": "notes.org",
+  "expected_file_changes": 1,
+  "provenance": "hand-authored",
+  "description": "Emacs `save-buffer` with default settings: the `#notes.org#` autosave is discarded, the previous contents are renamed to a `notes.org~` backup, the new `notes.org` is written, and the `.#notes.org` lock file is released. Note `.#notes.org` still ends in `.org` yet must be filtered as an artifact by its `.#` prefix. One logical save; `notes.org` must coalesce to exactly one FileChanged. Offsets are milliseconds from the start of the save burst. Modeled on documented Emacs save/backup/lock mechanics — not a live capture.",
+  "events": [
+    { "offset_ms": 0,  "kind": "remove", "paths": ["#notes.org#"] },
+    { "offset_ms": 2,  "kind": "create", "paths": ["notes.org~"] },
+    { "offset_ms": 2,  "kind": "remove", "paths": ["notes.org"] },
+    { "offset_ms": 5,  "kind": "create", "paths": ["notes.org"] },
+    { "offset_ms": 7,  "kind": "modify", "paths": ["notes.org"] },
+    { "offset_ms": 9,  "kind": "remove", "paths": [".#notes.org"] }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "editor": "vscode",
+  "target": "notes.org",
+  "expected_file_changes": 1,
+  "provenance": "hand-authored",
+  "description": "VS Code atomic save: the new contents are written to a sibling temp file (`notes.org.tmp-a1b2c3`) which is then atomically renamed onto `notes.org`. The rename surfaces as one event listing both paths `[temp, target]`; only `notes.org` is a genuine target. One logical save; `notes.org` must coalesce to exactly one FileChanged. Offsets are milliseconds from the start of the save burst. Modeled on VS Code's atomic write-then-rename save path — not a live capture.",
+  "events": [
+    { "offset_ms": 0, "kind": "create", "paths": ["notes.org.tmp-a1b2c3"] },
+    { "offset_ms": 1, "kind": "modify", "paths": ["notes.org.tmp-a1b2c3"] },
+    { "offset_ms": 3, "kind": "modify", "paths": ["notes.org.tmp-a1b2c3"] },
+    { "offset_ms": 6, "kind": "modify", "paths": ["notes.org.tmp-a1b2c3", "notes.org"] }
+  ]
+}

@@ -3194,6 +3194,8 @@ version = "0.0.0"
 dependencies = [
  "notify",
  "orgsidian-core",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror 1.0.69",
 ]
