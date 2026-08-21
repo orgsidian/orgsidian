@@ -95,7 +95,7 @@ development_status:
   4-3b-todo-state-pill-badges-click-to-cycle: backlog
   4-3c-tag-pill-labels: review
   4-3d-timestamps-as-human-readable-dates-with-hover-for-source: review
-  4-3e-checkbox-toggle-widget-source-mutating-click: backlog
+  4-3e-checkbox-toggle-widget-source-mutating-click: review
   4-3f-link-rendering-as-clickable-underlined-text: backlog
   4-3g-source-position-fidelity-cursor-copy-paste-find-replace: backlog
   4-4-implement-split-editor-mode: backlog
