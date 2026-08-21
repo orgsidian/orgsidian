@@ -35,3 +35,25 @@
 .cm-org-ts-inactive {
   color: var(--org-fg-muted);
 }
+
+/*
+ * Tag pill labels (FR-4 Pseudo-WYSIWYG, Story 4.3c).
+ *
+ * The pill is styled via `--org-accent-tag` per the AC. Like the `cm-org-*`
+ * token colors above, this is kept OUT of `tokens.css` / the LD-58 contrast
+ * gate: `--org-accent-tag` is defined here as a *usage* resolving to an
+ * existing FR-22 token (theme-aware via `--org-fg-muted`), so no new gated
+ * token is introduced. Story 6.7 refines the palette (a dedicated tag accent).
+ */
+.cm-org-tag-pill {
+  --org-accent-tag: var(--org-fg-muted);
+  display: inline-block;
+  margin: 0 0.15em;
+  padding: 0 0.5em;
+  border-radius: 0.75em;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--org-bg-canvas);
+  background-color: var(--org-accent-tag);
+  white-space: nowrap;
+}
