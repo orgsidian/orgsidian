@@ -19,13 +19,30 @@
 //! state Epic 5 will consult to route an external write to auto-reload or the
 //! Merge Dialog (FR-16). It is a pure in-memory type — shared via
 //! [`SharedDirtyBuffers`], never touching the filesystem itself.
+//!
+//! Story 5.3 ships the conflict model + resolution strategy pattern (Party Mode
+//! P0): [`conflict::ConflictState`] models an external-write conflict richly
+//! (ancestor [`hash::Sha256Hash`], external + buffer content, path), and
+//! [`conflict::ResolveConflict`] is the injected `&dyn` strategy
+//! ([`conflict::resolve_with`]) that turns it into a [`conflict::Resolution`].
+//! Both the v0.1 [`conflict::BlockWithWarning`] and the Epic 9
+//! [`conflict::ThreePaneMergeDialog`] strategies ship day-1 so Epic 9 swaps the
+//! variant without rewriting the watcher state machine. Pure in-memory types;
+//! the watcher call-site wiring is the SEAM's consumer, landing in Story 5.4.
 
 pub mod atomic;
+pub mod conflict;
 pub mod dirty_buffer;
 pub mod error;
+pub mod hash;
 pub mod path;
 
 pub use atomic::{atomic_write, clean_orphan_temp_files, CleanupReport};
+pub use conflict::{
+    resolve_with, BlockWithWarning, ConflictState, ConflictStrategy, MergeDecision, Resolution,
+    ResolveConflict, ThreePaneMergeDialog,
+};
 pub use dirty_buffer::{DirtyBufferManager, SharedDirtyBuffers};
 pub use error::VaultError;
+pub use hash::Sha256Hash;
 pub use path::{canonicalize_vault_root, open_vault_root, scan_org_files, to_rel_path};
