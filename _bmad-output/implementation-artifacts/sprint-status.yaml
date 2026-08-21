@@ -92,7 +92,7 @@ development_status:
   4-1-wire-codemirror-6-host-with-strictmode-safe-lifecycle: done
   4-2-implement-raw-editor-mode: review
   4-3a-heading-hierarchy-decorations: review
-  4-3b-todo-state-pill-badges-click-to-cycle: backlog
+  4-3b-todo-state-pill-badges-click-to-cycle: review
   4-3c-tag-pill-labels: review
   4-3d-timestamps-as-human-readable-dates-with-hover-for-source: review
   4-3e-checkbox-toggle-widget-source-mutating-click: review

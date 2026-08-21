@@ -12,6 +12,7 @@ import { headingDecorations } from "./decorations/headings";
 import { tagPillDecorations } from "./decorations/tags";
 import { timestampDecorations } from "./decorations/timestamps";
 import { checkboxDecorations } from "./decorations/checkboxes";
+import { todoBadges } from "./decorations/todoBadges";
 import { orgSyntaxHighlight } from "./orgLanguage";
 
 /**
@@ -26,6 +27,7 @@ function pseudoWysiwygDecorations(): Extension[] {
     tagPillDecorations(),
     timestampDecorations(),
     checkboxDecorations(),
+    todoBadges(),
   ];
 }
 

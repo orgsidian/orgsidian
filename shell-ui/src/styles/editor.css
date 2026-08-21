@@ -74,3 +74,41 @@
   margin: 0;
   accent-color: var(--org-border-focus);
 }
+
+/*
+ * TODO-state pill badges (FR-4, Story 4.3b — Pseudo-WYSIWYG mode).
+ *
+ * The `Decoration.replace` widget from `components/org/TodoStateCycler.ts`.
+ * Color is driven per state by the `--org-accent-{todo,next,done,waiting}`
+ * tokens named in the AC. Those tokens are declared by the Story 6.7 palette;
+ * until then each falls back to an existing FR-22 token so the badge is legible
+ * today without introducing (unannotated) entries into the LD-58 contrast gate.
+ */
+.org-todo-badge {
+  display: inline-block;
+  padding: 0 0.4em;
+  border-radius: 0.5em;
+  font-weight: 700;
+  font-size: 0.85em;
+  line-height: 1.4;
+  cursor: pointer;
+  user-select: none;
+  color: var(--org-bg-canvas);
+  background-color: var(--org-fg-muted);
+}
+
+.org-todo-badge--todo {
+  background-color: var(--org-accent-todo, var(--org-border-focus));
+}
+
+.org-todo-badge--next {
+  background-color: var(--org-accent-next, var(--org-border-focus));
+}
+
+.org-todo-badge--waiting {
+  background-color: var(--org-accent-waiting, var(--org-fg-subtle));
+}
+
+.org-todo-badge--done {
+  background-color: var(--org-accent-done, var(--org-fg-subtle));
+}
