@@ -29,6 +29,12 @@
 //! [`conflict::ThreePaneMergeDialog`] strategies ship day-1 so Epic 9 swaps the
 //! variant without rewriting the watcher state machine. Pure in-memory types;
 //! the watcher call-site wiring is the SEAM's consumer, landing in Story 5.4.
+//!
+//! Story 5.4 ships the clean-buffer reload model in [`reload`]: the pure
+//! cursor-preservation decision ([`reload::decide_cursor`]) and buffer-refresh
+//! plan ([`reload::BufferReload`]) an external write onto a CLEAN buffer
+//! produces (FR-16 auto-reload). Pure in-memory types with a redacting `Debug`;
+//! the `orgsidian-core` reconciler consumes them (reading disk + re-indexing).
 
 pub mod atomic;
 pub mod conflict;
@@ -36,6 +42,7 @@ pub mod dirty_buffer;
 pub mod error;
 pub mod hash;
 pub mod path;
+pub mod reload;
 
 pub use atomic::{atomic_write, clean_orphan_temp_files, CleanupReport};
 pub use conflict::{
@@ -46,3 +53,4 @@ pub use dirty_buffer::{DirtyBufferManager, SharedDirtyBuffers};
 pub use error::VaultError;
 pub use hash::Sha256Hash;
 pub use path::{canonicalize_vault_root, open_vault_root, scan_org_files, to_rel_path};
+pub use reload::{decide_cursor, BufferReload, CursorOutcome, CursorPosition};

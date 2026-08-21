@@ -34,6 +34,22 @@ pub use orgsidian_parser as parser;
 pub mod index;
 pub use index::{
     designate_vault, index_integrity, index_stats, open_index, rebuild_index,
-    resolve_index_db_path, scan_vault, IndexHandle, IndexStats, IntegrityCheck, IntegrityReport,
-    ScanOutcome, ScanProgress,
+    resolve_index_db_path, resync_file, scan_vault, IndexHandle, IndexStats, IntegrityCheck,
+    IntegrityReport, ResyncOutcome, ScanOutcome, ScanProgress,
 };
+
+// Story 5.4 (LD-7 / LD-9 / FR-16): the external-edits reconciler — the hub that
+// consumes a debounced `orgsidian_watcher::FileChanged` and routes it to the
+// vault clean-buffer reload + index re-sync (the CLEAN branch) or the Story 5.5
+// dirty-buffer conflict SEAM. Core is the only crate the LEAF graph rule lets
+// wrap the watcher, vault, and index together.
+pub mod reconcile;
+pub use reconcile::{
+    reconcile_external_write, BufferSnapshot, CleanReload, ExternalWriteOutcome, RELOAD_NOTICE,
+    RELOAD_NOTICE_DURATION,
+};
+
+// Story 5.4 (FR-16): re-export the vault's pure cursor-preservation types so the
+// shell and tests name `orgsidian_core::{CursorPosition, CursorOutcome}` rather
+// than reaching into the vault leaf directly.
+pub use orgsidian_vault::reload::{CursorOutcome, CursorPosition};

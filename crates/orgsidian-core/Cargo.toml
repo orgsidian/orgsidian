@@ -51,12 +51,19 @@ orgsidian-parser = { workspace = true }
 # `FileIndexInput` and submits the writes. `orgsidian-core` is the sole
 # permitted wrapper of the `orgsidian-index` LEAF (deny.toml:193-194).
 orgsidian-index = { workspace = true }
+# Story 5.4 (LD-9 / FR-16): FOURTH cross-crate LEAF edge — the watcher. The
+# `reconcile` module consumes a debounced `orgsidian_watcher::FileChanged` and
+# routes it to the vault reload + index re-sync; the LEAF graph rule
+# (deny.toml) makes core the only crate permitted to wrap the watcher.
+orgsidian-watcher = { workspace = true }
 # Story 3.6 (LD-16): `spawn_blocking` moves each file's read + `parser::analyze`
 # (CPU-bound) off the async worker threads; the scan awaits the LD-14 writer's
 # `execute` per checkpoint. `rt` carries `spawn_blocking`; the writer/pool
 # futures need no extra feature here. Pinned `"1"` unifies on the workspace
 # tokio (Tauri's) — no second major.
-tokio = { workspace = true, features = ["rt"] }
+# Story 5.4 (FR-16): `fs` adds the async `tokio::fs::read_to_string` the
+# reconciler uses to refresh a clean buffer from disk off the worker threads.
+tokio = { workspace = true, features = ["rt", "fs"] }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode

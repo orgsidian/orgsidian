@@ -3097,6 +3097,7 @@ dependencies = [
  "orgsidian-index",
  "orgsidian-parser",
  "orgsidian-vault",
+ "orgsidian-watcher",
  "proptest",
  "serde",
  "serde_json",

@@ -10,6 +10,7 @@
 //!   fresh-stamp, `vault_meta`, `recent_vaults`).
 
 mod map;
+pub mod resync;
 pub mod scan;
 
 use std::ffi::OsString;
@@ -26,6 +27,7 @@ use crate::error::OrgError;
 use crate::settings;
 
 pub use orgsidian_index::{IndexStats, IntegrityCheck, IntegrityReport};
+pub use resync::{resync_file, ResyncOutcome};
 pub use scan::{scan_vault, ScanOutcome, ScanProgress};
 
 /// The `vault_meta` key under which the canonical vault root is recorded.

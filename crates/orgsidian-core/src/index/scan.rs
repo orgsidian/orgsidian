@@ -313,8 +313,10 @@ fn cancelled_outcome(indexed: u32, skipped: u32, errors: u32) -> ScanOutcome {
     }
 }
 
-/// The read + parse outcome for one file.
-enum ReadParse {
+/// The read + parse outcome for one file. `pub(super)` so the single-file
+/// re-sync path ([`super::resync`], Story 5.4) reuses the exact same
+/// read→parse→quarantine mechanism as the initial scan.
+pub(super) enum ReadParse {
     /// Successfully read and analyzed.
     Parsed(crate::parser::semantic::Document),
     /// Read or parse failed (LD-41 quarantine reason).
@@ -323,7 +325,7 @@ enum ReadParse {
 
 /// Read `path` and analyze it. Runs on a blocking thread (LD-16). Read failures
 /// and the parser's defensive errors both become a quarantine reason.
-fn read_and_parse(path: &Path) -> ReadParse {
+pub(super) fn read_and_parse(path: &Path) -> ReadParse {
     match std::fs::read_to_string(path) {
         Ok(content) => match crate::parser::analyze(&content) {
             Ok(document) => ReadParse::Parsed(document),
@@ -341,7 +343,10 @@ fn read_and_parse(path: &Path) -> ReadParse {
 /// A far-future mtime whose nanoseconds exceed `i64::MAX` (past ~year 2262, or
 /// a filesystem reporting garbage metadata) saturates to `i64::MAX` rather than
 /// wrapping to a negative value.
-fn file_stat(path: &Path) -> std::io::Result<(Option<i64>, i64)> {
+///
+/// `pub(super)` so the single-file re-sync path ([`super::resync`], Story 5.4)
+/// reads the same incremental `(mtime_ns, size_bytes)` key the scan writes.
+pub(super) fn file_stat(path: &Path) -> std::io::Result<(Option<i64>, i64)> {
     let metadata = std::fs::metadata(path)?;
     let size_bytes = metadata.len() as i64;
     let mtime_ns = metadata

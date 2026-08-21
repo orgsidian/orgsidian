@@ -76,6 +76,13 @@ orgsidian-vault = { path = "crates/orgsidian-vault", version = "0.0.0" }
 # parser → index inside core — Dev Note 1). Same `version + path` pattern to
 # keep `cargo deny check bans` happy.
 orgsidian-index = { path = "crates/orgsidian-index", version = "0.0.0" }
+# Story 5.4 (LD-9 / FR-16): FOURTH cross-crate LEAF edge — from `orgsidian-core`
+# to the watcher LEAF. The LEAF graph rule (deny.toml `wrappers = ["orgsidian-core"]`
+# on `orgsidian-watcher`) allows ONLY `orgsidian-core` to wrap it, so the
+# reconciler that consumes a debounced `FileChanged` and drives the vault reload
+# + index re-sync must live in core. Same `version + path` pattern as the
+# vault/index/parser entries above to keep `cargo deny check bans` happy.
+orgsidian-watcher = { path = "crates/orgsidian-watcher", version = "0.0.0" }
 # Story 1.18 (LD-40): TOML 1.x for authoritative settings (de)serialization.
 # Story 12.3 may swap the writer to `toml_edit` for format-preserving GUI
 # round-trip; the reader stays on `toml` core. MIT/Apache-2.0.
