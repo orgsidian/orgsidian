@@ -35,7 +35,10 @@ mod todo;
 pub use drawer::{ClockEntry, Drawer, DrawerKind};
 pub use headline::{Headline, Tag};
 pub use link::{Link, LinkKind};
-pub use timestamp::{Delay, DelayKind, Repeater, RepeaterKind, TimeUnit, Timestamp};
+pub use timestamp::{
+    format_planning_timestamp, resolve_date_shortcut, set_planning_timestamp, Delay, DelayKind,
+    PlannedStamp, PlanningEdit, PlanningKind, Repeater, RepeaterKind, TimeUnit, Timestamp,
+};
 pub use todo::{TodoConfig, TodoSequence, TodoState};
 
 use std::ops::Range;

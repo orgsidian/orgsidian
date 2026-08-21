@@ -97,13 +97,13 @@ development_status:
   4-3d-timestamps-as-human-readable-dates-with-hover-for-source: done
   4-3e-checkbox-toggle-widget-source-mutating-click: done
   4-3f-link-rendering-as-clickable-underlined-text: done
-  4-3g-source-position-fidelity-cursor-copy-paste-find-replace: review
-  4-4-implement-split-editor-mode: review
-  4-5-implement-editor-mode-switcher-ui: review
+  4-3g-source-position-fidelity-cursor-copy-paste-find-replace: done
+  4-4-implement-split-editor-mode: done
+  4-5-implement-editor-mode-switcher-ui: done
   4-6-implement-cross-platform-default-keybindings: backlog
   4-7-implement-optional-emacs-keybindings-mode: backlog
-  4-8-implement-schedule-deadline-date-picker: backlog
-  4-9-activate-nightly-memory-soak-gate-ld-43-anticipated-per-party-mode-p1: review
+  4-8-implement-schedule-deadline-date-picker: done
+  4-9-activate-nightly-memory-soak-gate-ld-43-anticipated-per-party-mode-p1: done
   epic-4-retrospective: optional
 
   # Epic 5: External-Edits Co-existence (Safe Fallback)

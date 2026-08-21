@@ -195,6 +195,123 @@ async fn get_editor_mode(
     editor_prefs::read_mode(&app, &vault_root, &file_path)
 }
 
+/// Story 4.8 (FR-9): which planning keyword a `set_scheduled` write targets.
+/// Wire shape `"scheduled" | "deadline"` (camelCase per the project convention),
+/// mapped to the parser's `PlanningKind` inside the command.
+#[derive(Debug, Clone, Copy, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PlanningKind {
+    /// `SCHEDULED:` planning entry.
+    Scheduled,
+    /// `DEADLINE:` planning entry.
+    Deadline,
+}
+
+/// Story 4.8 (FR-9): the date/time the picker (or a typed shortcut) commits.
+/// `date` is either a literal `YYYY-MM-DD` or a relative shortcut (`today`,
+/// `+1d`, `+1w`, …) resolved against `today`; `time` is an optional `HH:MM`.
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+pub struct TimestampInput {
+    /// Literal `YYYY-MM-DD` or a relative shortcut token.
+    pub date: String,
+    /// Optional clock time `HH:MM`.
+    pub time: Option<String>,
+}
+
+/// Story 4.8 (FR-9): a byte-faithful buffer edit — replace `from..to` with
+/// `insert` — the frontend applies as ONE CM6 transaction (LD-26 shared
+/// surface). Offsets are `u32` for the JS wire; a `.org` buffer never
+/// approaches 4 GiB.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+pub struct PlanningEdit {
+    /// Byte offset where the replaced region begins.
+    pub from: u32,
+    /// Byte offset where the replaced region ends.
+    pub to: u32,
+    /// Replacement text.
+    pub insert: String,
+}
+
+/// Map a date/time parse failure (malformed `today`/literal/`HH:MM`) to a
+/// diagnostic `OrgError`. Unreachable from the picker (it sends valid ISO); a
+/// guard against a buggy or hand-crafted caller.
+fn bad_timestamp(reason: String) -> OrgError {
+    OrgError::Parse {
+        file: "<editor-buffer>".to_string(),
+        reason,
+    }
+}
+
+/// Resolve a [`TimestampInput`] into the parser's concrete `PlannedStamp`,
+/// treating `date` as a relative shortcut first (pure-Rust resolver) and
+/// falling back to a literal `YYYY-MM-DD`. `today` (supplied by the frontend as
+/// the user's local date) anchors relative shortcuts, so no server-side clock /
+/// timezone assumption is needed.
+fn resolve_planned(
+    input: &TimestampInput,
+    today: &str,
+) -> OrgResult<orgsidian_core::parser::semantic::PlannedStamp> {
+    use orgsidian_core::parser::chrono::{NaiveDate, NaiveTime};
+    use orgsidian_core::parser::semantic::{resolve_date_shortcut, PlannedStamp};
+
+    let today = NaiveDate::parse_from_str(today, "%Y-%m-%d")
+        .map_err(|err| bad_timestamp(format!("invalid `today` {today:?}: {err}")))?;
+    let date = resolve_date_shortcut(&input.date, today)
+        .or_else(|| NaiveDate::parse_from_str(&input.date, "%Y-%m-%d").ok())
+        .ok_or_else(|| bad_timestamp(format!("unrecognized date {:?}", input.date)))?;
+    let time = match input.time.as_deref() {
+        Some(text) if !text.is_empty() => Some(
+            NaiveTime::parse_from_str(text, "%H:%M")
+                .map_err(|err| bad_timestamp(format!("invalid time {text:?}: {err}")))?,
+        ),
+        _ => None,
+    };
+    Ok(PlannedStamp { date, time })
+}
+
+/// Story 4.8 (FR-9): compute the byte-faithful planning-line edit that sets (or
+/// removes, when `timestamp` is `null`) the SCHEDULED/DEADLINE timestamp on the
+/// headline whose line starts at `headline_id` (its byte offset in `source`).
+///
+/// This is a PURE text transformation: the org-structural work lives in the
+/// parser's `set_planning_timestamp` (byte-faithful, recurring-cookie
+/// preserving, unit-tested there); the command only resolves the wire input and
+/// widens offsets. CM6 remains the buffer owner — the frontend applies the
+/// returned [`PlanningEdit`] as one tagged transaction rather than the backend
+/// mutating any state. Recurring cookies (`+1w`) survive because an existing
+/// same-kind stamp's repeater/delay is carried onto the re-picked date.
+///
+/// The `headlineId`/`timestamp` pair is the epic-4-context contract; `source`,
+/// `kind`, and `today` are the parameters that contract needs in practice (the
+/// backend holds no editor buffer, and relative shortcuts need a reference
+/// date). Never a raw `invoke` — the typed client is the only caller.
+#[tauri::command]
+#[specta::specta]
+async fn set_scheduled(
+    source: String,
+    headline_id: u32,
+    kind: PlanningKind,
+    timestamp: Option<TimestampInput>,
+    today: String,
+) -> OrgResult<PlanningEdit> {
+    use orgsidian_core::parser::semantic::{self, set_planning_timestamp};
+
+    let kind = match kind {
+        PlanningKind::Scheduled => semantic::PlanningKind::Scheduled,
+        PlanningKind::Deadline => semantic::PlanningKind::Deadline,
+    };
+    let planned = match timestamp {
+        Some(input) => Some(resolve_planned(&input, &today)?),
+        None => None,
+    };
+    let edit = set_planning_timestamp(&source, headline_id as usize, kind, planned);
+    Ok(PlanningEdit {
+        from: edit.from as u32,
+        to: edit.to as u32,
+        insert: edit.insert,
+    })
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -226,7 +343,8 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             cancel_index_scan,
             open_file,
             set_editor_mode,
-            get_editor_mode
+            get_editor_mode,
+            set_scheduled
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`.
@@ -379,5 +497,83 @@ mod tests {
         // Byte-for-byte identical — no Unicode normalization, no CRLF rewrite.
         assert_eq!(got, source);
         assert_eq!(got.as_bytes(), source.as_bytes());
+    }
+
+    /// Apply a [`PlanningEdit`] to `source` the way the CM6 transaction does.
+    fn apply(source: &str, edit: &PlanningEdit) -> String {
+        let (from, to) = (edit.from as usize, edit.to as usize);
+        format!("{}{}{}", &source[..from], edit.insert, &source[to..])
+    }
+
+    #[test]
+    fn set_scheduled_resolves_relative_shortcut_via_today() {
+        // Story 4.8: the `+1w` shortcut resolves through the pure-Rust resolver
+        // against the frontend-supplied `today`, then writes a planning line.
+        let source = "* Plan the week\nBody\n".to_string();
+        let edit = tauri::async_runtime::block_on(set_scheduled(
+            source.clone(),
+            0,
+            PlanningKind::Scheduled,
+            Some(TimestampInput {
+                date: "+1w".to_string(),
+                time: None,
+            }),
+            "2026-05-19".to_string(), // Tue
+        ))
+        .expect("set_scheduled should succeed");
+        assert_eq!(
+            apply(&source, &edit),
+            "* Plan the week\nSCHEDULED: <2026-05-26 Tue>\nBody\n"
+        );
+    }
+
+    #[test]
+    fn set_scheduled_writes_literal_deadline_with_time() {
+        let source = "* Ship it\n".to_string();
+        let edit = tauri::async_runtime::block_on(set_scheduled(
+            source.clone(),
+            0,
+            PlanningKind::Deadline,
+            Some(TimestampInput {
+                date: "2026-05-19".to_string(),
+                time: Some("17:30".to_string()),
+            }),
+            "2026-05-19".to_string(),
+        ))
+        .expect("set_scheduled should succeed");
+        assert_eq!(
+            apply(&source, &edit),
+            "* Ship it\nDEADLINE: <2026-05-19 Tue 17:30>\n"
+        );
+    }
+
+    #[test]
+    fn set_scheduled_removes_when_timestamp_null() {
+        let source = "* Task\nSCHEDULED: <2026-05-19 Tue>\nBody\n".to_string();
+        let edit = tauri::async_runtime::block_on(set_scheduled(
+            source.clone(),
+            0,
+            PlanningKind::Scheduled,
+            None,
+            "2026-05-19".to_string(),
+        ))
+        .expect("removal should succeed");
+        assert_eq!(apply(&source, &edit), "* Task\nBody\n");
+    }
+
+    #[test]
+    fn set_scheduled_rejects_malformed_date() {
+        let err = tauri::async_runtime::block_on(set_scheduled(
+            "* Task\n".to_string(),
+            0,
+            PlanningKind::Scheduled,
+            Some(TimestampInput {
+                date: "nonsense".to_string(),
+                time: None,
+            }),
+            "2026-05-19".to_string(),
+        ))
+        .expect_err("a date that is neither a shortcut nor ISO must error");
+        assert!(matches!(err, OrgError::Parse { .. }), "got {err:?}");
     }
 }
