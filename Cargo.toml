@@ -178,6 +178,14 @@ tokio = { version = "1", default-features = false }
 # `orgsidian-vault` only (the walk lives there); NOT added to `orgsidian-core`,
 # which reaches the walk through the vault. MIT/Unlicense (allowlist-compatible).
 walkdir = "2"
+# Nightly fix (arch-linux cell): dev-only `geteuid()` probe used by
+# `orgsidian-core/tests/scan.rs` to skip the chmod-000 quarantine test under
+# root (root bypasses mode bits, so the unreadable-file scenario is not
+# exercisable there — LD-41 quarantine path). `libc 0.2.x` is ALREADY in
+# `Cargo.lock` transitively, so pinning `"0.2"` UNIFIES the graph on it — no new
+# crate, no duplicate major. Consumed only as a `cfg(unix)` dev-dependency of
+# `orgsidian-core`. MIT OR Apache-2.0 (allowlist-compatible).
+libc = "0.2"
 
 # Reserved namespace for future workspace-level cargo-deny metadata (e.g.,
 # per-crate license exceptions). Empty as of Story 1.7 — slot exists so a

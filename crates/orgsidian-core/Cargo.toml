@@ -75,6 +75,12 @@ proptest = { workspace = true }
 # precedent) plus the test macros. Additive with the main-dep `rt` feature.
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
+# Nightly fix (arch-linux cell): `tests/scan.rs` probes `geteuid()` to skip the
+# chmod-000 quarantine test under root (root bypasses mode bits). Unix-gated so
+# no direct `libc` edge lands on the Windows matrix cell. Already in Cargo.lock.
+[target.'cfg(unix)'.dev-dependencies]
+libc = { workspace = true }
+
 # Story 1.11 (LD-41): workspace-root failure-mode harness + coverage gate live
 # physically at `tests/` (see test-design.md §5.1 — discoverability of the
 # cross-cutting failure-mode catalog at top level). The workspace root Cargo.toml
