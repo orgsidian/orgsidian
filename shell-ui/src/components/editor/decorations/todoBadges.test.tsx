@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
  *     keywords are never badged, and no dispatch happens while composing.
  */
 
-import { todoBadges, cycleTodoState, CYCLE_TODO_USER_EVENT, resolveTodoSequence, DEFAULT_TODO_SEQUENCE } from "./todoBadges";
+import { todoBadges, cycleTodoState, cycleTodoAtCursor, CYCLE_TODO_USER_EVENT, resolveTodoSequence, DEFAULT_TODO_SEQUENCE } from "./todoBadges";
 import { TodoStateCycler } from "@/components/org/TodoStateCycler";
 import { Text } from "@codemirror/state";
 
@@ -153,5 +153,45 @@ describe("TodoStateCycler — LD-6 widget recipes", () => {
 
   it("ignoreEvent() returns false so the editor honors the interactive click", () => {
     expect(new TodoStateCycler(spec, noop).ignoreEvent()).toBe(false);
+  });
+});
+
+// Story 4.6 (FR-5): the keyboard command form of the cycle, wired to the
+// default keymap. Shares the same mutation surface + userEvent tag as the pill.
+describe("cycleTodoAtCursor — keyboard command (Story 4.6)", () => {
+  function setCursor(v: EditorView, pos: number) {
+    v.dispatch({ selection: { anchor: pos } });
+  }
+
+  it("advances the keyword on the headline at the cursor via the shared tag", () => {
+    const v = mount("* TODO Buy milk\n");
+    setCursor(v, 8); // inside the title, below the keyword's line
+    captured.length = 0;
+    expect(cycleTodoAtCursor(v)).toBe(true);
+    expect(v.state.doc.toString()).toBe("* NEXT Buy milk\n");
+    expect(captured[captured.length - 1]?.isUserEvent(CYCLE_TODO_USER_EVENT)).toBe(
+      true,
+    );
+  });
+
+  it("walks up to the nearest headline above the cursor", () => {
+    const v = mount("* TODO Parent\nbody line\n");
+    setCursor(v, v.state.doc.line(2).from + 2); // on the body line
+    expect(cycleTodoAtCursor(v)).toBe(true);
+    expect(v.state.doc.line(1).text).toBe("* NEXT Parent");
+  });
+
+  it("inserts the first keyword when the headline has none", () => {
+    const v = mount("* Bare heading\n");
+    setCursor(v, 4);
+    expect(cycleTodoAtCursor(v)).toBe(true);
+    expect(v.state.doc.line(1).text).toBe("* TODO Bare heading");
+  });
+
+  it("returns false (chord falls through) when the cursor is in the preamble", () => {
+    const v = mount("preamble text\n* TODO Later\n");
+    setCursor(v, 3);
+    expect(cycleTodoAtCursor(v)).toBe(false);
+    expect(v.state.doc.line(1).text).toBe("preamble text");
   });
 });

@@ -8,6 +8,7 @@ import {
   ORG_CHECKBOX_CLASS,
   TOGGLE_CHECKBOX_USER_EVENT,
   checkboxDecorations,
+  toggleCheckboxAtCursor,
 } from "./checkboxes";
 
 /**
@@ -177,5 +178,24 @@ describe("CheckboxWidget (LD-6 recipes)", () => {
 
   it("ignoreEvent() returns false (interactive widget)", () => {
     expect(new CheckboxWidget(0, 3, "empty").ignoreEvent()).toBe(false);
+  });
+});
+
+// Story 4.6 (FR-5): the keyboard command form of the toggle, wired to the
+// default keymap. Shares the click path's mutation surface + userEvent tag.
+describe("toggleCheckboxAtCursor — keyboard command (Story 4.6)", () => {
+  it("toggles the checkbox on the cursor line via the shared tag", () => {
+    const { view: v, userEvents } = mount("- [ ] task\n");
+    v.dispatch({ selection: { anchor: 8 } }); // on the checkbox line
+    expect(toggleCheckboxAtCursor(v)).toBe(true);
+    expect(v.state.doc.toString()).toBe("- [X] task\n");
+    expect(userEvents).toContain(TOGGLE_CHECKBOX_USER_EVENT);
+  });
+
+  it("returns false (chord falls through) when the cursor line has no checkbox", () => {
+    const { view: v } = mount("plain paragraph\n");
+    v.dispatch({ selection: { anchor: 3 } });
+    expect(toggleCheckboxAtCursor(v)).toBe(false);
+    expect(v.state.doc.toString()).toBe("plain paragraph\n");
   });
 });

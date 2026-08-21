@@ -204,6 +204,19 @@ function toggleCheckboxAt(view: EditorView, pos: number): boolean {
   return true;
 }
 
+/**
+ * Keyboard-driven checkbox toggle for the line at the main cursor — the command
+ * form of the click-to-toggle widget, wired to the default keymap in Story 4.6
+ * (`keybindings/default.ts`). Delegates to {@link toggleCheckboxAt} at the
+ * cursor position, so the keyboard path and the click path share ONE mutation
+ * surface (FR-24 / LD-26) and the same `input.toggle-checkbox` user-event tag.
+ * Returns `true` when a checkbox toggled (chord handled) and `false` when the
+ * cursor line has none (the chord falls through).
+ */
+export function toggleCheckboxAtCursor(view: EditorView): boolean {
+  return toggleCheckboxAt(view, view.state.selection.main.head);
+}
+
 const checkboxPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;

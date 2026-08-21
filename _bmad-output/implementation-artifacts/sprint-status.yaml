@@ -100,7 +100,7 @@ development_status:
   4-3g-source-position-fidelity-cursor-copy-paste-find-replace: done
   4-4-implement-split-editor-mode: done
   4-5-implement-editor-mode-switcher-ui: done
-  4-6-implement-cross-platform-default-keybindings: backlog
+  4-6-implement-cross-platform-default-keybindings: review
   4-7-implement-optional-emacs-keybindings-mode: backlog
   4-8-implement-schedule-deadline-date-picker: done
   4-9-activate-nightly-memory-soak-gate-ld-43-anticipated-per-party-mode-p1: done
