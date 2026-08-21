@@ -84,7 +84,7 @@ development_status:
   3-4-wire-rusqlite-migration-forward-only-migrations: done
   3-5-add-deadpool-sqlite-reader-pool-dedicated-writer-task: done
   3-6-vault-designation-ui-initial-scan-progress: done
-  3-7-ship-orgsidian-index-init-rebuild-stats-integrity-cli-commands: review
+  3-7-ship-orgsidian-index-init-rebuild-stats-integrity-cli-commands: done
   epic-3-retrospective: optional
 
   # Epic 4: Editor Surface & Org-mode Awareness
@@ -93,7 +93,7 @@ development_status:
   4-2-implement-raw-editor-mode: review
   4-3a-heading-hierarchy-decorations: review
   4-3b-todo-state-pill-badges-click-to-cycle: backlog
-  4-3c-tag-pill-labels: backlog
+  4-3c-tag-pill-labels: review
   4-3d-timestamps-as-human-readable-dates-with-hover-for-source: backlog
   4-3e-checkbox-toggle-widget-source-mutating-click: backlog
   4-3f-link-rendering-as-clickable-underlined-text: backlog
