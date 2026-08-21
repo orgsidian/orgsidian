@@ -76,6 +76,14 @@ interface EditorProps {
    * {@link EditorHandle}.
    */
   ref?: React.Ref<EditorHandle>;
+  /**
+   * Notified whenever the live Editor Mode changes — on the initial
+   * persisted-mode load and on every `setMode`. Lets a parent mirror the mode
+   * into UI state (e.g. to drive `ModeSwitcher`'s active segment) without
+   * duplicating buffer ownership (Story 4.5). Optional and additive: the host
+   * stays the single owner of mode + buffer.
+   */
+  onModeChange?: (mode: EditorMode) => void;
 }
 
 /**
@@ -102,8 +110,14 @@ interface EditorProps {
  * Source and mode reach the frontend only through the typed `commands.*` client
  * (never raw `invoke`, never `plugin-fs`/`plugin-store` directly).
  */
-export function Editor({ filePath, ref }: EditorProps) {
+export function Editor({ filePath, ref, onModeChange }: EditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Latest `onModeChange` in a ref so emitting it never forces the mode-setting
+  // paths (setMode / async load) to depend on the callback identity.
+  const onModeChangeRef = useRef(onModeChange);
+  useEffect(() => {
+    onModeChangeRef.current = onModeChange;
+  });
   const viewRef = useRef<EditorView | null>(null);
   // The live Split surface (two synced views) when the mode is "split", else
   // null. `viewRef` always points at the primary (left/Raw) view so the handle
@@ -175,6 +189,7 @@ export function Editor({ filePath, ref }: EditorProps) {
       setMode(mode: EditorMode) {
         modeRef.current = mode;
         setModeState(mode);
+        onModeChangeRef.current?.(mode);
         const parent = containerRef.current;
         const isSplitNow = splitRef.current !== null;
         const view = viewRef.current;
@@ -237,6 +252,7 @@ export function Editor({ filePath, ref }: EditorProps) {
 
       modeRef.current = mode;
       setModeState(mode);
+      onModeChangeRef.current?.(mode);
       // Build the persisted surface directly — a file whose stored mode is
       // "split" opens straight into the two-view surface (no single-view flash,
       // no reload). Every other mode opens the single view. Find/replace and
