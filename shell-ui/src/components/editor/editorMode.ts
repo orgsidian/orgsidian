@@ -39,8 +39,15 @@ function pseudoWysiwygDecorations(): Extension[] {
  * Org syntax highlighting is present in every mode (the source is always
  * tokenized). Raw mode returns highlighting ONLY — the decoration layer is
  * deliberately excluded, satisfying the Story 4.2 AC "no Pseudo-WYSIWYG
- * decorations are rendered". Pseudo-WYSIWYG and Split add the decoration layer
- * on top of the same highlighting.
+ * decorations are rendered". Pseudo-WYSIWYG adds the decoration layer on top of
+ * the same highlighting.
+ *
+ * Split mode (Story 4.4) is NOT a single extension set: it is a two-view
+ * surface built by `SplitEditor.createSplitEditor`, whose left pane uses
+ * `modeExtensions("raw")` and right pane uses `modeExtensions("pseudoWysiwyg")`.
+ * The `case "split"` here therefore only serves callers that still ask for a
+ * single-view extension set for the mode (it mirrors Pseudo-WYSIWYG, the
+ * decoration-rich pane) — the real 50/50 surface lives in `SplitEditor.ts`.
  */
 export function modeExtensions(mode: EditorMode): Extension {
   const highlight = orgSyntaxHighlight();

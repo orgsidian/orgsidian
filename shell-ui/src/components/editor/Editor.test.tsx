@@ -57,6 +57,7 @@ vi.mock("@codemirror/view", async (importOriginal) => {
 });
 
 // Imported AFTER the mocks are registered.
+import { EditorView } from "@codemirror/view";
 import { Editor, type EditorHandle } from "./Editor";
 import { ORG_TOKEN_CLASS } from "./orgLanguage";
 
@@ -376,5 +377,153 @@ describe("Editor — Raw editor mode (Story 4.2)", () => {
 
     expect(secondRef.current?.mode).toBe("raw");
     expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
+  });
+});
+
+/**
+ * Story 4.4 (FR-3): Split editor mode as driven through the `Editor` host — the
+ * two-view surface, the mode-switch that crosses the Split boundary (rebuild
+ * carrying the live buffer), StrictMode double-mount safety of TWO views, and
+ * per-file persistence.
+ */
+describe("Editor — Split editor mode (Story 4.4)", () => {
+  const rawPane = () =>
+    container.querySelector<HTMLElement>("[data-org-split-pane='raw']");
+  const wysiwygPane = () =>
+    container.querySelector<HTMLElement>(
+      "[data-org-split-pane='pseudoWysiwyg']",
+    );
+
+  it("opens straight into the 50/50 two-view surface when Split is persisted", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue("split");
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+
+    expect(ref.current?.mode).toBe("split");
+    expect(container.querySelector("[data-editor-mode='split']")).not.toBeNull();
+    // Two panes, one buffer: both render the same source.
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+    expect(rawPane()?.textContent).toContain("Heading alpha");
+    expect(wysiwygPane()?.textContent).toContain("Heading alpha");
+    // The handle's primary view is the left (Raw) pane.
+    expect(ref.current?.view).toBe(EditorView.findFromDOM(rawPane()!));
+  });
+
+  it("switches into Split, carrying the live (unsaved) buffer with no reload", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue(null); // opens Pseudo-WYSIWYG (single)
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+
+    // Type an unsaved edit into the single view, then switch to Split.
+    await act(async () => {
+      ref.current?.view?.dispatch({
+        changes: { from: 0, insert: "EDIT " },
+        userEvent: "input.type",
+      });
+    });
+    const openCallsBeforeSwitch = mocks.openFile.mock.calls.length;
+
+    await act(async () => {
+      ref.current?.setMode("split");
+    });
+    await flush();
+
+    expect(ref.current?.mode).toBe("split");
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+    // No reload from disk — the buffer was handed over live.
+    expect(mocks.openFile.mock.calls.length).toBe(openCallsBeforeSwitch);
+    // The unsaved edit survives in BOTH panes (the shared buffer was handed
+    // over live). The prepended "EDIT " lands ahead of the headline star.
+    expect(rawPane()?.textContent).toContain("EDIT * Heading alpha");
+    expect(wysiwygPane()?.textContent).toContain("EDIT * Heading alpha");
+    // Persisted per-file through the typed client.
+    expect(mocks.setEditorMode).toHaveBeenCalledWith("split", "/vault/notes.org");
+  });
+
+  it("edits made in Split write through to the shared buffer from either pane", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue("split");
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+
+    const leftView = EditorView.findFromDOM(rawPane()!);
+    const rightView = EditorView.findFromDOM(wysiwygPane()!);
+    expect(leftView).toBeTruthy();
+    expect(rightView).toBeTruthy();
+
+    await act(async () => {
+      leftView?.dispatch({ changes: { from: 0, insert: "L" } });
+    });
+    expect(rightView?.state.doc.toString()).toBe("L" + SOURCE);
+
+    await act(async () => {
+      rightView?.dispatch({ changes: { from: 0, insert: "R" } });
+    });
+    expect(leftView?.state.doc.toString()).toBe("RL" + SOURCE);
+  });
+
+  it("leaks no view across a StrictMode mount/unmount cycle in Split mode", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue("split");
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <Editor filePath="/vault/notes.org" />
+        </StrictMode>,
+      );
+    });
+    await flush();
+
+    // Exactly one surface survives the StrictMode double-mount → two views.
+    expect(cm.created).toBe(2);
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+
+    await act(async () => {
+      root.unmount();
+    });
+    await flush();
+
+    // Every created view destroyed exactly once — neither pane leaks.
+    expect(cm.destroyed).toBe(cm.created);
+    expect(container.querySelector(".cm-editor")).toBeNull();
+  });
+
+  it("switches back out of Split to a single view, carrying the buffer", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue("split");
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+
+    await act(async () => {
+      ref.current?.setMode("raw");
+    });
+    await flush();
+
+    expect(ref.current?.mode).toBe("raw");
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
+    expect(container.textContent).toContain("Heading alpha");
+    expect(mocks.setEditorMode).toHaveBeenCalledWith("raw", "/vault/notes.org");
   });
 });

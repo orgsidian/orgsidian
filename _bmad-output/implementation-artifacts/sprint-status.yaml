@@ -98,7 +98,7 @@ development_status:
   4-3e-checkbox-toggle-widget-source-mutating-click: done
   4-3f-link-rendering-as-clickable-underlined-text: done
   4-3g-source-position-fidelity-cursor-copy-paste-find-replace: backlog
-  4-4-implement-split-editor-mode: backlog
+  4-4-implement-split-editor-mode: review
   4-5-implement-editor-mode-switcher-ui: backlog
   4-6-implement-cross-platform-default-keybindings: backlog
   4-7-implement-optional-emacs-keybindings-mode: backlog
