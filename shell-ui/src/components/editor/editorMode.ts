@@ -8,16 +8,17 @@ import { type Extension } from "@codemirror/state";
 
 import { type EditorMode } from "@/lib/tauri";
 
+import { headingDecorations } from "./decorations/headings";
 import { orgSyntaxHighlight } from "./orgLanguage";
 
 /**
  * The Pseudo-WYSIWYG decoration/widget layer (headings, TODO pills, tag pills,
  * timestamp/checkbox/link widgets) is built by Stories 4.3a–4.3f and appended
- * here. Empty today — which is exactly why Raw and Pseudo-WYSIWYG differ only
- * by this set, and why Raw is guaranteed decoration-free.
+ * here (Story 4.3a adds heading-hierarchy line decorations). Raw and
+ * Pseudo-WYSIWYG differ only by this set, so Raw stays decoration-free.
  */
 function pseudoWysiwygDecorations(): Extension[] {
-  return [];
+  return [headingDecorations()];
 }
 
 /**
