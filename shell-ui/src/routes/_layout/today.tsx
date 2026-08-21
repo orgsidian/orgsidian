@@ -3,7 +3,7 @@ import { useState } from "react";
 import { commands } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { VaultPicker } from "@/components/settings/VaultPicker";
-import { KeybindingsReference } from "@/components/settings/KeybindingsReference";
+import { KeybindingsSettings } from "@/components/settings/KeybindingsReference";
 
 export const Route = createFileRoute("/_layout/today")({
   component: TodayPlaceholder,
@@ -34,10 +34,11 @@ function TodayPlaceholder() {
           flow; this placeholder route hosts it until then. */}
       <VaultPicker />
 
-      {/* Story 4.6 (FR-5): the Settings → Keybindings reference panel. Hosted on
-          this placeholder settings route until the real Settings flow (Epic 6 /
-          11) provides dedicated navigation. */}
-      <KeybindingsReference className="mt-8" />
+      {/* Story 4.6 + 4.7 (FR-5): Settings → Keybindings — the reference panels
+          (native + Emacs) plus the opt-in Emacs-mode toggle. Hosted on this
+          placeholder settings route until the real Settings flow (Epic 6 / 11)
+          provides dedicated navigation. */}
+      <KeybindingsSettings className="mt-8" />
     </main>
   );
 }

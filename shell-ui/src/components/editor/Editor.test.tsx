@@ -60,6 +60,10 @@ vi.mock("@codemirror/view", async (importOriginal) => {
 import { EditorView } from "@codemirror/view";
 import { Editor, type EditorHandle } from "./Editor";
 import { ORG_TOKEN_CLASS } from "./orgLanguage";
+import {
+  setKeymapMode,
+  __resetKeymapModeForTests,
+} from "./keybindings/keymapMode";
 
 // React needs this flag to run effects under `act` outside a DOM test runner.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -77,6 +81,8 @@ beforeEach(() => {
   // Default: no persisted mode; a persistence write succeeds.
   mocks.getEditorMode.mockResolvedValue(null);
   mocks.setEditorMode.mockResolvedValue(null);
+  // Story 4.7: start every test on the native keymap with a clean store.
+  __resetKeymapModeForTests();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -525,5 +531,93 @@ describe("Editor — Split editor mode (Story 4.4)", () => {
     expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
     expect(container.textContent).toContain("Heading alpha");
     expect(mocks.setEditorMode).toHaveBeenCalledWith("raw", "/vault/notes.org");
+  });
+});
+
+/**
+ * Story 4.7 (FR-5): the active-keymap swap. Toggling the global Emacs-mode
+ * preference reconfigures the live keybindings Compartment IN PLACE — the same
+ * view, no reload — so the buffer (and any unsaved edit) is preserved, and a
+ * view built while Emacs is already on starts on the Emacs set.
+ */
+describe("Editor — Emacs keybindings mode swap (Story 4.7)", () => {
+  it("reconfigures the keymap on toggle without rebuilding the view or losing edits", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+    const viewBefore = ref.current?.view;
+    const createdBefore = cm.created;
+
+    // Type an unsaved edit, then flip to Emacs mode.
+    await act(async () => {
+      ref.current?.view?.dispatch({
+        changes: { from: 0, insert: "EDIT " },
+        userEvent: "input.type",
+      });
+    });
+    await act(async () => {
+      setKeymapMode("emacs");
+    });
+    await flush();
+
+    // Same single view instance — reconfigure, not rebuild (no new view, no
+    // reload from disk) — and the unsaved edit survives.
+    expect(cm.created).toBe(createdBefore);
+    expect(ref.current?.view).toBe(viewBefore);
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(container.textContent).toContain("EDIT * Heading alpha");
+    expect(mocks.openFile.mock.calls.length).toBe(1); // never re-read
+
+    // Toggling back is equally non-destructive.
+    await act(async () => {
+      setKeymapMode("default");
+    });
+    await flush();
+    expect(ref.current?.view).toBe(viewBefore);
+    expect(container.textContent).toContain("EDIT * Heading alpha");
+  });
+
+  it("builds a view already on the Emacs set when the preference is on at open", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    setKeymapMode("emacs");
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" />);
+    });
+    await flush();
+
+    // Opens cleanly (single view, source rendered) with Emacs already active —
+    // no rebuild needed because buildSurface seeds the compartment from the
+    // current mode.
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(container.textContent).toContain("Heading alpha");
+  });
+
+  it("reconfigures BOTH Split panes on toggle, preserving the shared buffer", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    mocks.getEditorMode.mockResolvedValue("split");
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+    const createdBefore = cm.created;
+
+    await act(async () => {
+      setKeymapMode("emacs");
+    });
+    await flush();
+
+    // No pane was torn down or rebuilt, and both still show the shared buffer.
+    expect(cm.created).toBe(createdBefore);
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(2);
+    expect(container.textContent).toContain("Heading alpha");
   });
 });

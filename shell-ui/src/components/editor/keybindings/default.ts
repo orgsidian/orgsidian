@@ -21,13 +21,16 @@
 // renders it to CM6's `Mod-` form (CM6 itself maps `Mod` → the platform primary)
 // and {@link formatChord} renders the human label for the detected platform.
 //
-// Seam for Story 4.7 (Emacs mode): the Emacs chord set will live in
-// `keybindings/emacs.ts` as another `readonly KeymapAction[]` over the SAME
-// {@link KeymapActionId} union. Both {@link buildDefaultKeymap} and the
-// reference panel accept an explicit action list, so the Emacs set drops in with
-// no structural change; when Emacs mode is active its `keymap.of(...)` is added
-// with higher CM6 precedence than the native set so the active keymap wins on
-// conflicts (the "active keymap takes precedence" AC of 4.7).
+// Emacs mode (Story 4.7): the Emacs chord set lives in `keybindings/emacs.ts`
+// as another `readonly KeymapAction[]` over the SAME {@link KeymapActionId}
+// union. Both {@link buildDefaultKeymap} and the reference panel accept an
+// explicit action list, so the Emacs set drops in with no structural change.
+// The active keymap is a clean SWAP behind a CM6 `Compartment` in the `Editor`
+// host: when Emacs mode is on, only the Emacs `keymap.of(...)` is wired (the
+// native custom set is not present at the same time), so the active keymap wins
+// on every conflict (the "active keymap takes precedence" AC of 4.7). The Emacs
+// set reuses the two additive {@link Chord} fields below — `ctrl` (literal `C-`)
+// and `then` (multi-stroke, `C-x C-s`) — which the native set never sets.
 //
 // Reserved chords: actions whose feature ships in a later epic (save/open write
 // path, agenda, capture, clock in/out) are declared with `status: "reserved"`
@@ -68,12 +71,27 @@ export type KeymapCategory = "File" | "Editing" | "Org" | "View" | "Agenda & tim
  * (letter/punctuation, lower-case for letters) or a CM6 key name (e.g. `Enter`).
  */
 export interface Chord {
-  /** Cmd on macOS / Ctrl on Linux+Windows. */
+  /** Cmd on macOS / Ctrl on Linux+Windows (the platform-primary modifier). */
   mod?: boolean;
+  /**
+   * A LITERAL Ctrl modifier — the SAME physical key on every platform, never
+   * remapped to Cmd. The native default set never uses this; it is the Emacs
+   * set's `C-` prefix (Story 4.7), e.g. `C-x C-s`. Distinct from {@link
+   * Chord.mod}, which is Cmd on macOS.
+   */
+  ctrl?: boolean;
+  /** Alt/Option on the native set; the Emacs `M-` (Meta) prefix on the Emacs set. */
   alt?: boolean;
   shift?: boolean;
   /** Single char (lower-case letter or punctuation) or a CM6 key name. */
   key: string;
+  /**
+   * The next stroke of a MULTI-STROKE chord (Story 4.7 Emacs mode: `C-x C-s`).
+   * A linked list of strokes; the native single-stroke set never sets this.
+   * {@link chordToCodeMirror} renders the sequence space-separated (CM6's
+   * prefix-key form) and {@link formatChord} renders it as `C-x C-s`.
+   */
+  then?: Chord;
 }
 
 /**
@@ -294,10 +312,42 @@ function displayKey(key: string): string {
 export function chordToCodeMirror(chord: Chord): string {
   const parts: string[] = [];
   if (chord.mod) parts.push("Mod");
+  if (chord.ctrl) parts.push("Ctrl");
   if (chord.alt) parts.push("Alt");
   if (chord.shift) parts.push("Shift");
   parts.push(chord.key);
-  return parts.join("-");
+  const stroke = parts.join("-");
+  // Multi-stroke (Emacs `C-x C-s`): CM6 reads space-separated key names as a
+  // prefix-key sequence, so recursively join each following stroke with a space.
+  return chord.then ? `${stroke} ${chordToCodeMirror(chord.then)}` : stroke;
+}
+
+/**
+ * An Emacs-style chord: it carries no platform-primary `mod`, and uses a literal
+ * `C-` (ctrl) / `M-` (alt/Meta) prefix or is multi-stroke (`then`). Every native
+ * default chord carries `mod`, so this cleanly partitions the two idioms — the
+ * reference panel renders each in its own notation from one `formatChord`.
+ */
+function isEmacsChord(chord: Chord): boolean {
+  return (
+    !chord.mod &&
+    (chord.ctrl === true || chord.alt === true || chord.then !== undefined)
+  );
+}
+
+/** One Emacs stroke in `C-`/`M-`/`S-` notation (keys stay lower-case: `C-x`). */
+function formatEmacsStroke(chord: Chord): string {
+  let out = "";
+  if (chord.ctrl) out += "C-";
+  if (chord.alt) out += "M-";
+  if (chord.shift) out += "S-";
+  return out + chord.key;
+}
+
+/** A full Emacs chord, strokes space-joined (`C-x C-s`). Platform-independent. */
+function formatEmacsChord(chord: Chord): string {
+  const stroke = formatEmacsStroke(chord);
+  return chord.then ? `${stroke} ${formatEmacsChord(chord.then)}` : stroke;
 }
 
 /**
@@ -306,6 +356,10 @@ export function chordToCodeMirror(chord: Chord): string {
  * `Ctrl+Alt+Shift+K` form.
  */
 export function formatChord(chord: Chord, isMac: boolean): string {
+  // Emacs-style chords have no platform-primary `mod`; they use literal
+  // `C-`/`M-`/`S-` prefixes and may be multi-stroke, so render them in Emacs
+  // notation (`C-x C-s`), which is the same on every platform (`isMac` N/A).
+  if (isEmacsChord(chord)) return formatEmacsChord(chord);
   const key = displayKey(chord.key);
   if (isMac) {
     let out = "";

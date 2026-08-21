@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { defaultKeymap } from "@codemirror/commands";
-import { Compartment, type Text } from "@codemirror/state";
+import { Compartment, Prec, type Text } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { toast } from "sonner";
 
@@ -16,6 +16,12 @@ import { modeExtensions } from "./editorMode";
 import { sourceFidelity } from "./decorations/sourceFidelity";
 import { createSplitEditor, type SplitSurface } from "./SplitEditor";
 import { buildDefaultKeymap } from "./keybindings/default";
+import {
+  activeKeymap,
+  getKeymapMode,
+  onKeymapModeChange,
+  type KeymapMode,
+} from "./keybindings/keymapMode";
 import {
   currentPlanningValue,
   onPlanningRequested,
@@ -55,26 +61,41 @@ const editorFontTheme = EditorView.theme({
 const baseEditorExtensions = [
   EditorView.editable.of(true),
   keymap.of(defaultKeymap),
-  // Story 4.6 (FR-5): the cross-platform native default keymap — the single
-  // source of truth in `keybindings/default.ts` drives the editor-owned chords
-  // (cycle TODO, toggle checkbox, Schedule, Deadline) plus the reserved chords
-  // whose features ship in a later epic. Schedule/Deadline (Story 4.8) publish a
-  // picker-open request on the shared surface; the host decides whether to open
-  // the picker (Raw mode suppresses it for plain typing). Find/replace
-  // (`sourceFidelity`) and the mode switch (`ModeSwitcher`, a global listener)
-  // are bound by their owners, so this keymap does not re-emit them. Reserved
-  // chords surface a "coming soon" toast rather than a silent no-op or a fake
-  // implementation.
-  keymap.of(
-    buildDefaultKeymap({
-      onReserved: (action) => toast(`${action.label} — coming soon`),
-    }),
-  ),
   editorFontTheme,
   // Mode-independent: find/replace and clipboard operate on the source document
   // in every mode and in both Split panes (Story 4.3g / FR-3, FR-4).
   sourceFidelity(),
 ];
+
+/**
+ * Story 4.6/4.7 (FR-5): the ACTIVE editor keymap for `mode` — the native
+ * default set or the opt-in Emacs set — as a CM6 keymap extension.
+ *
+ * The single source of truth in `keybindings/{default,emacs}.ts` drives the
+ * editor-owned chords (cycle TODO, toggle checkbox, Schedule, Deadline) plus the
+ * reserved chords whose features ship in a later epic. Schedule/Deadline (Story
+ * 4.8) publish a picker-open request on the shared surface; the host decides
+ * whether to open the picker (Raw mode suppresses it for plain typing).
+ * Find/replace (`sourceFidelity`) and the mode switch (`ModeSwitcher`, a global
+ * listener) are bound by their owners, so this keymap does not re-emit them.
+ * Reserved chords surface a "coming soon" toast rather than a silent no-op or a
+ * fake implementation.
+ *
+ * Wrapped in `Prec.high` so the active keymap wins over CM6's baseline
+ * `defaultKeymap` on any conflict — the "active keymap takes precedence" AC of
+ * Story 4.7 (the native and Emacs sets never coexist: the host swaps this
+ * behind a Compartment, so only one set is ever wired at a time).
+ */
+function activeKeybindings(mode: KeymapMode) {
+  return Prec.high(
+    keymap.of(
+      buildDefaultKeymap({
+        actions: activeKeymap(mode),
+        onReserved: (action) => toast(`${action.label} — coming soon`),
+      }),
+    ),
+  );
+}
 
 /**
  * Imperative handle exposed on the `ref` prop. Story 4.2 adds the live Editor
@@ -154,6 +175,14 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
   // mode-dependent extensions so `setMode` can reconfigure the single-view host
   // in place. Lazily initialized so a re-render allocates no throwaway.
   const modeCompartmentRef = useRef<Compartment | null>(null);
+  // Story 4.7 (FR-5): a second Compartment holds the ACTIVE keybinding set
+  // (native default vs opt-in Emacs) so toggling Emacs mode reconfigures the
+  // live view(s) in place — no buffer reload, no lost edits. One instance for
+  // the component's lifetime, shared by the single view and both Split panes.
+  const keybindingsCompartmentRef = useRef<Compartment | null>(null);
+  // The active keymap mode read once up front (and kept current by the
+  // subscription below) so a surface built during load starts on the right set.
+  const keymapModeRef = useRef<KeymapMode>(getKeymapMode());
   // Authoritative current mode (the handle getter reads this); `modeState`
   // mirrors it only to reflect `data-editor-mode` in the DOM.
   const modeRef = useRef<EditorMode>(DEFAULT_MODE);
@@ -187,11 +216,18 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
   // view so the handle and teardown are surface-agnostic.
   const buildSurface = useCallback(
     (mode: EditorMode, doc: string | Text, parent: HTMLElement) => {
+      const keybindings = (keybindingsCompartmentRef.current ??=
+        new Compartment());
+      // Seed the keybindings compartment from the current active keymap mode so
+      // a view built while Emacs mode is already on starts on the Emacs set.
+      const keybindingsExt = keybindings.of(
+        activeKeybindings(keymapModeRef.current),
+      );
       if (mode === "split") {
         const surface = createSplitEditor({
           parent,
           doc,
-          baseExtensions: baseEditorExtensions,
+          baseExtensions: [baseEditorExtensions, keybindingsExt],
         });
         splitRef.current = surface;
         viewRef.current = surface.primaryView;
@@ -202,7 +238,11 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
       viewRef.current = new EditorView({
         parent,
         doc,
-        extensions: [baseEditorExtensions, compartment.of(modeExtensions(mode))],
+        extensions: [
+          baseEditorExtensions,
+          keybindingsExt,
+          compartment.of(modeExtensions(mode)),
+        ],
       });
     },
     [],
@@ -260,6 +300,32 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
       setPicker({ kind, view, initial: currentPlanningValue(view.state, kind) });
     });
   }, []);
+
+  // Story 4.7 (FR-5): reconfigure the keybindings Compartment on every live view
+  // when the global Emacs-mode preference changes. Reconfiguring swaps ONLY the
+  // active keymap — the document, selection, undo history and every other
+  // extension are untouched — so enabling/disabling Emacs mode never reloads the
+  // buffer or drops unsaved edits (the buffer-state AC). Both Split panes are
+  // reconfigured because they are two views over the shared buffer.
+  const applyKeymapMode = useCallback((mode: KeymapMode) => {
+    keymapModeRef.current = mode;
+    const compartment = keybindingsCompartmentRef.current;
+    if (compartment === null) return; // no surface yet; buildSurface will seed it
+    const effect = compartment.reconfigure(activeKeybindings(mode));
+    for (const view of [
+      viewRef.current,
+      splitRef.current?.secondaryView ?? null,
+    ]) {
+      if (view !== null) view.dispatch({ effects: effect });
+    }
+  }, []);
+
+  useEffect(() => {
+    // Re-sync in case the preference changed between the initial ref read and
+    // this subscription, then reconfigure the live surface on every later change.
+    applyKeymapMode(getKeymapMode());
+    return onKeymapModeChange(applyKeymapMode);
+  }, [applyKeymapMode]);
 
   useEffect(() => {
     // Guards the async gap: if the component unmounts (or the effect re-runs)
