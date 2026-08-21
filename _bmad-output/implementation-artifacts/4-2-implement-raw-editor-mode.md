@@ -1,0 +1,91 @@
+---
+title: 'Implement Raw editor mode'
+type: 'feature'
+created: '2026-08-21'
+status: 'review'
+baseline_commit: '425bd35'
+review_loop_iteration: 0
+context: ['{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md']
+---
+
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+
+## Intent
+
+**Problem:** Story 4.1 shipped a StrictMode-safe CodeMirror 6 host that renders `.org` source with a deliberately minimal, un-styled extension set (`editable + defaultKeymap`, no language/highlight). Epic 4 needs the first of three Editor Modes — **Raw** — which shows the plain `.org` source with org-mode-aware syntax-highlight tokens only (no Pseudo-WYSIWYG decorations/widgets), plus a persisted per-file mode choice (FR-3, LD-40).
+
+**Approach:** Add an org-mode-aware CM6 syntax-highlight layer (a `StreamLanguage` + `HighlightStyle`, LD-6) that tokenizes headline asterisks, TODO/DONE state keywords, tags, and active/inactive timestamps into stable `cm-org-*` classes. Express the mode → extension boundary so Raw returns highlighting only and the (future 4.3x) decoration layer is excluded. Wire the choice through two new typed `tauri-specta` commands — `set_editor_mode` / `get_editor_mode` — that persist via `tauri-plugin-store` at `<Vault>/.orgsidian/editor-prefs.json`, keyed by file path. The `Editor` host loads the persisted mode on open and swaps mode-dependent extensions through a `Compartment` (forward-compatible with the 4.5 switcher UI).
+
+## Boundaries & Constraints
+
+**Always:**
+- Raw mode renders org syntax-highlight tokens ONLY — no decorations or widgets. Highlighting is presentational; the buffer stays byte-faithful (FR-2 round-trip contract).
+- Mode reaches/leaves the frontend only through the typed `commands.*` client (never raw `invoke`, never `@tauri-apps/plugin-store` directly). Persistence is `tauri-plugin-store` at `<Vault>/.orgsidian/editor-prefs.json` (LD-40 — editor mode is ephemeral per-Vault view state, not authoritative TOML settings).
+- Keep Story 4.1's StrictMode-safe lifecycle intact: `EditorView` created in `useEffect`, destroyed in cleanup, `disposed` guard across every async await; `ref` as a plain prop (no `forwardRef`).
+- Mode-dependent extensions live behind a CM6 `Compartment` so switching reconfigures in place (no buffer reload → source-position/round-trip fidelity untouched).
+- Colors via the `--org-*` token vocabulary; new deps exact-pinned (CM6 version policy).
+- The FR-3 module carries `//! Implements FR-3` as its first doc-comment line (traceability convention; the enforcing `tests/traceability.rs` harness lands with Story 4.3a).
+
+**Ask First:**
+- Introducing new `--org-accent-*` tokens to `tokens.css` (would enter the LD-58 contrast gate) — Raw mode reuses existing FR-22 tokens; per-TODO-state accent tokens belong to Story 4.3b / 6.7.
+
+**Never:**
+- Pseudo-WYSIWYG decorations/widgets (4.3a–4.3f), Split mode (4.4), mode switcher UI (4.5), keybindings/Emacs (4.6–4.7).
+- A full `#+TODO:`-configurable keyword sequence (4.3b) — Raw highlighting recognizes the day-1 default sequence keywords.
+- Mounting the editor into a live route/screen — the tests are this story's only consumer.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Raw mode open | file with headlines, TODO/DONE, tags, timestamps | source rendered with `cm-org-*` token spans; no `.cm-widgetBuffer` / decoration nodes | N/A |
+| Persist choice | `setEditorMode("raw", path)` with active Vault | `<Vault>/.orgsidian/editor-prefs.json` gains `{ "<path>": "raw" }` | store failure → `OrgError::Io` |
+| Reload choice | reopen file after a persisted `setEditorMode` | `getEditorMode(path)` returns the stored mode; editor applies it | absent choice → `null` → default mode |
+| No active Vault | `set/getEditorMode` before any `designate_vault` | `OrgError::Vault`; frontend falls back to the default mode, no crash | error surfaced; caught, defaulted |
+| Non-headline `*` / mid-title keyword | `*bold*`, `* Head with TODO in title` | no heading-stars token for emphasis; no TODO token outside the keyword slot | N/A |
+
+</frozen-after-approval>
+
+## Code Map
+
+- `crates/orgsidian-shell-app/src/editor_prefs.rs` -- NEW. `//! Implements FR-3`. `EditorMode` enum (`#[serde(rename_all="camelCase")]` → `"raw"|"pseudoWysiwyg"|"split"`), pure `editor_prefs_path()`, and `persist_mode`/`read_mode` over `tauri-plugin-store` `StoreExt`.
+- `crates/orgsidian-shell-app/src/lib.rs` -- `mod editor_prefs`; `AppState::current_vault_root()` (clones the root out from under the index lock); `set_editor_mode` / `get_editor_mode` commands added to `collect_commands!`.
+- `crates/orgsidian-shell-app/tests/export_bindings.rs` -- anchors `setEditorMode`, `getEditorMode`, `EditorMode`.
+- `shell-ui/src/lib/tauri.ts` -- GENERATED (regenerated by `export_bindings`); adds the two commands + `EditorMode` union.
+- `shell-ui/src/components/editor/orgLanguage.ts` -- NEW. Org `StreamLanguage` + `HighlightStyle`; exports `orgSyntaxHighlight()` and `ORG_TOKEN_CLASS`. Token-name strings are `org`-prefixed to avoid built-in CM5 token-name collisions (a bare `"tag"` resolves to the built-in tag style).
+- `shell-ui/src/components/editor/editorMode.ts` -- NEW. `modeExtensions(mode)`: Raw = highlight only; Pseudo/Split = highlight + (empty-today) decoration layer.
+- `shell-ui/src/components/editor/Editor.tsx` -- mode-aware: loads persisted mode, `Compartment`-swapped extensions, `EditorHandle` gains `mode` + `setMode`, IBM Plex Mono face, `data-editor-mode` attribute.
+- `shell-ui/src/styles/editor.css` + `styles/app.css` -- `cm-org-*` token colors via existing `--org-*` tokens (kept out of `tokens.css` / the LD-58 gate).
+- `shell-ui/package.json` -- exact-pinned `@codemirror/language@6.12.4`, `@lezer/highlight@1.2.3`.
+
+## Tasks & Acceptance
+
+**Execution:**
+- [x] `editor_prefs.rs` — `EditorMode`, `editor_prefs_path`, `persist_mode`/`read_mode`; Rust unit tests (path derivation, camelCase serde round-trip, unknown-string rejection).
+- [x] `lib.rs` — `set_editor_mode` / `get_editor_mode` commands + `current_vault_root`; registered in `collect_commands!`.
+- [x] Regenerate `tauri.ts`; extend `export_bindings` anchors.
+- [x] `orgLanguage.ts` — org syntax highlighter; `orgLanguage.test.tsx` (tokens present, byte-faithful, no widgets, no false-positive emphasis/mid-title keyword).
+- [x] `editorMode.ts` — mode → extension mapping (Raw = highlight only).
+- [x] `Editor.tsx` — persisted-mode load, `Compartment` swap, `mode`/`setMode` handle; `Editor.test.tsx` extended (persist via typed client, reload round-trip, tokens-only, StrictMode leak still green).
+- [x] `editor.css` — `cm-org-*` colors via existing tokens.
+
+**Acceptance Criteria:**
+- Given Story 4.1, when Raw mode is selected, then the editor shows source text with org-mode-aware syntax-highlight tokens (headline asterisks, TODO/DONE keywords, tags, timestamps) — verified by `orgLanguage.test.tsx` + `Editor.test.tsx`.
+- And no Pseudo-WYSIWYG decorations are rendered (no `.cm-widgetBuffer` / decoration nodes) — verified.
+- And `commands.setEditorMode("raw", filePath)` persists via `tauri-plugin-store` at `<Vault>/.orgsidian/editor-prefs.json` (LD-40) — `set_editor_mode` command + `editor_prefs_path` unit test; reload round-trip verified through the typed client.
+
+## Verification
+
+**Commands:**
+- `cargo fmt --all -- --check` — pass.
+- `cargo clippy --workspace --all-targets --locked -- -D warnings` — pass (0 Rust warnings).
+- `cargo test --workspace --locked` — pass (shell-app lib 8 tests incl. 4 new editor_prefs; export_bindings green).
+- `pnpm --filter shell-ui build` — pass (tsc strict + specta regen + i18n + vite).
+- `pnpm --filter shell-ui test` — 40 passed (editor 18).
+- `pnpm --filter shell-ui i18n:check` — pass.
+
+## Design Notes
+
+- **CM5 token-name collision (the sharp edge here):** a `StreamParser` `token()` string is resolved against CodeMirror's built-in CM5 token-name map before the custom `tokenTable`. A bare `"tag"` therefore resolved to the built-in tag style (unstyled by our `HighlightStyle`) and produced no span. Fix: every token name is `org`-prefixed.
+- **Raw vs Pseudo distinction is structural:** `modeExtensions("raw")` returns highlighting alone; Pseudo/Split spread an (empty-today) decoration layer on top. This is why Raw is guaranteed decoration-free even before 4.3x exists.
+- **Store path resolution:** `tauri-plugin-store` resolves under `BaseDirectory::AppData`, but `PathBuf::push` of an absolute path replaces the base, so an absolute `<Vault>/.orgsidian/editor-prefs.json` lands inside the Vault (verified against tauri 2.11.2 `resolve_path`).
