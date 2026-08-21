@@ -1,8 +1,27 @@
 import { useEffect, useRef } from "react";
-import { platform } from "@tauri-apps/plugin-os";
 
 import { type EditorMode } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+
+import {
+  findAction,
+  formatChord,
+  matchesChord,
+  resolveIsMac,
+  type Chord,
+} from "./keybindings/default";
+
+/**
+ * The mode-switch chord, read from the Story 4.6 central keymap so the switcher,
+ * the CM6 keymap, and the Settings → Keybindings panel can never disagree on it.
+ * Falls back to `Cmd/Ctrl+Alt+M` if the action is ever absent (defensive; the id
+ * is a compile-time member of the map).
+ */
+const SWITCH_MODE_CHORD: Chord = findAction("switchMode")?.chord ?? {
+  mod: true,
+  alt: true,
+  key: "m",
+};
 
 /**
  * Editor Mode switcher UI (Story 4.5, FR-3).
@@ -45,30 +64,6 @@ export function nextMode(mode: EditorMode): EditorMode {
   return MODE_ORDER[(index + 1) % MODE_ORDER.length];
 }
 
-/**
- * True on macOS, where the mode-switch chord uses ⌘ (Cmd); every other platform
- * uses Ctrl. Platform detection is via `tauri-plugin-os` (LD-5 stack). Resolved
- * synchronously (plugin-os caches the value at startup); guarded so a non-Tauri
- * context (plain `vite dev`, tests) falls back to the non-mac chord rather than
- * throwing.
- */
-function isMacPlatform(): boolean {
-  try {
-    return platform() === "macos";
-  } catch {
-    return false;
-  }
-}
-
-/** Human-readable chord hint for the active platform, shown as a tooltip. */
-function chordHint(isMac: boolean): string {
-  // NOTE: epics.md Story 4.5 AC specifies `Cmd/Ctrl+Alt+M`; the UX spec
-  // (ux-design-specification.md) references `Cmd/Ctrl+Shift+M` for the same
-  // action. We follow the epics AC (Alt) — DISCREPANCY flagged for
-  // reconciliation before the keybinding reference panel lands in Story 4.6.
-  return isMac ? "⌘⌥M" : "Ctrl+Alt+M";
-}
-
 interface ModeSwitcherProps {
   /** The active Editor Mode (controlled — the source of truth lives upstream). */
   mode: EditorMode;
@@ -92,7 +87,7 @@ interface ModeSwitcherProps {
  * tab-reachable and activates on Enter/Space (native `<button>` behavior).
  */
 export function ModeSwitcher({ mode, onModeChange, className }: ModeSwitcherProps) {
-  const isMac = isMacPlatform();
+  const isMac = resolveIsMac();
 
   // Keep the latest mode + callback in refs so the global key listener is
   // registered ONCE (not re-bound every render) yet always reads current
@@ -108,11 +103,10 @@ export function ModeSwitcher({ mode, onModeChange, className }: ModeSwitcherProp
     function onKeyDown(event: KeyboardEvent) {
       // Ignore auto-repeat so holding the chord does not spin through modes.
       if (event.repeat) return;
-      // Cmd+Alt+M on macOS, Ctrl+Alt+M elsewhere. `event.code` (not `event.key`)
-      // because macOS Option composes a glyph ("µ") into `key`, but `code`
-      // stays "KeyM".
-      const primary = isMac ? event.metaKey : event.ctrlKey;
-      if (!primary || !event.altKey || event.code !== "KeyM") return;
+      // Match the mode-switch chord from the central keymap. `matchesChord`
+      // resolves Cmd vs Ctrl by platform and matches letters via `event.code`
+      // (macOS Option composes a glyph into `key`, but `code` stays "KeyM").
+      if (!matchesChord(event, SWITCH_MODE_CHORD, isMac)) return;
       event.preventDefault();
       onModeChangeRef.current(nextMode(modeRef.current));
     }
@@ -126,7 +120,7 @@ export function ModeSwitcher({ mode, onModeChange, className }: ModeSwitcherProp
     <div
       role="group"
       aria-label="Editor mode"
-      title={`Switch editor mode (${chordHint(isMac)})`}
+      title={`Switch editor mode (${formatChord(SWITCH_MODE_CHORD, isMac)})`}
       // `data-active-mode` (not `data-editor-mode`, which the Editor host uses
       // on its own container) so the two never collide in a shared DOM.
       data-active-mode={mode}

@@ -117,6 +117,54 @@ export function cycleTodoState(
   });
 }
 
+/**
+ * Keyboard-driven TODO cycle for the headline at (or above) the main cursor —
+ * the command form of the click-to-cycle pill, wired to the default keymap in
+ * Story 4.6 (`keybindings/default.ts`). Reuses {@link cycleTodoState} so the
+ * keyboard path and the pill share ONE mutation surface (FR-24 / LD-26) and the
+ * same `input.cycle-todo` user-event tag.
+ *
+ * Behavior mirrors the pill: if the headline already carries a keyword from the
+ * active sequence it advances to the next state (wrapping past the end); if it
+ * carries none, the first keyword is inserted right after the stars. Returns
+ * `true` when it acted (so CM6 treats the chord as handled) and `false` when the
+ * cursor is not under a headline (the chord falls through).
+ */
+export function cycleTodoAtCursor(view: EditorView): boolean {
+  const { state } = view;
+  const cursorLine = state.doc.lineAt(state.selection.main.head);
+  // Walk up to the nearest headline at or above the cursor.
+  let headline: { from: number; text: string } | null = null;
+  for (let n = cursorLine.number; n >= 1; n -= 1) {
+    const line = state.doc.line(n);
+    if (HEADLINE_PREFIX.test(line.text)) {
+      headline = { from: line.from, text: line.text };
+      break;
+    }
+  }
+  if (headline === null) return false;
+
+  const prefix = HEADLINE_PREFIX.exec(headline.text);
+  if (prefix === null) return false;
+  const sequence = resolveTodoSequence(state.doc);
+  const kFrom = headline.from + prefix[0].length;
+  const rest = headline.text.slice(prefix[0].length);
+  const token = /^(\S+)/.exec(rest);
+
+  if (token && sequence.includes(token[1])) {
+    // Existing keyword → advance to the next state (wraps), replacing in place.
+    cycleTodoState(view, {
+      from: kFrom,
+      to: kFrom + token[1].length,
+      next: nextState(sequence, token[1]),
+    });
+    return true;
+  }
+  // No keyword yet → insert the first state keyword after the stars.
+  cycleTodoState(view, { from: kFrom, to: kFrom, next: `${sequence[0]} ` });
+  return true;
+}
+
 /** Build the badge decoration set over the view's visible ranges. */
 function buildBadges(view: EditorView): DecorationSet {
   const sequence = resolveTodoSequence(view.state.doc);

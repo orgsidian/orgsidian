@@ -8,16 +8,17 @@ import {
 import { defaultKeymap } from "@codemirror/commands";
 import { Compartment, type Text } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { toast } from "sonner";
 
 import { commands, type EditorMode } from "@/lib/tauri";
 
 import { modeExtensions } from "./editorMode";
 import { sourceFidelity } from "./decorations/sourceFidelity";
 import { createSplitEditor, type SplitSurface } from "./SplitEditor";
+import { buildDefaultKeymap } from "./keybindings/default";
 import {
   currentPlanningValue,
   onPlanningRequested,
-  planningKeymap,
   setPlanning,
 } from "./schedule";
 import {
@@ -54,10 +55,21 @@ const editorFontTheme = EditorView.theme({
 const baseEditorExtensions = [
   EditorView.editable.of(true),
   keymap.of(defaultKeymap),
-  // Story 4.8 (FR-9): Schedule/Deadline keybindings. Static bindings that only
-  // publish a picker-open request on the shared surface; the host decides
-  // whether to open the picker (Raw mode suppresses it for plain typing).
-  keymap.of([...planningKeymap()]),
+  // Story 4.6 (FR-5): the cross-platform native default keymap — the single
+  // source of truth in `keybindings/default.ts` drives the editor-owned chords
+  // (cycle TODO, toggle checkbox, Schedule, Deadline) plus the reserved chords
+  // whose features ship in a later epic. Schedule/Deadline (Story 4.8) publish a
+  // picker-open request on the shared surface; the host decides whether to open
+  // the picker (Raw mode suppresses it for plain typing). Find/replace
+  // (`sourceFidelity`) and the mode switch (`ModeSwitcher`, a global listener)
+  // are bound by their owners, so this keymap does not re-emit them. Reserved
+  // chords surface a "coming soon" toast rather than a silent no-op or a fake
+  // implementation.
+  keymap.of(
+    buildDefaultKeymap({
+      onReserved: (action) => toast(`${action.label} — coming soon`),
+    }),
+  ),
   editorFontTheme,
   // Mode-independent: find/replace and clipboard operate on the source document
   // in every mode and in both Split panes (Story 4.3g / FR-3, FR-4).

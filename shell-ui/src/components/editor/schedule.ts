@@ -200,10 +200,14 @@ export function emitPlanningRequested(request: PlanningRequested): void {
 
 /**
  * Keybindings that request the Schedule/Deadline picker for the focused view.
- * The final chord assignment is Story 4.6's domain (native default keymap); the
- * epic notes a pending `Alt` vs `Shift` reconciliation, so these are interim
- * defaults. The host decides whether to honor the request (Raw mode suppresses
- * the picker for plain typing).
+ *
+ * Superseded as the WIRING path by Story 4.6: the native default keymap in
+ * `keybindings/default.ts` is now the single source of truth and binds Schedule
+ * (`Mod-Alt-s`) / Deadline (`Mod-Alt-d`) through the SAME `emitPlanningRequested`
+ * surface, so behavior is identical to these interim bindings. This helper is
+ * retained (and unit-tested) as a self-contained way to obtain just the planning
+ * bindings; the `Editor` host no longer wires it directly. The host still decides
+ * whether to honor the request (Raw mode suppresses the picker for plain typing).
  */
 export function planningKeymap(): readonly KeyBinding[] {
   return [
