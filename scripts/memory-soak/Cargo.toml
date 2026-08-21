@@ -1,0 +1,48 @@
+# Story 4.9 — LD-43 nightly memory soak harness. Standalone crate: OUTSIDE
+# `[workspace.members]` (root Cargo.toml `exclude`, LD-5 leaf-isolation,
+# mirroring tools/corpus-extractor + tools/issues-sync). Build/test via:
+#   cargo build --manifest-path scripts/memory-soak/Cargo.toml --locked
+#   cargo test  --manifest-path scripts/memory-soak/Cargo.toml --locked
+#
+# Links `orgsidian-core` on purpose: the soak must run its workloads IN-PROCESS
+# so /proc/self/statm RSS accumulates across the whole 12h session (a per-cycle
+# subprocess would start clean and detect nothing). This crate is workspace-
+# excluded, so orgsidian-core's transitive tree (rusqlite/deadpool/tokio/
+# tree-sitter) lands in THIS lockfile only.
+# Own workspace root (empty table): keeps this crate standalone regardless of
+# where the repo is checked out — including inside a git worktree nested under
+# another checkout, where cargo would otherwise climb to an ancestor
+# workspace. Pairs with the root Cargo.toml `exclude` entry.
+[workspace]
+
+[package]
+name = "orgsidian-memory-soak"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "LD-43 nightly memory soak harness (Story 4.9)"
+
+[[bin]]
+name = "orgsidian-memory-soak"
+path = "src/main.rs"
+
+[lib]
+name = "orgsidian_memory_soak"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+# Legal path dep — this crate is outside the workspace, so orgsidian-core's
+# transitive deps land in THIS lockfile only. The harness reaches every
+# subsystem through the core façade (parser::analyze, rebuild_index,
+# index_stats), mirroring the CLI's façade-only rule.
+orgsidian-core = { path = "../../crates/orgsidian-core" }
+# The scan + writer/reader-pool futures need a multi-thread runtime, same as
+# the CLI's index handlers (crates/orgsidian-cli builds `Runtime::new()`).
+tokio = { version = "1", features = ["rt-multi-thread"] }
+tempfile = "3"
+# RSS sampling: sysconf(_SC_PAGESIZE) for the /proc/self/statm page count, and
+# getrusage(ru_maxrss) as the non-Linux fallback so the harness runs locally.
+libc = "0.2"

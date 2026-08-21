@@ -6,8 +6,16 @@
 #   the most recent nightly is green within 24h — without this, full-corpus
 #   gates atrophy under merge pressure (the rust-analyzer / biomejs /
 #   ruff / swc pattern that survives at scale).
-# LD-43 (memory soak): nightly Linux-only memory soak placeholder reserved
-#   for Story 4.9 (Epic 4 close-out).
+# LD-43 (memory soak): LANDED (Story 4.9) — the dedicated Linux-only
+#   `memory-soak` job below runs the 12-hour scripted session (200 buffer
+#   open/close + 50 plugin re-init + 1000 agenda queries) against the headless
+#   core in one long-lived process, sampling RSS from /proc/self/statm every
+#   30 min and failing if RSS grows >10% from minute 60 (warmup excluded) to
+#   minute 720. A red soak fails the nightly run, which trips the pr.yml
+#   `merge-gate-nightly-fresh` gate → merges to main are blocked until green.
+#   The full 12h soak runs ONLY on the scheduled cron; `workflow_dispatch`
+#   runs a short smoke (the `soak_minutes` input) so the orchestrator's
+#   merge-gating manual nightlies validate wiring in minutes, not 12 hours.
 # LD-44 (full corpus): nightly L0 round-trip full corpus + L2 Emacs oracle
 #   gates LANDED (Story 2.7): the `round_trip_full` gate step runs in both
 #   the hosted matrix and the arch-linux cell (macOS + Ubuntu + Arch +
@@ -28,7 +36,16 @@ on:
     # Daily at 05:00 UTC — off-peak for GitHub-hosted runners. Chosen so the
     # most-recent-nightly check at start-of-US/EU-work-day sees today's run.
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      soak_minutes:
+        description: >-
+          memory-soak SMOKE duration (minutes) for manual runs. The full 12h
+          LD-43 soak runs ONLY on the scheduled cron; a manual dispatch runs a
+          short smoke of this many minutes so wiring is validated fast and the
+          merge-gating nightly is never blocked for 12h. Keep small (default 3).
+        required: false
+        default: '3'
 
 concurrency:
   group: nightly
@@ -178,13 +195,10 @@ jobs:
       #   job below (Linux-only: docker is unavailable on macOS/Windows
       #   runners, and cross-version triage needs co-located outputs).
       # Story 8.12: Graph View cross-webview perf gate lands here
-
-      # Linux-only nightly memory soak (Story 4.9 / LD-43). The 12-hour
-      # memory soak runs on Linux runners only; macOS/Windows don't carry
-      # the same allocator-pressure baseline. Story 4.9 owns the body.
-      - name: nightly memory soak (LD-43) — placeholder
-        if: matrix.os == 'ubuntu-24.04'
-        run: echo "Story 4.9 wires the LD-43 12-hour memory soak here (Linux-only)."
+      # Story 4.9: LANDED — the LD-43 memory soak is the dedicated top-level
+      #   `memory-soak` job below (Linux-only, its own 750-min budget), NOT a
+      #   step in this 60-min matrix. A 12h step here would blow the matrix
+      #   timeout and couple the soak to the fast full-matrix cells.
 
   # Arch Linux nightly cell — rolling-release canary per LD-32. No
   # GitHub-hosted Arch image exists; we run inside an `archlinux:base-devel`
@@ -291,9 +305,9 @@ jobs:
       - name: i18n catalog drift check
         run: pnpm --filter shell-ui i18n:check
 
-      # Same Story-4.9 memory soak slot also applies to Arch (Linux family).
-      - name: nightly memory soak (LD-43) — placeholder
-        run: echo "Story 4.9 wires the LD-43 12-hour memory soak here (Linux-only, applies to Arch too)."
+      # Story 4.9: the LD-43 memory soak is the dedicated top-level
+      # `memory-soak` job below (one Linux runner, its own 750-min budget), not
+      # a step in this 60-min Arch cell.
 
   # Story 2.7 — L2 Emacs ground-truth oracle (LD-45). Projects every
   # designated L2 seed file (scripts/l2-oracle/seed-list.txt) through
@@ -361,3 +375,111 @@ jobs:
           python3 scripts/l2-oracle/compare.py \
             --canonical-dir crates/orgsidian-parser/tests/canonical_ast \
             --e29-dir /tmp/l2-out/e29 --e30-dir /tmp/l2-out/e30
+
+  # Story 4.9 — LD-43 nightly memory soak gate (NFR-21). DEDICATED Linux
+  # runner job (macOS/Windows don't carry the same allocator-pressure
+  # baseline). The harness (scripts/memory-soak/, a workspace-excluded Rust
+  # crate) links orgsidian-core and runs the scripted session IN ONE PROCESS —
+  # 200 buffer open/close + 50 plugin re-init + 1000 agenda queries — sampling
+  # /proc/self/statm RSS every 30 min, then exits non-zero if RSS grows >10%
+  # from minute 60 (warmup excluded) to minute 720. A non-zero exit fails this
+  # job → the whole nightly run's conclusion is `failure` → pr.yml's
+  # `merge-gate-nightly-fresh` refuses every merge to main until a green
+  # nightly lands (the LD-32 stale-nightly gate; no change needed there).
+  #
+  # SCHEDULE vs DISPATCH: the full 12h soak runs ONLY on the scheduled cron.
+  # A `workflow_dispatch` runs a short SMOKE (the `soak_minutes` input,
+  # default 3) so the orchestrator's merge-gating manual nightlies validate
+  # the wiring in minutes and are NEVER blocked for 12 hours. Both paths run
+  # the SAME harness and the SAME pass/fail exit contract, so a smoke genuinely
+  # exercises the gate end-to-end.
+  memory-soak:
+    runs-on: ubuntu-24.04
+    # 12h soak + toolchain/build headroom. Comfortably above the 720-min
+    # session so a slow cold build never trips the runner timeout before the
+    # soak itself can report.
+    timeout-minutes: 750
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # The harness links orgsidian-core → orgsidian-parser, which compiles
+          # the tree-sitter-org grammar submodule (LD-48).
+          submodules: recursive
+
+      # Same Tauri 2.x Linux native deps as the hosted ubuntu cell: the harness
+      # links orgsidian-core, whose transitive tree pulls the GTK/WebKit/soup
+      # build scripts. Without these headers glib-sys fails to build.
+      - name: Install Linux native deps (Tauri 2.x)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            build-essential \
+            libssl-dev \
+            pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Distinct key: scripts/memory-soak is workspace-excluded and keeps
+          # its OWN Cargo.lock + target dir (LD-5), so it must not share the
+          # hosted matrix cache.
+          shared-key: nightly-memory-soak
+          workspaces: scripts/memory-soak
+
+      # Build the harness first (release: the soak measures a realistic
+      # allocator profile, and a warm binary keeps the 12h wall-clock as pure
+      # session time). --locked per LD-37.
+      - name: Build memory-soak harness
+        run: cargo build --manifest-path scripts/memory-soak/Cargo.toml --release --locked
+
+      # Choose the parameters by trigger. Schedule → the full LD-43 12h soak
+      # (720 min, 30-min sampling, minute-60→720 window, 200/50/1000 workloads).
+      # Dispatch → a smoke of `soak_minutes` minutes with a fast sample cadence
+      # and a warmup of total/12 (mirrors minute-60-of-720) so the drift math
+      # runs over a real, if compressed, window.
+      - name: Run LD-43 memory soak
+        run: |
+          set -euo pipefail
+          BIN=scripts/memory-soak/target/release/orgsidian-memory-soak
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "memory-soak: SCHEDULED run — full 12h LD-43 soak."
+            "$BIN" \
+              --total-seconds 43200 \
+              --sample-interval-seconds 1800 \
+              --warmup-seconds 3600 \
+              --window-end-seconds 43200 \
+              --buffer-cycles 200 \
+              --plugin-reinit-cycles 50 \
+              --agenda-queries 1000
+          else
+            MINUTES='${{ github.event.inputs.soak_minutes }}'
+            MINUTES="${MINUTES:-3}"
+            TOTAL_SECS=$(( MINUTES * 60 ))
+            # ~30 samples across the smoke window; warmup = total/12 (the
+            # minute-60-of-720 ratio). Guard the floors so tiny inputs still
+            # produce a measurable baseline + end.
+            # NB: plain `if` blocks, not `[ ... ] && assign` — the latter aborts
+            # under `set -e` whenever the test is false (the AND-list returns
+            # non-zero), which is the common case here.
+            INTERVAL=$(( TOTAL_SECS / 30 ))
+            if [ "$INTERVAL" -lt 1 ]; then INTERVAL=1; fi
+            WARMUP_SECS=$(( TOTAL_SECS / 12 ))
+            if [ "$WARMUP_SECS" -lt "$INTERVAL" ]; then WARMUP_SECS=$INTERVAL; fi
+            echo "memory-soak: DISPATCH SMOKE — ${MINUTES}m (${TOTAL_SECS}s, interval ${INTERVAL}s, warmup ${WARMUP_SECS}s)."
+            "$BIN" \
+              --total-seconds "$TOTAL_SECS" \
+              --sample-interval-seconds "$INTERVAL" \
+              --warmup-seconds "$WARMUP_SECS" \
+              --window-end-seconds "$TOTAL_SECS" \
+              --buffer-cycles 200 \
+              --plugin-reinit-cycles 50 \
+              --agenda-queries 1000
+          fi

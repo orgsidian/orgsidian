@@ -15,7 +15,7 @@ members = [
     "crates/orgsidian-cli",
     "crates/orgsidian-shell-app",
 ]
-exclude = ["tools/corpus-extractor", "tools/issues-sync"]
+exclude = ["tools/corpus-extractor", "tools/issues-sync", "scripts/memory-soak"]
 
 [workspace.package]
 version = "0.0.0"
