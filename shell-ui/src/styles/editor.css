@@ -112,3 +112,16 @@
 .org-todo-badge--done {
   background-color: var(--org-accent-done, var(--org-fg-subtle));
 }
+
+/*
+ * Story 4.3f — Pseudo-WYSIWYG links render as underlined accent text. Reuses the
+ * existing accent token (as the TODO keyword / active timestamp do) rather than
+ * introducing a new `--org-accent-link` into the LD-58 contrast gate. `cursor`
+ * signals clickability; the `[[…]]` brackets are hidden via `Decoration.replace`
+ * off the cursor line (see `components/editor/decorations/links.ts`).
+ */
+.cm-org-link {
+  color: var(--org-border-focus);
+  text-decoration: underline;
+  cursor: pointer;
+}
