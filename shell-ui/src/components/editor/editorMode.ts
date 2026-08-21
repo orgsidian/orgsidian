@@ -10,6 +10,7 @@ import { type EditorMode } from "@/lib/tauri";
 
 import { headingDecorations } from "./decorations/headings";
 import { tagPillDecorations } from "./decorations/tags";
+import { timestampDecorations } from "./decorations/timestamps";
 import { orgSyntaxHighlight } from "./orgLanguage";
 
 /**
@@ -19,7 +20,7 @@ import { orgSyntaxHighlight } from "./orgLanguage";
  * Pseudo-WYSIWYG differ only by this set, so Raw stays decoration-free.
  */
 function pseudoWysiwygDecorations(): Extension[] {
-  return [headingDecorations(), tagPillDecorations()];
+  return [headingDecorations(), tagPillDecorations(), timestampDecorations()];
 }
 
 /**
