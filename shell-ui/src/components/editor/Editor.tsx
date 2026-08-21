@@ -14,6 +14,17 @@ import { commands, type EditorMode } from "@/lib/tauri";
 import { modeExtensions } from "./editorMode";
 import { sourceFidelity } from "./decorations/sourceFidelity";
 import { createSplitEditor, type SplitSurface } from "./SplitEditor";
+import {
+  currentPlanningValue,
+  onPlanningRequested,
+  planningKeymap,
+  setPlanning,
+} from "./schedule";
+import {
+  OrgDatePicker,
+  type OrgDatePickerValue,
+  type OrgPlanningKind,
+} from "../org/OrgDatePicker";
 
 /**
  * Cold-start default Editor Mode (LD, UX default landing state): Pseudo-WYSIWYG.
@@ -43,6 +54,10 @@ const editorFontTheme = EditorView.theme({
 const baseEditorExtensions = [
   EditorView.editable.of(true),
   keymap.of(defaultKeymap),
+  // Story 4.8 (FR-9): Schedule/Deadline keybindings. Static bindings that only
+  // publish a picker-open request on the shared surface; the host decides
+  // whether to open the picker (Raw mode suppresses it for plain typing).
+  keymap.of([...planningKeymap()]),
   editorFontTheme,
   // Mode-independent: find/replace and clipboard operate on the source document
   // in every mode and in both Split panes (Story 4.3g / FR-3, FR-4).
@@ -132,6 +147,13 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
   const modeRef = useRef<EditorMode>(DEFAULT_MODE);
   const [modeState, setModeState] = useState<EditorMode>(DEFAULT_MODE);
   const [error, setError] = useState<string | null>(null);
+  // Story 4.8 (FR-9): the open date-picker request, or null when closed. Holds
+  // the target view + kind and the Headline's existing value (for edit pre-fill).
+  const [picker, setPicker] = useState<{
+    kind: OrgPlanningKind;
+    view: EditorView;
+    initial: OrgDatePickerValue | null;
+  } | null>(null);
 
   // Destroy whichever surface is live (a Split surface tears down both of its
   // views + wrapper; otherwise the single view). Idempotent, so a StrictMode
@@ -216,6 +238,17 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
     [filePath, buildSurface, teardownSurface],
   );
 
+  // Story 4.8 (FR-9): open the date picker when a Schedule/Deadline keybinding
+  // fires — EXCEPT in Raw mode, where the AC calls for plain typing of
+  // `SCHEDULED:`/`DEADLINE:` lines with no picker. Subscribed once; the request
+  // carries the concrete pane view so Split's two panes both work.
+  useEffect(() => {
+    return onPlanningRequested(({ kind, view }) => {
+      if (modeRef.current === "raw") return;
+      setPicker({ kind, view, initial: currentPlanningValue(view.state, kind) });
+    });
+  }, []);
+
   useEffect(() => {
     // Guards the async gap: if the component unmounts (or the effect re-runs)
     // before the loads resolve, cleanup flips `disposed` so the resolved
@@ -273,10 +306,35 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
 
   return (
     <div
-      ref={containerRef}
-      className="h-full w-full overflow-auto bg-[var(--org-bg-canvas)] text-[var(--org-fg-default)]"
+      className="relative h-full w-full"
       data-editor-mode={modeState}
       data-error={error ?? undefined}
-    />
+    >
+      <div
+        ref={containerRef}
+        className="h-full w-full overflow-auto bg-[var(--org-bg-canvas)] text-[var(--org-fg-default)]"
+      />
+      {picker !== null && (
+        // Story 4.8 (FR-9): the inline picker overlays the editor. Enter commits
+        // (writes via commands.setScheduled), Esc cancels; either way focus
+        // returns to the editor.
+        <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
+          <OrgDatePicker
+            kind={picker.kind}
+            initial={picker.initial}
+            onConfirm={(value) => {
+              const { view, kind } = picker;
+              setPicker(null);
+              void setPlanning(view, kind, value).finally(() => view.focus());
+            }}
+            onCancel={() => {
+              const { view } = picker;
+              setPicker(null);
+              view.focus();
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
