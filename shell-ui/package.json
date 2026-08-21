@@ -20,8 +20,10 @@
   },
   "dependencies": {
     "@codemirror/commands": "6.10.4",
+    "@codemirror/language": "6.12.4",
     "@codemirror/state": "6.7.1",
     "@codemirror/view": "6.43.8",
+    "@lezer/highlight": "1.2.3",
     "@lingui/core": "^6.0.1",
     "@lingui/react": "^6.0.1",
     "@tailwindcss/vite": "^4.3.0",

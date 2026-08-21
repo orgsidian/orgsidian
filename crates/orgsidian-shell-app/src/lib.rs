@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -6,6 +6,9 @@ use orgsidian_core::{IndexHandle, OrgError, Result as OrgResult};
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, collect_events, Builder, ErrorHandlingMode, Event};
+
+mod editor_prefs;
+use editor_prefs::EditorMode;
 
 #[tauri::command]
 #[specta::specta]
@@ -54,6 +57,27 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+impl AppState {
+    /// The active Vault's canonical root, or `None` when no Vault is designated.
+    ///
+    /// Clones the path out from under the (never-held-across-`.await`) index
+    /// lock so the caller can `.await` store I/O without holding the guard.
+    fn current_vault_root(&self) -> Option<PathBuf> {
+        lock(&self.index)
+            .as_ref()
+            .map(|handle| handle.vault_root().to_path_buf())
+    }
+}
+
+/// The `OrgError::Vault` returned when an editor-mode command runs before any
+/// Vault is active — per-file prefs are Vault-scoped (LD-40), so there is
+/// nowhere to persist them yet.
+fn no_active_vault() -> OrgError {
+    OrgError::Vault {
+        reason: "no active vault; designate a vault before setting the editor mode".to_string(),
+    }
 }
 
 /// Designate `path` as the active vault (FR-15): open/guard the derived index,
@@ -142,6 +166,35 @@ async fn open_file(path: String) -> OrgResult<String> {
         })
 }
 
+/// Story 4.2 (FR-3): persist the per-file Editor Mode choice for `file_path`
+/// via `tauri-plugin-store` at `<Vault>/.orgsidian/editor-prefs.json` (LD-40).
+/// Errors with `OrgError::Vault` when no Vault is active (nowhere to store).
+#[tauri::command]
+#[specta::specta]
+async fn set_editor_mode(
+    mode: EditorMode,
+    file_path: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    editor_prefs::persist_mode(&app, &vault_root, &file_path, mode)
+}
+
+/// Story 4.2 (FR-3): read the persisted Editor Mode for `file_path`, or `None`
+/// when the file has no stored choice. Errors with `OrgError::Vault` when no
+/// Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn get_editor_mode(
+    file_path: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<Option<EditorMode>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    editor_prefs::read_mode(&app, &vault_root, &file_path)
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -171,7 +224,9 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             ping,
             designate_vault,
             cancel_index_scan,
-            open_file
+            open_file,
+            set_editor_mode,
+            get_editor_mode
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`.

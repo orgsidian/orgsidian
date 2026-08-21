@@ -22,6 +22,10 @@ const SOURCE = "* Heading alpha\nbody text beta\n";
 // Hoisted so the `vi.mock` factories can reference them.
 const mocks = vi.hoisted(() => ({
   openFile: vi.fn<(path: string) => Promise<string>>(),
+  // Story 4.2: the typed editor-mode client. `getEditorMode` defaults to
+  // "no persisted choice" (null) in beforeEach; `setEditorMode` resolves.
+  getEditorMode: vi.fn<(path: string) => Promise<string | null>>(),
+  setEditorMode: vi.fn<(mode: string, path: string) => Promise<null>>(),
 }));
 
 // Track real EditorView construction/destruction without spying on a
@@ -30,7 +34,11 @@ const mocks = vi.hoisted(() => ({
 const cm = vi.hoisted(() => ({ created: 0, destroyed: 0 }));
 
 vi.mock("@/lib/tauri", () => ({
-  commands: { openFile: mocks.openFile },
+  commands: {
+    openFile: mocks.openFile,
+    getEditorMode: mocks.getEditorMode,
+    setEditorMode: mocks.setEditorMode,
+  },
 }));
 
 vi.mock("@codemirror/view", async (importOriginal) => {
@@ -50,6 +58,7 @@ vi.mock("@codemirror/view", async (importOriginal) => {
 
 // Imported AFTER the mocks are registered.
 import { Editor, type EditorHandle } from "./Editor";
+import { ORG_TOKEN_CLASS } from "./orgLanguage";
 
 // React needs this flag to run effects under `act` outside a DOM test runner.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -62,6 +71,11 @@ beforeEach(() => {
   cm.created = 0;
   cm.destroyed = 0;
   mocks.openFile.mockReset();
+  mocks.getEditorMode.mockReset();
+  mocks.setEditorMode.mockReset();
+  // Default: no persisted mode; a persistence write succeeds.
+  mocks.getEditorMode.mockResolvedValue(null);
+  mocks.setEditorMode.mockResolvedValue(null);
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -72,11 +86,16 @@ afterEach(() => {
   container.remove();
 });
 
-/** Flush pending microtasks (the `openFile` promise + its `.then`). */
+/**
+ * Flush pending microtasks. Story 4.2's load chains two awaits
+ * (`getEditorMode` → `openFile`) before creating the view, so drain several
+ * microtask turns to settle the whole chain.
+ */
 async function flush() {
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 6; i += 1) {
+      await Promise.resolve();
+    }
   });
 }
 
@@ -234,5 +253,128 @@ describe("Editor (StrictMode-safe CM6 host)", () => {
 
     expect(ref.current?.view).toBeTruthy();
     expect(() => ref.current?.focus()).not.toThrow();
+  });
+});
+
+/**
+ * Story 4.2 (FR-3): Raw editor mode. An org fixture exercising the tokenized
+ * constructs so we can assert syntax highlighting is live.
+ */
+const ORG_FIXTURE = "* TODO Buy milk :errand:\n<2026-05-19 Mon 14:00>\n";
+
+describe("Editor — Raw editor mode (Story 4.2)", () => {
+  it("loads and applies the persisted Raw mode on open", async () => {
+    mocks.openFile.mockResolvedValue(ORG_FIXTURE);
+    mocks.getEditorMode.mockResolvedValue("raw");
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+
+    // The persisted choice was read through the typed client for this file.
+    expect(mocks.getEditorMode).toHaveBeenCalledWith("/vault/notes.org");
+    expect(ref.current?.mode).toBe("raw");
+    expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
+  });
+
+  it("renders org syntax-highlight tokens and no decoration widgets in Raw mode", async () => {
+    mocks.openFile.mockResolvedValue(ORG_FIXTURE);
+    mocks.getEditorMode.mockResolvedValue("raw");
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" />);
+    });
+    await flush();
+
+    // Syntax-highlight tokens are present (org-mode-aware): headline stars,
+    // TODO keyword, tag, active timestamp.
+    expect(container.querySelector(`.${ORG_TOKEN_CLASS.headingStars}`)).not.toBeNull();
+    expect(container.querySelector(`.${ORG_TOKEN_CLASS.todoKeyword}`)?.textContent).toBe(
+      "TODO",
+    );
+    expect(container.querySelector(`.${ORG_TOKEN_CLASS.tag}`)?.textContent).toBe(":errand:");
+    expect(
+      container.querySelector(`.${ORG_TOKEN_CLASS.timestampActive}`)?.textContent,
+    ).toBe("<2026-05-19 Mon 14:00>");
+
+    // NO Pseudo-WYSIWYG decorations/widgets are rendered in Raw mode.
+    expect(container.querySelectorAll(".cm-widgetBuffer")).toHaveLength(0);
+    expect(container.querySelectorAll("[class*='org-decoration']")).toHaveLength(0);
+
+    // Source stays byte-faithful (highlighting is presentational).
+    const rendered = Array.from(container.querySelectorAll(".cm-line"))
+      .map((line) => line.textContent ?? "")
+      .join("\n");
+    expect(rendered).toBe(ORG_FIXTURE);
+  });
+
+  it("persists a mode switch via the typed commands.setEditorMode client", async () => {
+    mocks.openFile.mockResolvedValue(ORG_FIXTURE);
+    // Default landing mode when nothing is persisted.
+    mocks.getEditorMode.mockResolvedValue(null);
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+
+    expect(ref.current?.mode).toBe("pseudoWysiwyg");
+
+    await act(async () => {
+      ref.current?.setMode("raw");
+    });
+    await flush();
+
+    // Routed through the typed client (never a raw invoke) with (mode, filePath).
+    expect(mocks.setEditorMode).toHaveBeenCalledWith("raw", "/vault/notes.org");
+    expect(ref.current?.mode).toBe("raw");
+    expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
+    // The switch reconfigures in place — the same single view, no reload.
+    expect(container.querySelectorAll(".cm-editor")).toHaveLength(1);
+  });
+
+  it("round-trips a mode choice: what setEditorMode persists, getEditorMode reloads", async () => {
+    mocks.openFile.mockResolvedValue(ORG_FIXTURE);
+    // A tiny in-memory store shared by the two mocked commands proves the
+    // set → reload contract flows through the typed client.
+    const persisted = new Map<string, string>();
+    mocks.setEditorMode.mockImplementation((mode: string, path: string) => {
+      persisted.set(path, mode);
+      return Promise.resolve(null);
+    });
+    mocks.getEditorMode.mockImplementation((path: string) =>
+      Promise.resolve(persisted.get(path) ?? null),
+    );
+
+    // First session: switch to Raw, which persists.
+    const firstRef = createRef<EditorHandle>();
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={firstRef} />);
+    });
+    await flush();
+    await act(async () => {
+      firstRef.current?.setMode("raw");
+    });
+    await flush();
+    expect(persisted.get("/vault/notes.org")).toBe("raw");
+
+    // Second session (remount): the persisted Raw mode is reloaded.
+    await act(async () => root.unmount());
+    container.remove();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const secondRef = createRef<EditorHandle>();
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={secondRef} />);
+    });
+    await flush();
+
+    expect(secondRef.current?.mode).toBe("raw");
+    expect(container.querySelector("[data-editor-mode='raw']")).not.toBeNull();
   });
 });

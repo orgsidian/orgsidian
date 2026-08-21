@@ -1,0 +1,37 @@
+/*
+ * Editor org-token colors (FR-3 Raw mode, Story 4.2).
+ *
+ * Colors for the `cm-org-*` syntax-highlight token classes emitted by
+ * `components/editor/orgLanguage.ts`. Kept out of `tokens.css` (the LD-58
+ * contrast gate's authoritative token source) — these are token *usages*, not
+ * new `--org-*` declarations, and they resolve to the existing FR-22
+ * vocabulary. Story 6.7 / 4.3x refine the palette (e.g. per-TODO-state accent
+ * tokens) once those tokens exist.
+ */
+
+.cm-org-heading-stars {
+  color: var(--org-fg-subtle);
+  font-weight: 700;
+}
+
+.cm-org-todo {
+  color: var(--org-border-focus);
+  font-weight: 700;
+}
+
+.cm-org-done {
+  color: var(--org-fg-subtle);
+  font-weight: 700;
+}
+
+.cm-org-tag {
+  color: var(--org-fg-muted);
+}
+
+.cm-org-ts-active {
+  color: var(--org-border-focus);
+}
+
+.cm-org-ts-inactive {
+  color: var(--org-fg-muted);
+}

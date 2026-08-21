@@ -90,7 +90,7 @@ development_status:
   # Epic 4: Editor Surface & Org-mode Awareness
   epic-4: in-progress
   4-1-wire-codemirror-6-host-with-strictmode-safe-lifecycle: done
-  4-2-implement-raw-editor-mode: backlog
+  4-2-implement-raw-editor-mode: review
   4-3a-heading-hierarchy-decorations: backlog
   4-3b-todo-state-pill-badges-click-to-cycle: backlog
   4-3c-tag-pill-labels: backlog
