@@ -33,6 +33,7 @@ use std::time::{Duration, Instant};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
 
+use crate::calibration;
 use crate::Clock;
 
 /// Debounce window that coalesces one atomic-save event burst into a single
@@ -211,7 +212,20 @@ impl<S: EventSource, C: Clock> WatcherFacade<S, C> {
         };
 
         match self.source.recv_timeout(timeout) {
-            RecvOutcome::Event(event) => self.debouncer.on_event(&event, self.clock.now()),
+            RecvOutcome::Event(event) => {
+                // OD-3 calibration (Story 5.2): keep only genuine save targets so
+                // one logical editor save — spread across swap/backup/autosave/
+                // temp artifact paths — arms the debouncer for exactly one path.
+                // An artifact-only event arms nothing and emits no `FileChanged`.
+                let targets = calibration::save_targets(&event.paths);
+                if !targets.is_empty() {
+                    let calibrated = RawEvent {
+                        paths: targets,
+                        kind: event.kind,
+                    };
+                    self.debouncer.on_event(&calibrated, self.clock.now());
+                }
+            }
             RecvOutcome::Timeout => {}
             RecvOutcome::Disconnected => return PumpStatus::Disconnected,
         }

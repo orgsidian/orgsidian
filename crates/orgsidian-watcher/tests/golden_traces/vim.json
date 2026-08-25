@@ -1,0 +1,16 @@
+{
+  "editor": "vim",
+  "target": "notes.org",
+  "expected_file_changes": 1,
+  "provenance": "hand-authored",
+  "description": "vim `:w` with default writebackup: a `4913` writability probe is created and removed, the previous contents are renamed to a `notes.org~` backup, the new `notes.org` is written in place, and the `.notes.org.swp` swap file is flushed. One logical save; the target `notes.org` must coalesce to exactly one FileChanged. Offsets are milliseconds from the start of the save burst (all well within the 250ms debounce window). Modeled on documented vim save mechanics (`:h backup`, `:h swap-file`) — not a live capture.",
+  "events": [
+    { "offset_ms": 0,  "kind": "create", "paths": ["4913"] },
+    { "offset_ms": 2,  "kind": "remove", "paths": ["4913"] },
+    { "offset_ms": 4,  "kind": "create", "paths": ["notes.org~"] },
+    { "offset_ms": 4,  "kind": "remove", "paths": ["notes.org"] },
+    { "offset_ms": 7,  "kind": "create", "paths": ["notes.org"] },
+    { "offset_ms": 9,  "kind": "modify", "paths": ["notes.org"] },
+    { "offset_ms": 11, "kind": "modify", "paths": [".notes.org.swp"] }
+  ]
+}

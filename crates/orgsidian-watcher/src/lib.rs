@@ -7,14 +7,23 @@
 //! and an output sink) so the debounce is unit-testable with deterministic
 //! fakes. See the [`watcher`] module docs for the design.
 //!
+//! Story 5.2 adds the [`calibration`] seam: a pure editor-artifact classifier
+//! that keeps only genuine `.org` save targets (filtering vim swap/backup/probe,
+//! VS Code temp, and Emacs autosave/lock/backup paths) so one logical editor
+//! save — however many artifact paths it touches — coalesces to exactly one
+//! [`watcher::FileChanged`]. The classification is pinned by hand-authored
+//! golden traces replayed in `tests/debounce.rs`.
+//!
 //! [`detect_first_write_event`] remains the Story 1.9 anchor-smoke surface
 //! (signature preserved — anchor sentinel discipline, see `tests/anchor.rs`).
 //! Its body now blocks on the same `notify-rs` subscription for wakeups instead
 //! of a fixed mtime spin, while `metadata().modified()` stays the authoritative
 //! change confirmation and the injected [`Clock`] still gates the timeout.
 
+pub mod calibration;
 pub mod watcher;
 
+pub use calibration::{is_editor_artifact, is_save_target, save_targets};
 pub use watcher::{
     Debouncer, EventSource, FileChanged, NotifyEventSource, PumpStatus, RawEvent, RawKind,
     RecvOutcome, SystemClock, WatchError, WatcherFacade, DEBOUNCE_WINDOW,
