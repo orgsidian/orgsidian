@@ -75,10 +75,18 @@ fn export_bindings() {
         "setEditorMode",
         "getEditorMode",
         "EditorMode",
+        // Story 5.5: the dirty-buffer block-save fallback command surface + the
+        // conflict-banner event. A regression dropping any fails loudly here.
+        "saveFile",
+        "discardExternalChanges",
+        "openInDefaultEditor",
         "export const events",
         "indexProgress",
         "index-progress",
         "IndexProgress",
+        "conflictDetected",
+        "conflict-detected",
+        "ConflictDetected",
     ] {
         assert!(
             contents.contains(anchor),

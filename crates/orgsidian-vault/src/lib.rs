@@ -35,6 +35,13 @@
 //! plan ([`reload::BufferReload`]) an external write onto a CLEAN buffer
 //! produces (FR-16 auto-reload). Pure in-memory types with a redacting `Debug`;
 //! the `orgsidian-core` reconciler consumes them (reading disk + re-indexing).
+//!
+//! Story 5.5 ships the DIRTY-branch fallback (FR-16 v0.1): the
+//! [`pending::PendingConflicts`] registry tracks files whose save is blocked by
+//! an unresolved external conflict, and [`error::VaultError::ExternalConflict`]
+//! is the error a blocked save returns. The `orgsidian-core` reconciler runs the
+//! injected [`conflict::BlockWithWarning`] strategy, records the block here, and
+//! the shell's save command consults it — the full Merge Dialog is Epic 9.
 
 pub mod atomic;
 pub mod conflict;
@@ -42,6 +49,7 @@ pub mod dirty_buffer;
 pub mod error;
 pub mod hash;
 pub mod path;
+pub mod pending;
 pub mod reload;
 
 pub use atomic::{atomic_write, clean_orphan_temp_files, CleanupReport};
@@ -53,4 +61,5 @@ pub use dirty_buffer::{DirtyBufferManager, SharedDirtyBuffers};
 pub use error::VaultError;
 pub use hash::Sha256Hash;
 pub use path::{canonicalize_vault_root, open_vault_root, scan_org_files, to_rel_path};
+pub use pending::{PendingConflicts, SharedPendingConflicts};
 pub use reload::{decide_cursor, BufferReload, CursorOutcome, CursorPosition};

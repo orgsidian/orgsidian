@@ -2,7 +2,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use orgsidian_core::{IndexHandle, OrgError, Result as OrgResult};
+use orgsidian_core::{
+    ConflictNotice, IndexHandle, OrgError, Result as OrgResult, SharedDirtyBuffers,
+    SharedPendingConflicts,
+};
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, collect_events, Builder, ErrorHandlingMode, Event};
@@ -46,6 +49,16 @@ pub struct AppState {
     designating: tauri::async_runtime::Mutex<()>,
     index: Mutex<Option<IndexHandle>>,
     cancel: Mutex<Option<Arc<AtomicBool>>>,
+    /// Story 5.5 (LD-7 / FR-16): which open files hold unsaved edits. The
+    /// watcher's DIRTY branch reads this to route an external write to the
+    /// block-save fallback; a successful [`save_file`] marks the file clean.
+    /// `Arc<RwLock<_>>`, so shared by clone with the (deferred) watcher loop.
+    dirty_buffers: SharedDirtyBuffers,
+    /// Story 5.5 (FR-16 / NFR-16): files whose save is currently BLOCKED by an
+    /// unresolved external conflict. [`save_file`] consults it (blocked → refuse
+    /// with a `VaultError::ExternalConflict`-backed `OrgError::Vault`); the
+    /// "Discard external changes" action ([`discard_external_changes`]) clears it.
+    pending_conflicts: SharedPendingConflicts,
 }
 
 /// Lock a managed-state mutex, tolerating poisoning. The critical sections are
@@ -163,6 +176,125 @@ async fn open_file(path: String) -> OrgResult<String> {
         .await
         .map_err(|err| OrgError::Io {
             reason: format!("failed to read {path}: {err}"),
+        })
+}
+
+/// Story 5.5 (FR-16 / NFR-16): the redaction-safe `state` carried on the
+/// [`ConflictDetected`] event. The banner renders only the `path`; these fields
+/// are diagnostic metadata projected from the core [`ConflictNotice`] — content
+/// byte *lengths* and the ancestor hash, NEVER the user's note text (the
+/// conflict types' redaction contract extended across the IPC boundary).
+///
+/// These are the first multi-word event fields in the app, so — like `OrgError`
+/// and for the same reason (the architecture's project-wide specta rename is not
+/// available in the pinned `tauri-specta =2.0.0-rc.25`, and `#[specta(rename_all)]`
+/// is rejected) — `#[serde(rename_all = "camelCase")]` is the working way to
+/// honor the mandated camelCase IPC wire (`{ ancestorHash, externalLen,
+/// bufferLen }`). specta-serde's Format symmetry keeps the generated TS in step.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictSummary {
+    /// Hex SHA-256 of the ancestor content (a digest, safe to surface).
+    pub ancestor_hash: String,
+    /// Byte length of the external (on-disk) content — never the content.
+    pub external_len: u32,
+    /// Byte length of the unsaved buffer content — never the content.
+    pub buffer_len: u32,
+}
+
+/// Story 5.5 (FR-16 v0.1 fallback): emitted when an external write lands on a
+/// file with a Dirty Buffer and the active `BlockWithWarning` strategy blocks
+/// the save. The frontend renders the calm, non-modal conflict banner in the
+/// editor surface and offers "Discard external changes" / "View file in default
+/// editor". Wire name `conflict-detected`, accessor `events.conflictDetected`.
+#[derive(Debug, Clone, serde::Serialize, specta::Type, Event)]
+pub struct ConflictDetected {
+    /// The conflicted file (verbatim, as the Dirty Buffer keys it) — the id the
+    /// banner shows and the two actions round-trip back to the block/discard
+    /// commands.
+    pub path: String,
+    /// Redaction-safe conflict metadata (no note content).
+    pub state: ConflictSummary,
+}
+
+impl ConflictDetected {
+    /// Project a core [`ConflictNotice`] into the wire event — the ONLY crossing
+    /// of the conflict data over IPC, and it carries no note content.
+    fn from_notice(notice: &ConflictNotice) -> Self {
+        ConflictDetected {
+            path: notice.path().to_string_lossy().into_owned(),
+            state: ConflictSummary {
+                ancestor_hash: notice.ancestor_hash().to_string(),
+                // A `.org` buffer never approaches 4 GiB; `as` is safe here.
+                external_len: notice.external_len() as u32,
+                buffer_len: notice.buffer_len() as u32,
+            },
+        }
+    }
+}
+
+/// Story 5.5 (FR-16): push a [`ConflictDetected`] to the window. Best-effort —
+/// a failed emit (no listener / window gone) must not abort the reconcile, the
+/// same discipline [`IndexProgress`] emission follows.
+///
+/// Called by the watcher event-consumption loop's DIRTY branch after
+/// [`orgsidian_core::resolve_dirty_conflict`] records the block and returns the
+/// notice. That loop (draining the `WatcherFacade`'s `Receiver<FileChanged>` per
+/// designated vault) is the shared Epic-5 seam still deferred from Story 5.4;
+/// this helper is the emit half it calls, kept here so the payload projection is
+/// reviewed and unit-tested now (see `tests`).
+pub fn emit_conflict_detected(app: &tauri::AppHandle, notice: &ConflictNotice) {
+    let _ = ConflictDetected::from_notice(notice).emit(app);
+}
+
+/// Story 5.5 (FR-16 / NFR-16 Single Writer Rule): save `content` to `path`, or
+/// REFUSE when an external write conflict is unresolved.
+///
+/// The v0.1 save gate: if `path` has a pending external conflict, the save is
+/// blocked and returns `OrgError::Vault` (from `VaultError::ExternalConflict`) —
+/// Orgsidian never silently overwrites unsaved work. Otherwise the buffer is
+/// written via the Story 3.1 atomic write (temp-file + rename) and marked clean.
+/// The `path` is taken verbatim (same keying as `open_file` and the Dirty
+/// Buffer); Vault-root scoping is deferred with `open_file`'s (see
+/// `deferred-work.md`).
+#[tauri::command]
+#[specta::specta]
+async fn save_file(
+    path: String,
+    content: String,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    orgsidian_core::save_buffer(
+        &state.pending_conflicts,
+        &state.dirty_buffers,
+        Path::new(&path),
+        &content,
+    )
+    .await
+}
+
+/// Story 5.5 (FR-16): "Discard external changes" — clear the pending external
+/// conflict on `path` so the next [`save_file`] overwrites the external write
+/// via the normal atomic path. Idempotent; a no-op when `path` is not blocked.
+#[tauri::command]
+#[specta::specta]
+fn discard_external_changes(path: String, state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    orgsidian_core::discard_external_changes(&state.pending_conflicts, Path::new(&path));
+    Ok(())
+}
+
+/// Story 5.5 (FR-16): "View file in default editor" — open the conflicted file
+/// in the OS default application via `tauri-plugin-opener`, so the user can
+/// inspect the external write before deciding to discard. Read-only from
+/// Orgsidian's side; it never touches the Dirty Buffer or the block state.
+#[tauri::command]
+#[specta::specta]
+fn open_in_default_editor(path: String, app: tauri::AppHandle) -> OrgResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(path.clone(), None::<&str>)
+        .map_err(|err| OrgError::Io {
+            reason: format!("failed to open {path} in the default editor: {err}"),
         })
 }
 
@@ -342,13 +474,17 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             designate_vault,
             cancel_index_scan,
             open_file,
+            save_file,
+            discard_external_changes,
+            open_in_default_editor,
             set_editor_mode,
             get_editor_mode,
             set_scheduled
         ])
         // Story 3.6: the app's first declared event lights up the `events`
-        // object in the generated `tauri.ts`.
-        .events(collect_events![IndexProgress])
+        // object in the generated `tauri.ts`. Story 5.5 adds the second event —
+        // the dirty-buffer conflict banner's trigger.
+        .events(collect_events![IndexProgress, ConflictDetected])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -559,6 +695,44 @@ mod tests {
         ))
         .expect("removal should succeed");
         assert_eq!(apply(&source, &edit), "* Task\nBody\n");
+    }
+
+    /// Story 5.5: the `ConflictDetected` event projects a real block into a
+    /// redaction-safe payload — path + content byte-lengths + ancestor hash, and
+    /// NEVER the user's note text (the redaction contract crossing IPC).
+    #[test]
+    fn conflict_detected_projects_redacted_notice() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("notes.org");
+        std::fs::write(&path, "EXTERNAL DISK\n").expect("write external"); // 14 bytes
+
+        let buffers: SharedDirtyBuffers = Default::default();
+        buffers
+            .write()
+            .expect("lock")
+            .mark_dirty(path.clone(), "BUFFER SECRET\n"); // 14 bytes
+        let pending: SharedPendingConflicts = Default::default();
+
+        let notice = tauri::async_runtime::block_on(orgsidian_core::resolve_dirty_conflict(
+            &orgsidian_core::BlockWithWarning,
+            &pending,
+            &buffers,
+            &path,
+        ))
+        .expect("resolve")
+        .expect("dirty write is blocked");
+
+        let event = ConflictDetected::from_notice(&notice);
+        assert_eq!(event.path, path.to_string_lossy());
+        assert_eq!(event.state.buffer_len, "BUFFER SECRET\n".len() as u32);
+        assert_eq!(event.state.external_len, "EXTERNAL DISK\n".len() as u32);
+        // Ancestor hash is a 64-hex-char digest, carried in full.
+        assert_eq!(event.state.ancestor_hash.len(), 64);
+
+        // Redaction: no note text anywhere in the event, even under `{:?}`.
+        let rendered = format!("{event:?}");
+        assert!(!rendered.contains("SECRET"), "{rendered}");
+        assert!(!rendered.contains("DISK"), "{rendered}");
     }
 
     #[test]

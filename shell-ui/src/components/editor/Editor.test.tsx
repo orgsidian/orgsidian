@@ -38,6 +38,15 @@ vi.mock("@/lib/tauri", () => ({
     openFile: mocks.openFile,
     getEditorMode: mocks.getEditorMode,
     setEditorMode: mocks.setEditorMode,
+    // Story 5.5: the ConflictBanner child calls these; no Editor test triggers
+    // a conflict, so no-op resolutions are enough to keep the surface mounted.
+    discardExternalChanges: vi.fn(() => Promise.resolve()),
+    openInDefaultEditor: vi.fn(() => Promise.resolve()),
+  },
+  // Story 5.5: the ConflictBanner subscribes on mount; a listen that never fires
+  // means the banner renders nothing across the Editor lifecycle tests.
+  events: {
+    conflictDetected: { listen: () => Promise.resolve(() => {}) },
   },
 }));
 

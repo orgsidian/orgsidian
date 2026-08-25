@@ -37,6 +37,15 @@ vi.mock("@/lib/tauri", () => ({
     openFile: mocks.openFile,
     getEditorMode: mocks.getEditorMode,
     setEditorMode: mocks.setEditorMode,
+    // Story 5.5: the Editor host now renders the ConflictBanner child, which
+    // calls these; no ModeSwitcher test triggers a conflict, so no-ops suffice.
+    discardExternalChanges: vi.fn(() => Promise.resolve()),
+    openInDefaultEditor: vi.fn(() => Promise.resolve()),
+  },
+  // Story 5.5: the ConflictBanner subscribes on mount; a listen that never fires
+  // keeps the banner dormant across these editor-mode integration tests.
+  events: {
+    conflictDetected: { listen: () => Promise.resolve(() => {}) },
   },
 }));
 
