@@ -120,6 +120,7 @@ listed crates / packages forced the question by appearing transitively.
 | `Apache-2.0 WITH LLVM-exception`  | LLVM-derived crates                                       | Apache-2.0 with relaxed patent clause for LLVM compiler infra; permissive.                      | 2026-05-22     | 2026-08-20  |
 | `0BSD` (pnpm-side only)           | `tslib`                                                   | Zero-clause BSD; OSI-approved, equivalent to public domain.                                     | 2026-05-22     | 2026-08-20  |
 | `CC-BY-4.0` (pnpm-side only)      | `caniuse-lite`                                            | Creative Commons Attribution 4.0; appropriate for browser-data tables (data, not source code).  | 2026-05-22     | 2026-08-20  |
+| `CC0-1.0`                         | `notify` 8.x (filesystem watcher, FR-16 — Epic 5)         | Public-domain dedication; FSF-compatible, equivalent to public domain for source use.           | 2026-08-21     | 2026-11-21  |
 
 ## Review history
 

@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+notify = "8.2.0"
 # Story 1.9: thiserror for `DetectError`. notify-rs lands in Story 5.1.
 thiserror = { workspace = true }
 
