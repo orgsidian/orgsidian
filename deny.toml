@@ -96,6 +96,8 @@ allow = [
     "Unicode-3.0",                    # icu_* / idna / url chain (foundational Unicode handling)
     "BSL-1.0",                        # Boost Software License (permissive, OSI/FSF approved)
     "Apache-2.0 WITH LLVM-exception", # LLVM-style relaxed patent clause (Apache-2.0 base)
+    # --- Epic 5 addition (Story 5.1) ---
+    "CC0-1.0",                        # notify 8.x (filesystem watcher, FR-16) — public-domain dedication, FSF-compatible
 ]
 # cargo-deny default for high-confidence SPDX inference.
 confidence-threshold = 0.93
