@@ -3181,6 +3181,7 @@ version = "0.0.0"
 dependencies = [
  "atomic-write-file",
  "fail",
+ "sha2",
  "tempfile",
  "thiserror 1.0.69",
  "tracing",

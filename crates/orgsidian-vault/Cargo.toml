@@ -30,6 +30,11 @@ fail = { workspace = true, optional = true }
 # Pinned `"2"` at the workspace unifies on the `walkdir 2.5.0` already in the
 # lock (transitive) — no new download. The walk lives HERE, not in core.
 walkdir = { workspace = true }
+# Story 5.3 (FR-16 / Party Mode P0): SHA-256 for the `Sha256Hash` newtype backing
+# `ConflictState.ancestor_hash` (`src/hash.rs`). Already in `Cargo.lock`
+# transitively (Tauri) — a dependency edge, zero new crates. See the workspace
+# manifest for the full rationale.
+sha2 = { workspace = true }
 
 [dev-dependencies]
 # Story 1.9: tempfile is dev-only; per-crate (no workspace pin needed for dev deps).

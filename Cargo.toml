@@ -178,6 +178,17 @@ tokio = { version = "1", default-features = false }
 # `orgsidian-vault` only (the walk lives there); NOT added to `orgsidian-core`,
 # which reaches the walk through the vault. MIT/Unlicense (allowlist-compatible).
 walkdir = "2"
+# Story 5.3 (FR-16 / Party Mode P0): SHA-256 for the `ConflictState.ancestor_hash`
+# rich-conflict field (`orgsidian-vault/src/hash.rs`). `sha2 0.10.9` is ALREADY in
+# `Cargo.lock` transitively (Tauri's `tauri-utils`/`tao` pull it), so pinning
+# `"0.10"` UNIFIES the graph on it — this adds a dependency EDGE, zero new crates
+# and no duplicate major (`digest`/`generic-array`/`cpufeatures`/`cfg-if` are all
+# already resolved). `default-features = false` keeps it minimal: the `Digest`
+# hashing API is `no_std`-core, and vault needs nothing from the `std` feature.
+# Consumed by `orgsidian-vault` only (the LEAF that owns the conflict model). The
+# newtype is a general primitive a future index content-hash consumer may reuse.
+# RustCrypto: MIT OR Apache-2.0 (allowlist-compatible).
+sha2 = { version = "0.10", default-features = false }
 # Nightly fix (arch-linux cell): dev-only `geteuid()` probe used by
 # `orgsidian-core/tests/scan.rs` to skip the chmod-000 quarantine test under
 # root (root bypasses mode bits, so the unreadable-file scenario is not
