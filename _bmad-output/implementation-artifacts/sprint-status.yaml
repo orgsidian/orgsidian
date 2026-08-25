@@ -1,5 +1,5 @@
 # generated: 2026-05-19
-# last_updated: 2026-08-15 (story 4.1 -> done)
+# last_updated: 2026-08-25 (Epic 5 stories 5.1-5.5 -> done; epic-5 -> done)
 # project: orgsidian
 # project_key: NOKEY
 # tracking_system: file-system
@@ -107,12 +107,12 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: External-Edits Co-existence (Safe Fallback)
-  epic-5: backlog
-  5-1-implement-notify-rs-filesystem-watcher-with-debounce: backlog
-  5-2-record-golden-trace-fixtures-from-vim-vs-code-emacs-save-sequences: backlog
-  5-3-implement-conflictstate-rich-struct-conflictstrategy-pattern-party-mode-p0: backlog
-  5-4-implement-clean-buffer-auto-reload-re-index-on-external-write: backlog
-  5-5-implement-dirty-buffer-block-save-fallback-with-conflict-warning-ui: backlog
+  epic-5: done
+  5-1-implement-notify-rs-filesystem-watcher-with-debounce: done
+  5-2-record-golden-trace-fixtures-from-vim-vs-code-emacs-save-sequences: done
+  5-3-implement-conflictstate-rich-struct-conflictstrategy-pattern-party-mode-p0: done
+  5-4-implement-clean-buffer-auto-reload-re-index-on-external-write: done
+  5-5-implement-dirty-buffer-block-save-fallback-with-conflict-warning-ui: done
   epic-5-retrospective: optional
 
   # Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
