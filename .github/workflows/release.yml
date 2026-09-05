@@ -1,0 +1,227 @@
+# release.yml — Story 6.8 (LD-19 code signing / LD-34 distribution channels).
+#
+# Builds, signs, and notarizes the macOS-arm64 DMG via the Tauri bundler and
+# uploads it to a (draft, prerelease) GitHub Release. Triggered by pushing a
+# `v0.1.0-alpha.x` tag (the LD-33 `v*` tag scheme — pattern kept in lockstep
+# with cliff.toml's `tag_pattern`). Story 6.9 adds the Linux AppImage job to
+# this same file; Windows MSI is a later story (LD-34: "Chocolatey/Scoop
+# deferred post-v1.0" — the MSI job itself is not yet scoped to a story).
+#
+# The Homebrew cask publish step used to be a job chained directly after
+# this one, but that races the release's draft state: the cask's `url`
+# points at the public `releases/download/<tag>/<asset>` path, which 404s
+# until a maintainer actually publishes the (draft) release (Story 6.10).
+# It now lives in its own workflow — see
+# .github/workflows/homebrew-cask.yml — triggered by `release: published`
+# instead. See docs/releasing.md for the full 6.8 -> 6.9 -> 6.10 flow.
+#
+# Workflow shape verified 2026-09-05 against the current Tauri 2.x docs
+# (tauri-apps/tauri-docs, "Pipelines > GitHub" + "Sign > macOS") via the
+# project's ctx7 documentation rule — see the per-step comments below for
+# what came from there vs. house convention.
+#
+# ****************************************************************
+# * REQUIRED REPOSITORY SECRETS — see docs/releasing.md for the   *
+# * full runbook. This job does nothing useful until ALL of the   *
+# * below are configured (Settings → Secrets and variables →      *
+# * Actions):                                                     *
+# *                                                                *
+# *   APPLE_CERTIFICATE           base64 of the exported .p12     *
+# *                                Developer ID Application cert   *
+# *   APPLE_CERTIFICATE_PASSWORD  export password for that .p12    *
+# *   KEYCHAIN_PASSWORD           any password for the throwaway   *
+# *                                CI keychain (not an Apple secret;*
+# *                                generate a random string once)  *
+# *   APPLE_ID                    Apple ID email used to notarize  *
+# *   APPLE_PASSWORD              app-specific password for that   *
+# *                                Apple ID (NOT the account pwd)  *
+# *   APPLE_TEAM_ID                10-char Apple Developer Team ID *
+# *                                                                *
+# * GITHUB_TOKEN (built-in, no setup needed) creates the release   *
+# * and uploads the DMG to orgsidian/orgsidian itself.             *
+# *                                                                *
+# * HOMEBREW_TAP_GITHUB_TOKEN is NOT used by this workflow — it is *
+# * consumed by .github/workflows/homebrew-cask.yml, which runs    *
+# * later (on `release: published`). Still listed in the runbook   *
+# * in docs/releasing.md as required before the first release.     *
+# ****************************************************************
+#
+# Version policy: action versions semver-major-pinned (`@v5`, `@v1`);
+# runner PINNED (`macos-14`, `ubuntu-24.04`) — never `*-latest` per
+# [[feedback_version_policy]], matching pr.yml.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v0.1.0-alpha.*'
+  workflow_dispatch: {}
+
+# One release run per tag at a time; never cancel a real release mid-flight
+# (unlike pr.yml's PR-churn cancellation).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # macOS-arm64 DMG: build (Tauri bundler) + sign (Developer ID Application
+  # cert) + notarize (notarytool, staple attached) + upload to the GitHub
+  # Release for this tag. Story 6.9 (Linux AppImage) adds a sibling job here
+  # — kept as a single top-level job for now since it is the only platform
+  # in this story's AC.
+  macos-dmg:
+    runs-on: macos-14
+    timeout-minutes: 60
+    # Guard against a bogus release from a non-tag run: this workflow keeps
+    # `workflow_dispatch` (for a manual re-run against an existing tag ref),
+    # but a dispatch against a branch (e.g. `main`) must not fall through to
+    # tauri-action creating a release under that branch name.
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      # Step 1 — checkout. submodules: recursive for the tree-sitter-org
+      # grammar (LD-48), same as pr.yml. fetch-depth: 0 not needed here (no
+      # baseline-diff step in this workflow).
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Step 2 — Rust toolchain + cache, mirroring pr.yml. macos-14 runners
+      # are native Apple Silicon, so no explicit `targets:` cross-install is
+      # needed for `aarch64-apple-darwin`.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-macos-14
+          workspaces: .
+
+      # Step 3 — pnpm + Node, same order-matters rule as pr.yml (pnpm
+      # action-setup MUST precede actions/setup-node so `cache: 'pnpm'`
+      # finds the pnpm binary on PATH).
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11.1.1
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # Step 4 — JS deps (tauri-action's default build command shells out to
+      # `pnpm --filter shell-ui build` via tauri.conf.json's
+      # `beforeBuildCommand`, which needs these installed first).
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      # Step 5 — Import the Apple Developer ID Application certificate into
+      # a throwaway CI keychain and resolve the signing identity string.
+      # This is the tauri-apps/tauri-docs "Sign > macOS" reference sequence
+      # verbatim (ctx7-verified 2026-09-05), adapted to grep
+      # "Developer ID Application" (distribution cert, LD-19) instead of
+      # the doc's own "Apple Development" example (a different cert class).
+      - name: Import Apple Developer ID certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # Capture the runner's existing keychain search list *before*
+          # creating build.keychain, so the `list-keychains` call below adds
+          # ours to it instead of silently dropping login.keychain (and
+          # whatever keychain tauri-action's own cert import may use) off
+          # the search path.
+          EXISTING_KEYCHAINS="$(security list-keychains -d user | tr -d '"')"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import "$RUNNER_TEMP/certificate.p12" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          # Standard codesign keychain setup: add build.keychain to the
+          # user's keychain SEARCH LIST (distinct from the *default*
+          # keychain set above) so codesign/notarytool can resolve the
+          # Developer ID identity via the search list, not only the default
+          # keychain. `$EXISTING_KEYCHAINS` is deliberately unquoted — each
+          # keychain path is a separate positional argument to `-s`.
+          # shellcheck disable=SC2086
+          security list-keychains -d user -s build.keychain $EXISTING_KEYCHAINS
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security find-identity -v -p codesigning build.keychain
+
+      - name: Resolve signing identity
+        run: |
+          set -euo pipefail
+          # `|| true`: under `set -euo pipefail`, a non-matching grep exits 1
+          # and would abort the step before the friendly `::error::` below
+          # ever prints. `-m1`: guard against a keychain holding more than
+          # one "Developer ID Application" identity, which would otherwise
+          # make CERT_ID (and the value written to $GITHUB_ENV) multi-line.
+          CERT_INFO="$(security find-identity -v -p codesigning build.keychain | grep -m1 "Developer ID Application" || true)"
+          CERT_ID="$(echo "$CERT_INFO" | awk -F'"' '{print $2}')"
+          if [ -z "$CERT_ID" ]; then
+            echo "::error::No 'Developer ID Application' identity found in the imported certificate. Check APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD (see docs/releasing.md)."
+            exit 1
+          fi
+          echo "CERT_ID=$CERT_ID" >> "$GITHUB_ENV"
+          echo "Resolved signing identity: $CERT_ID"
+
+      # Step 6 — build + sign + notarize (staple attached by the Tauri
+      # bundler when APPLE_ID/APPLE_PASSWORD/APPLE_TEAM_ID are present — see
+      # crates/tauri-bundler's macOS app.rs notarize() path, ctx7-verified
+      # 2026-09-05) + create the GitHub Release + upload the DMG, all via
+      # tauri-apps/tauri-action (the official action; @v1 is the current
+      # major per the tauri-docs "Pipelines > GitHub" reference workflow).
+      # `projectPath` is required because `tauri.conf.json` lives at
+      # `crates/orgsidian-shell-app`, not repo root (LD-2 workspace layout).
+      # `tagName` is left unset deliberately: the action's `__VERSION__`
+      # auto-tagging behavior is for the "push to a release branch" trigger
+      # mode: this workflow instead triggers on an already-pushed
+      # `v0.1.0-alpha.x` tag (`github.ref_name`), so the action publishes
+      # the release under that existing tag.
+      # `releaseDraft: true` — the maintainer reviews + publishes manually
+      # (Story 6.10 owns the actual "go public" announcement step).
+      # `prerelease: true` — every v0.1.0-alpha.x tag is a pre-release by
+      # definition.
+      - name: Build, sign, notarize, and publish (tauri-action)
+        id: tauri_action
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: crates/orgsidian-shell-app
+          args: --target aarch64-apple-darwin
+          releaseName: 'Orgsidian ${{ github.ref_name }}'
+          releaseBody: 'Signed + notarized macOS-arm64 DMG. See CHANGELOG.md for what changed.'
+          releaseDraft: true
+          prerelease: true
+          includeUpdaterJson: false
+
+      # Step 7 — keychain cleanup. Always runs (even on a prior failure) so
+      # a re-run of this job never trips over a stale `build.keychain` from
+      # a previous attempt on the same self-hosted-style ephemeral runner
+      # image (GitHub-hosted runners are fresh per job, but this keeps the
+      # step correct if that ever changes).
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain build.keychain || true
+
+  # NOTE: the Homebrew cask publish step is intentionally NOT a job here.
+  # See .github/workflows/homebrew-cask.yml, which publishes the cask once
+  # this release is actually published (not while it is still a draft).
