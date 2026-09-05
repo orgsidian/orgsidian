@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Orgsidian — org-mode, without Emacs</title>
+<meta name="description" content="Orgsidian is a cross-platform desktop planner-and-knowledge app that opens, edits, and organizes .org files without requiring Emacs. Local-first, open source, format-faithful." />
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #faf9f6;
+    --bg-raised: #ffffff;
+    --fg: #1b1a17;
+    --fg-muted: #57534a;
+    --border: #e4e0d8;
+    --accent: #7c5a3a;
+    --accent-fg: #ffffff;
+    --code-bg: #f0ede5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17140f;
+      --bg-raised: #211d16;
+      --fg: #f2ede2;
+      --fg-muted: #b8ae9c;
+      --border: #3a342a;
+      --accent: #d8a869;
+      --accent-fg: #17140f;
+      --code-bg: #241f17;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  a { color: var(--accent); }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 5rem;
+  }
+  header.hero {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  header.hero .wordmark {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem;
+  }
+  header.hero .tagline {
+    font-size: 1.15rem;
+    color: var(--fg-muted);
+    margin: 0 auto 1.75rem;
+    max-width: 46ch;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+  .badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+    background: var(--bg-raised);
+  }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 1.75rem;
+  }
+  .btn {
+    display: inline-block;
+    padding: 0.65rem 1.3rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+  }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .btn.secondary {
+    background: var(--bg-raised);
+    color: var(--fg);
+  }
+  section {
+    margin-top: 3rem;
+  }
+  section h2 {
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .features li {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+  .features li strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .features li span {
+    color: var(--fg-muted);
+    font-size: 0.92rem;
+  }
+  .install-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+  }
+  .install-table th, .install-table td {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .install-table th {
+    color: var(--fg-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  .not-yet {
+    color: var(--fg-muted);
+    font-size: 0.92rem;
+  }
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+  footer a { color: var(--fg-muted); }
+</style>
+</head>
+<body>
+<main>
+
+  <header class="hero">
+    <div class="badge-row">
+      <span class="badge">v0.1 Alpha</span>
+      <span class="badge">MIT licensed</span>
+      <span class="badge">macOS · Linux</span>
+    </div>
+    <p class="wordmark">Orgsidian</p>
+    <p class="tagline">The desktop planner-and-knowledge app that opens, edits, and organizes <code>.org</code> files — without requiring Emacs.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/orgsidian/orgsidian/releases/latest">Download the latest release</a>
+      <a class="btn secondary" href="https://github.com/orgsidian/orgsidian">View on GitHub</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>What it is</h2>
+    <p>
+      Org-mode is one of the most powerful integrated planner-and-knowledge
+      formats ever shipped, but it lives inside Emacs — and Emacs is a hard
+      barrier for most people. Orgsidian is desktop-native, cross-platform,
+      open source, and faithful to the plain-text format: it reads and
+      writes <code>.org</code> files byte-for-byte round-trip faithfully,
+      so it plays well with every other tool that already reads your files
+      — Emacs included.
+    </p>
+  </section>
+
+  <section>
+    <h2>In v0.1 Alpha</h2>
+    <ul class="features">
+      <li><strong>Starter Vaults</strong><span>Personal GTD and Student starters generate realistic Inbox/Project/Journal content on first launch.</span></li>
+      <li><strong>Today + Week Agenda</strong><span>Scheduled and Deadline items across your whole Vault, one click back to the source Headline.</span></li>
+      <li><strong>Org-aware editor</strong><span>CodeMirror-based Raw / Pseudo-WYSIWYG / Split modes, TODO/tag/timestamp decorations, optional Emacs keybindings.</span></li>
+      <li><strong>External-edit safety</strong><span>Edit the same file from Emacs or any other tool without losing either version.</span></li>
+      <li><strong>Dark + light themes</strong><span>WCAG AA-contrast themes with an instant Settings toggle.</span></li>
+      <li><strong>Round-trip-faithful parser</strong><span>A <code>tree-sitter-org</code>-backed parser validated against a real-world corpus and an Emacs ground-truth oracle.</span></li>
+    </ul>
+    <p class="not-yet">Not yet in v0.1: time-tracking, capture, full-text search, backlinks, graph view, and the interactive Merge Dialog — see the <a href="https://github.com/orgsidian/orgsidian#roadmap">Roadmap</a> for what's next.</p>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <table class="install-table">
+      <thead>
+        <tr><th>Platform</th><th>Path</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>macOS (Apple Silicon)</td>
+          <td>Signed + notarized <code>.dmg</code> on the <a href="https://github.com/orgsidian/orgsidian/releases/latest">latest Release</a>, or <code>brew install --cask orgsidian/tap/orgsidian</code></td>
+        </tr>
+        <tr>
+          <td>Linux (x86_64)</td>
+          <td>GPG-signed <code>.AppImage</code> on the <a href="https://github.com/orgsidian/orgsidian/releases/latest">latest Release</a></td>
+        </tr>
+        <tr>
+          <td>Build from source</td>
+          <td>See <a href="https://github.com/orgsidian/orgsidian#development">Development</a> in the README</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="not-yet">Full packaging, signing, and verification details: <a href="https://github.com/orgsidian/orgsidian/blob/main/docs/releasing.md">docs/releasing.md</a>.</p>
+  </section>
+
+  <footer>
+    <p>Orgsidian is free and open source under the MIT license.
+    <a href="https://github.com/orgsidian/orgsidian">Source</a> ·
+    <a href="https://github.com/orgsidian/orgsidian/issues">Issues</a> ·
+    <a href="https://github.com/orgsidian/orgsidian/blob/main/CONTRIBUTING.md">Contributing</a></p>
+  </footer>
+
+</main>
+</body>
+</html>
