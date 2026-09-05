@@ -95,6 +95,11 @@ fn export_bindings() {
         // above but its field list is not).
         "agendaWeek",
         "agendaDate",
+        // Story 6.6 (FR-21 partial / UJ-4): the hardcoded coaching-balloon
+        // dismissal read/write commands. A regression dropping either fails
+        // loudly here.
+        "getDismissedCoaching",
+        "dismissCoaching",
         "export const events",
         "indexProgress",
         "index-progress",

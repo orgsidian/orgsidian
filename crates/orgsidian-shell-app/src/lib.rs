@@ -744,6 +744,30 @@ async fn agenda_week(
     Ok(items.into_iter().map(AgendaItemDto::from).collect())
 }
 
+/// Story 6.6 (FR-21 partial / FR-18 / UJ-4): the ids of the hardcoded coaching
+/// balloons dismissed in the active Vault, read from
+/// `<Vault>/.orgsidian/coaching-dismissed.json`. `CoachingBalloon` calls this
+/// once per mount to decide whether to render. Errors with `OrgError::Vault`
+/// when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn get_dismissed_coaching(state: tauri::State<'_, AppState>) -> OrgResult<Vec<String>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let dismissed = orgsidian_core::read_dismissed_coaching(&vault_root)?;
+    Ok(dismissed.into_iter().collect())
+}
+
+/// Story 6.6 (FR-21 partial / FR-18 / UJ-4): persist `id` as dismissed for the
+/// active Vault (the balloon's X button). Errors with `OrgError::Vault` when
+/// no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn dismiss_coaching(id: String, state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    orgsidian_core::dismiss_coaching(&vault_root, &id)?;
+    Ok(())
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -783,7 +807,9 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             agenda_today,
             generate_starter_vault,
             has_configured_vault,
-            agenda_week
+            agenda_week,
+            get_dismissed_coaching,
+            dismiss_coaching
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —

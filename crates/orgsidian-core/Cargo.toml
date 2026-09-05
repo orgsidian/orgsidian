@@ -11,13 +11,15 @@ repository.workspace = true
 # Story 1.9 (LD-9): opt-in surface for the `test_support` module. Consumer crates
 # enable it via `[dev-dependencies] orgsidian-core = { features = ["test-support"] }`
 # so `FakeClock` (and Story 1.12's perf helpers) stay out of release builds.
-# Story 1.12 (LD-32 / NFR-20): perf baseline JSON I/O is gated under the same
-# test-support feature so production builds exclude serde_json from the leaf
-# crate's transitive set.
 # Story 3.1 (LD-41): activates the vault's atomic-write fail-point so the
 # workspace-root failure-mode harness (required-features = ["test-support"])
 # can inject disk-full errors via `fail::cfg`.
-test-support = ["dep:serde_json", "orgsidian-vault/failpoints"]
+#
+# Story 6.6: `serde_json` moved OFF this feature's activation list — the
+# hardcoded coaching-balloon dismissal store (`src/coaching.rs`) needs it
+# unconditionally in production now (Story 1.12's perf-baseline JSON I/O
+# remains test-only code, but the dependency itself is no longer test-only).
+test-support = ["orgsidian-vault/failpoints"]
 
 [dependencies]
 # Cross-crate edges wired incrementally per first-use story (see Dev Notes §1).
@@ -30,10 +32,15 @@ specta = { workspace = true }
 # `invoke_plugin_hook!` panic-isolation macro in `registry.rs`. Subscriber
 # wiring is the binary's job (LD-35); the leaf crate consumes the facade only.
 tracing = { workspace = true }
-# Story 1.12 (LD-32 / NFR-20): JSON I/O for perf baselines under tests/perf-baselines/.
-# `optional = true` + the `dep:serde_json` activator on the `test-support` feature
-# (above) keep this OUT of production binary builds. Pin floats on 1.x (workspace dep).
-serde_json = { workspace = true, optional = true }
+# Story 1.12 (LD-32 / NFR-20): JSON I/O for perf baselines under
+# tests/perf-baselines/ (test-support-gated code path). Story 6.6 adds a real
+# production consumer (`src/coaching.rs`'s coaching-dismissed.json store), so
+# the dependency itself is now unconditional rather than `optional`.
+# Story 11.4 breadcrumb: when it removes `src/coaching.rs` wholesale, this
+# becomes a test-support-only consumer again (perf baselines) — re-gate to
+# `optional = true` + `dep:serde_json` on the `test-support` feature to restore
+# the Story 1.12 "keep serde_json out of production leaf builds" property.
+serde_json = { workspace = true }
 # Story 1.18 (LD-40): TOML settings authoritative store. First cross-crate edge
 # to `orgsidian-vault` (LEAF graph rule per deny.toml#L186-188). `toml` + `dirs`
 # are the new direct deps; both float on the latest stable major (see workspace).
@@ -116,12 +123,15 @@ required-features = ["test-support"]
 name = "failure_modes_coverage"
 path = "../../tests/failure_modes_coverage.rs"
 
-# Story 1.12 review P2: `tests/perf_canary.rs` references `serde_json` which is
-# gated behind the `test-support` feature. Without this `[[test]]` block the
-# file is auto-discovered and `cargo test -p orgsidian-core` (no feature flag)
-# fails to compile with E0433 — the workspace-wide `cargo test --workspace`
-# only happens to work because `orgsidian-watcher` activates `test-support` via
-# its dev-dep. Declare the binding explicitly + require `test-support`.
+# Story 1.12 review P2: `tests/perf_canary.rs` calls the `test_support` module's
+# perf-baseline helpers, which are gated behind the `test-support` feature
+# (Story 6.6: `serde_json` itself is no longer feature-gated, but the
+# `test_support` module — and this file's use of it — still is). Without this
+# `[[test]]` block the file is auto-discovered and `cargo test -p orgsidian-core`
+# (no feature flag) fails to compile with E0433 — the workspace-wide
+# `cargo test --workspace` only happens to work because `orgsidian-watcher`
+# activates `test-support` via its dev-dep. Declare the binding explicitly +
+# require `test-support`.
 [[test]]
 name = "perf_canary"
 path = "tests/perf_canary.rs"
