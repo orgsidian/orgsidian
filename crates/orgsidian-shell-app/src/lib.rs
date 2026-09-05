@@ -103,6 +103,20 @@ async fn designate_vault(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> OrgResult<()> {
+    designate_vault_impl(&path, &app, &state).await
+}
+
+/// The shared designate-then-scan body behind both [`designate_vault`] and
+/// Story 6.2's [`generate_starter_vault`] (which runs the Story 6.1 generator
+/// FIRST, then designates the now-populated folder exactly the same way a
+/// hand-picked existing folder is designated). Factored out so the two
+/// commands can never drift on the serialization / previous-handle-shutdown /
+/// cancel-flag discipline documented below.
+async fn designate_vault_impl(
+    path: &str,
+    app: &tauri::AppHandle,
+    state: &AppState,
+) -> OrgResult<()> {
     // Serialize concurrent/overlapping designations: a second invocation waits
     // here until this one has stored (or failed to store) its handle, so the
     // shutdown-of-previous below always sees the real predecessor rather than a
@@ -126,13 +140,158 @@ async fn designate_vault(
 
     // Run open + scan, then clear the now-finished scan's flag on EVERY exit
     // path (success or error) — the `?` below must not leave a stale flag.
-    let outcome = designate_and_scan(&path, &app, &cancel).await;
+    let outcome = designate_and_scan(path, app, &cancel).await;
     *lock(&state.cancel) = None;
 
     let handle = outcome?;
     // Retain the handle for later reads.
     *lock(&state.index) = Some(handle);
     Ok(())
+}
+
+/// Story 6.2 (FR-18): which built-in Starter Vault the picker's primary cards
+/// generate. Mirrors [`orgsidian_core::StarterVaultKind`] but is redeclared
+/// here — the core crate carries no `specta` dependency, so (as with
+/// [`PlanningKind`] above) the shell owns the wire-typed twin at the IPC
+/// boundary. Wire shape `"personalGtd" | "student"`. No `Freelancer` variant:
+/// Story 6.1 shipped only Personal GTD + Student (Freelancer needs Story 8.7's
+/// BacklinksPanel); the picker's Freelancer card is rendered disabled and never
+/// reaches this command (see `StarterVaultPicker.tsx`).
+#[derive(Debug, Clone, Copy, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum StarterVaultKind {
+    /// Personal GTD (Getting Things Done).
+    PersonalGtd,
+    /// Student (coursework-shaped).
+    Student,
+}
+
+impl StarterVaultKind {
+    /// Map the wire enum to its [`orgsidian_core::StarterVaultKind`] twin.
+    /// Named + unit-tested (rather than an inline `match` in the command body)
+    /// so a swapped arm — a Student pick generating a Personal GTD Vault, or
+    /// vice-versa — fails a test instead of silently shipping the wrong
+    /// Starter Vault; the core generator's own tests use the core enum
+    /// directly and never cross this IPC-boundary translation.
+    fn to_core(self) -> orgsidian_core::StarterVaultKind {
+        match self {
+            StarterVaultKind::PersonalGtd => orgsidian_core::StarterVaultKind::PersonalGtd,
+            StarterVaultKind::Student => orgsidian_core::StarterVaultKind::Student,
+        }
+    }
+}
+
+/// Story 6.2 (FR-18): generate the chosen built-in Starter Vault's `.org`
+/// files into `path` (Story 6.1's [`orgsidian_core::generate_starter_vault`]),
+/// then designate + scan the freshly-populated folder — the picker's primary
+/// cards are a generate-then-designate compound action from the caller's
+/// perspective, sharing [`designate_vault_impl`] with [`designate_vault`] so
+/// the newly-generated Vault immediately shows non-empty Today/Week Agenda
+/// content once Stories 6.3/6.4 land.
+///
+/// `today` is the frontend's local calendar day (`YYYY-MM-DD`, the same
+/// convention [`set_scheduled`] uses) so every generated SCHEDULED/DEADLINE
+/// timestamp anchors to the user's actual "today" rather than a server-side
+/// clock/timezone guess.
+///
+/// Hardening (NFR-16 spirit "never silently overwrite user data"): this is a
+/// first-launch onboarding action, so `path` may be a folder the user picked
+/// without realizing it already holds their own `.org` files (e.g. their
+/// Documents folder) — [`orgsidian_core::generate_starter_vault`] would
+/// happily overwrite same-named files. [`ensure_target_has_no_org_files`]
+/// refuses BEFORE generating when that's the case; it never prompts-and-
+/// continues.
+#[tauri::command]
+#[specta::specta]
+async fn generate_starter_vault(
+    kind: StarterVaultKind,
+    path: String,
+    today: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    let today = resolve_today(&today)?;
+    ensure_target_has_no_org_files(&path).await?;
+    orgsidian_core::generate_starter_vault(kind.to_core(), Path::new(&path), today)?;
+    designate_vault_impl(&path, &app, &state).await
+}
+
+/// Story 6.2 hardening (NFR-16 spirit): refuse [`generate_starter_vault`] when
+/// `path` already holds a top-level `.org` file — generating into it would
+/// silently overwrite same-named starter files, a real risk on first launch
+/// when a user might point the picker at a populated folder (their Documents,
+/// say) rather than an empty one.
+///
+/// Deliberately shallow: a top-level `read_dir`, not a recursive walk — this
+/// is a fast pre-flight safety check, not a Vault contents audit (the real
+/// recursive scan is [`orgsidian_vault::scan_org_files`], run later by
+/// [`designate_vault_impl`]). A `path` that doesn't exist yet (the common
+/// case — the generator's own `create_dir_all` creates it) is empty by
+/// definition and passes.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] (worded to steer the user to an empty folder, or to
+/// "Use my own folder" for an existing populated Vault) when a top-level
+/// `.org` file is found; [`OrgError::Io`] if `path` exists but cannot be
+/// listed (e.g. permission denied).
+async fn ensure_target_has_no_org_files(path: &str) -> OrgResult<()> {
+    let mut entries = match tokio::fs::read_dir(path).await {
+        Ok(entries) => entries,
+        // Doesn't exist yet — nothing to check; the generator creates it.
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => {
+            return Err(OrgError::Io {
+                reason: format!("failed to read target folder {path}: {err}"),
+            })
+        }
+    };
+
+    while let Some(entry) = entries.next_entry().await.map_err(|err| OrgError::Io {
+        reason: format!("failed to read target folder {path}: {err}"),
+    })? {
+        let is_org_file = entry
+            .file_type()
+            .await
+            .is_ok_and(|file_type| file_type.is_file())
+            && entry
+                .path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("org"));
+
+        if is_org_file {
+            return Err(OrgError::Vault {
+                reason: format!(
+                    "{path} already contains .org files; pick an empty folder for a \
+                     Starter Vault, or use \"Use my own folder\" to designate this \
+                     folder as your existing Vault instead"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Story 6.2 (FR-18): has a Vault ever been configured? The `/today` route's
+/// onboarding gate calls this on mount to decide between rendering the
+/// [`StarterVaultPicker`] onboarding surface and the app's normal Vault-scoped
+/// content. `true` when a Vault is already designated THIS session, or (LD-40)
+/// `GlobalSettings.recent_vaults` is non-empty from a previous launch — the
+/// picker is a first-launch surface, not a re-ask on every relaunch.
+///
+/// [`StarterVaultPicker`]: (frontend) shell-ui/src/components/onboarding/StarterVaultPicker.tsx
+#[tauri::command]
+#[specta::specta]
+fn has_configured_vault(state: tauri::State<'_, AppState>) -> OrgResult<bool> {
+    if state.current_vault_root().is_some() {
+        return Ok(true);
+    }
+    let global =
+        orgsidian_core::settings::read_global_settings().map_err(|source| OrgError::Io {
+            reason: format!("failed to read global settings: {source}"),
+        })?;
+    Ok(!global.recent_vaults.is_empty())
 }
 
 /// Open + guard the derived index for `path` and run the initial scan, emitting
@@ -409,6 +568,14 @@ fn bad_timestamp(reason: String) -> OrgError {
     }
 }
 
+/// Story 6.2: parse the frontend-supplied local `today` (`YYYY-MM-DD`) into a
+/// `NaiveDate` for [`generate_starter_vault`] — same literal-date parse +
+/// error-mapping convention [`resolve_planned`] uses for `set_scheduled`.
+fn resolve_today(today: &str) -> OrgResult<orgsidian_core::parser::chrono::NaiveDate> {
+    orgsidian_core::parser::chrono::NaiveDate::parse_from_str(today, "%Y-%m-%d")
+        .map_err(|err| bad_timestamp(format!("invalid `today` {today:?}: {err}")))
+}
+
 /// Resolve a [`TimestampInput`] into the parser's concrete `PlannedStamp`,
 /// treating `date` as a relative shortcut first (pure-Rust resolver) and
 /// falling back to a literal `YYYY-MM-DD`. `today` (supplied by the frontend as
@@ -589,7 +756,9 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             set_editor_mode,
             get_editor_mode,
             set_scheduled,
-            agenda_today
+            agenda_today,
+            generate_starter_vault,
+            has_configured_vault
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -949,5 +1118,104 @@ mod tests {
         assert_eq!(dto.deadline_date, core_item.deadline_date);
         assert_eq!(dto.deadline_time, core_item.deadline_time);
         assert_eq!(dto.overdue, core_item.overdue);
+    }
+
+    /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal
+    /// `YYYY-MM-DD` (the frontend's `localTodayIso()`) resolves cleanly.
+    #[test]
+    fn resolve_today_accepts_iso_date() {
+        let date = resolve_today("2026-09-05").expect("valid ISO date");
+        assert_eq!(date.to_string(), "2026-09-05");
+    }
+
+    /// A malformed `today` (should be unreachable from the picker, which
+    /// always sends `localTodayIso()`) errors with `OrgError::Parse` rather
+    /// than panicking — same defensive posture as `set_scheduled`'s `today`.
+    #[test]
+    fn resolve_today_rejects_malformed_date() {
+        let err = resolve_today("not-a-date").expect_err("malformed date must error");
+        assert!(matches!(err, OrgError::Parse { .. }), "got {err:?}");
+    }
+
+    /// Story 6.2: pin the wire→core `StarterVaultKind` mapping. The full
+    /// `generate_starter_vault` command needs an `AppHandle`/`State`, but the
+    /// arm that can silently ship the WRONG Starter Vault is this pure
+    /// translation — assert each variant maps to its matching core twin so a
+    /// swapped arm fails here rather than in a user's freshly-generated Vault.
+    #[test]
+    fn starter_vault_kind_maps_to_matching_core_variant() {
+        assert!(matches!(
+            StarterVaultKind::PersonalGtd.to_core(),
+            orgsidian_core::StarterVaultKind::PersonalGtd
+        ));
+        assert!(matches!(
+            StarterVaultKind::Student.to_core(),
+            orgsidian_core::StarterVaultKind::Student
+        ));
+    }
+
+    /// Story 6.2 hardening: a target folder that already holds a top-level
+    /// `.org` file is refused — the same "arm that can silently ship the
+    /// wrong thing" the full `generate_starter_vault` command needs an
+    /// `AppHandle`/`State` to exercise end-to-end, so (as with
+    /// `starter_vault_kind_maps_to_matching_core_variant` above) the guard is
+    /// unit-tested directly rather than through the full command.
+    #[test]
+    fn ensure_target_has_no_org_files_rejects_a_populated_folder() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("notes.org"), "* Pre-existing\n").expect("seed .org file");
+
+        let err = tauri::async_runtime::block_on(ensure_target_has_no_org_files(
+            &dir.path().to_string_lossy(),
+        ))
+        .expect_err("a populated folder must be refused");
+
+        assert!(matches!(err, OrgError::Vault { .. }), "got {err:?}");
+        let OrgError::Vault { reason } = err else {
+            unreachable!()
+        };
+        assert!(reason.contains(".org"), "{reason}");
+        assert!(
+            reason.contains("Use my own folder"),
+            "should steer the user toward the existing-Vault path: {reason}"
+        );
+    }
+
+    /// A folder containing files but no `.org` file (e.g. a stray `.txt`) is
+    /// NOT refused — the guard checks for `.org` files specifically, not "any
+    /// file at all".
+    #[test]
+    fn ensure_target_has_no_org_files_allows_folder_with_non_org_files() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("readme.txt"), "not an org file").expect("seed file");
+
+        tauri::async_runtime::block_on(ensure_target_has_no_org_files(
+            &dir.path().to_string_lossy(),
+        ))
+        .expect("a folder with no .org file must be allowed");
+    }
+
+    /// An empty existing folder is allowed (the common "fresh empty folder"
+    /// first-launch case).
+    #[test]
+    fn ensure_target_has_no_org_files_allows_empty_existing_folder() {
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        tauri::async_runtime::block_on(ensure_target_has_no_org_files(
+            &dir.path().to_string_lossy(),
+        ))
+        .expect("an empty folder must be allowed");
+    }
+
+    /// A folder that doesn't exist yet is allowed — `generate_starter_vault`'s
+    /// own `create_dir_all` creates it, so there is nothing to check.
+    #[test]
+    fn ensure_target_has_no_org_files_allows_missing_folder() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let missing = dir.path().join("brand-new-vault");
+        assert!(!missing.exists());
+
+        tauri::async_runtime::block_on(ensure_target_has_no_org_files(&missing.to_string_lossy()))
+            .expect("a not-yet-created folder must be allowed");
     }
 }

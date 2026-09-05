@@ -9,12 +9,28 @@ import { IndexScanProgress, type ScanPhase } from "@/components/settings/IndexSc
  * Best-effort extraction of a human-readable message from a thrown command
  * error. `ErrorHandlingMode::Throw` throws the serialized `OrgError`
  * (`{ kind, reason }`); fall back to `String(err)` for anything else.
+ *
+ * Exported so Story 6.2's `StarterVaultPicker` (the "Use my own folder" flow,
+ * which embeds this component) shares the same extraction rather than
+ * duplicating it.
  */
-function errorMessage(err: unknown): string {
+export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "reason" in err) {
     return String((err as { reason: unknown }).reason);
   }
   return String(err);
+}
+
+interface VaultPickerProps {
+  /**
+   * Story 6.2: called once `designateVault` resolves successfully (complete
+   * OR user-cancelled — both leave a valid, queryable designated Vault per
+   * the LD-42 "cancellable and partial retained" scan design). Lets an
+   * embedding onboarding flow (`StarterVaultPicker`'s "Use my own folder"
+   * link) know the Vault is now configured, e.g. to dismiss itself and route
+   * to `/today`. Optional — the standalone Settings usage needs no callback.
+   */
+  onDesignated?: () => void;
 }
 
 /**
@@ -26,7 +42,7 @@ function errorMessage(err: unknown): string {
  * transitions to `complete` (or `cancelled`, if the user hit Cancel) on
  * resolution; `IndexProgress` events stream the live counts in the meantime.
  */
-export function VaultPicker() {
+export function VaultPicker({ onDesignated }: VaultPickerProps = {}) {
   const [phase, setPhase] = useState<ScanPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   // A ref (not state) so the value read AFTER the await is the live one — a
@@ -55,6 +71,7 @@ export function VaultPicker() {
     try {
       await commands.designateVault(selection);
       setPhase(cancelRequested.current ? "cancelled" : "complete");
+      onDesignated?.();
     } catch (err) {
       setPhase("idle");
       setError(errorMessage(err));
