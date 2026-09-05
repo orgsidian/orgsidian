@@ -22,6 +22,7 @@ for the macro spec.
 | NFR-1 | App startup (cold) | <2 s | 1000-file vault | Story 13.x polish | architecture.md L45 |
 | NFR-2 | Editor typing latency | <30 ms | n/a | Story 4.3a–g | architecture.md L45 |
 | — (precursor to NFR-3) | Today Agenda view render (`/today`) | <500 ms | 1000-file vault | Story 6.3 | epics.md L1369 |
+| — (precursor to NFR-3) | Week Agenda view-switch (`/today` → `/agenda/week`) | <200 ms | 1000-file vault | Story 6.4 | epics.md L1383 |
 | NFR-3 | Agenda recompute (incremental) | <100 ms | 1000-file vault | Story 7.1 + 7.4 | architecture.md L45 |
 | NFR-4 (split per PRD §4.3 FR-12) | FTS5 search — first 10 results | <100 ms | 1000-file vault | Story 8.4 | epics.md L1687 |
 | NFR-4 (split) | FTS5 search — full 50 results | <200 ms | 1000-file vault | Story 8.4 | epics.md L1687 |

@@ -1,10 +1,12 @@
-//! Implements FR-7 (Agenda Today — Story 6.3 v0.1 subset: Scheduled items for
-//! `today` + Deadline items overdue-or-today, across the whole Vault, grouped
-//! by source file). The full Today Dashboard (Today-Tag, Inbox preview,
-//! Active Clock) is Epic 7 (Story 7.1); Week/Custom ranges are Stories
-//! 6.4/7.4. Story 6.5 freezes `agenda::{today, week, custom}` together as the
-//! v0.1 `IndexQuery` baseline surface — this file ships the first of the
-//! three, already real and tested, for that trait to wrap.
+//! Implements FR-7 (Agenda Today/Week — Story 6.3 shipped `today`; Story 6.4
+//! adds `week`. Story 6.3's subset: Scheduled items for `today` + Deadline
+//! items overdue-or-today, across the whole Vault, grouped by source file.
+//! Story 6.4's subset: the same two legs over a rolling 7-day window, grouped
+//! by calendar date instead). The full Today Dashboard (Today-Tag, Inbox
+//! preview, Active Clock) is Epic 7 (Story 7.1); Custom ranges are Story 7.4.
+//! Story 6.5 freezes `agenda::{today, week, custom}` together as the v0.1
+//! `IndexQuery` baseline surface — this file ships the first two, already
+//! real and tested, for that trait to wrap.
 //!
 //! [`today`] is the query behind `/today`
 //! (`shell-ui/src/components/agenda/AgendaToday.tsx`): a single `SELECT` over
@@ -12,16 +14,34 @@
 //! frontend's "grouped by source file" AC is a stable partition of an
 //! already-sorted list — no second sort needed client-side.
 //!
-//! # Why `today` is a caller-supplied string, not a server-side clock read
+//! [`week`] is the query behind `/agenda/week`
+//! (`shell-ui/src/components/agenda/AgendaWeek.tsx`): the same two legs
+//! (Scheduled within the window; Deadline overdue-or-within-the-window)
+//! widened from a single day to a caller-supplied `[start_date, start_date +
+//! 6 days]` inclusive range, sorted by [`AgendaItem::agenda_date`] (a
+//! stable Rust-side sort over the SQL fetch order, per that field's own
+//! docs) so the frontend's "grouped by date" AC is likewise a stable
+//! partition, never a re-sort.
+//!
+//! # Why `today`/`start_date` are caller-supplied strings, not a server-side clock read
 //!
 //! The index has no notion of the user's timezone, and a
 //! `chrono::Local::now()` read on the backend would silently assume the
 //! machine's zone is the user's. `set_scheduled` (Story 4.8,
 //! `orgsidian-shell-app`) already established the convention of taking the
-//! frontend's local calendar day as a plain `YYYY-MM-DD` string; this query
-//! follows it. ISO-8601 date columns sort lexicographically (schema note in
-//! `migrations/0001_initial-schema.sql`), so `<=` on the TEXT column is a
-//! valid overdue-or-today range scan without parsing either side.
+//! frontend's local calendar day as a plain `YYYY-MM-DD` string; both queries
+//! follow it. ISO-8601 date columns sort lexicographically (schema note in
+//! `migrations/0001_initial-schema.sql`), so `<=`/`BETWEEN` on the TEXT
+//! column is a valid overdue-or-today (or overdue-or-in-window) range scan
+//! without parsing either side.
+//!
+//! # Why `week`'s `+6 days` arithmetic runs in SQLite, not Rust
+//!
+//! `orgsidian-index` is a LEAF crate and the project's established discipline
+//! (Story 1.12 Dev Notes §11, `orgsidian-core::test_support::perf`'s
+//! hand-rolled clock) is to keep `chrono`/`time` out of leaf crates. SQLite's
+//! built-in `date(?1, '+6 days')` scalar function does the one piece of date
+//! arithmetic this query needs, so `week` adds zero new Rust dependencies.
 //!
 //! # Why DONE items are excluded
 //!
@@ -72,10 +92,21 @@ pub struct AgendaItem {
     pub deadline_date: Option<String>,
     /// `DEADLINE:` time, when the timestamp carries one.
     pub deadline_time: Option<String>,
-    /// `true` when `deadline_date` is strictly before `today` — the
-    /// "overdue" half of "overdue-or-today" the frontend badges distinctly
-    /// from a Deadline that is due today.
+    /// `true` when `deadline_date` is strictly before the query's anchor date
+    /// (`today` for [`today`], `start_date` for [`week`]) — the "overdue"
+    /// half of "overdue-or-today" the frontend badges distinctly from a
+    /// Deadline that is due today/within the window.
     pub overdue: bool,
+    /// The calendar day (`YYYY-MM-DD`) this row is grouped under in an
+    /// Agenda view: for [`today`], always the caller's `today` (every row
+    /// qualifies precisely because it belongs on that one day). For [`week`],
+    /// the Scheduled date when the row matched via the Scheduled leg, else
+    /// the Deadline date — collapsed to `start_date` when that Deadline is
+    /// overdue, mirroring [`today`]'s own overdue-collapses-to-today rule so
+    /// a past-due item surfaces once, under the window's first ("current")
+    /// day, rather than under its stale original date. The frontend groups
+    /// and highlights purely off this field; it never re-derives it.
+    pub agenda_date: String,
 }
 
 /// Scheduled-today + Deadline-overdue-or-today, across every non-quarantined
@@ -119,10 +150,97 @@ pub fn today(conn: &Connection, today: &str) -> Result<Vec<AgendaItem>, IndexErr
             deadline_date,
             deadline_time: row.get(8)?,
             overdue,
+            // Every row here qualified precisely because it belongs on
+            // `today` (Scheduled-today, or Deadline overdue-or-today) — the
+            // single-day view has no other grouping day to compute.
+            agenda_date: today.to_string(),
         })
     })?;
 
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+/// Scheduled-within-the-window + Deadline-overdue-or-within-the-window, across
+/// every non-quarantined file, for the caller-supplied rolling 7-day window
+/// `[start_date, start_date + 6 days]` inclusive. Sorted by
+/// [`AgendaItem::agenda_date`] (a stable sort, so same-day rows preserve the
+/// SQL fetch's `(file_path, position)` order) — the frontend's "grouped by
+/// date" AC is a stable partition of this already-sorted list, no second sort
+/// needed client-side. The AC's "current day" is `start_date` itself.
+///
+/// `start_date` is an ISO-8601 `YYYY-MM-DD` calendar day — the frontend's
+/// local `new Date()`, never a server-side clock read (see module docs).
+///
+/// # Errors
+///
+/// [`IndexError::Sqlite`] if the query fails to prepare or run.
+pub fn week(conn: &Connection, start_date: &str) -> Result<Vec<AgendaItem>, IndexError> {
+    // The one piece of date arithmetic this query needs (`+6 days`) runs in
+    // SQLite, not Rust — see the module docs on why `orgsidian-index` (a LEAF
+    // crate) does not pull in `chrono` for it.
+    let end_date: String =
+        conn.query_row("SELECT date(?1, '+6 days')", [start_date], |row| row.get(0))?;
+
+    let mut stmt = conn.prepare(
+        "SELECT h.id, f.path, h.title, h.byte_start, h.todo_keyword,
+                h.scheduled_date, h.scheduled_time,
+                h.deadline_date, h.deadline_time
+         FROM headlines h
+         JOIN files f ON f.id = h.file_id
+         WHERE f.quarantined = 0
+           AND h.kind = 'headline'
+           AND (h.todo_done IS NULL OR h.todo_done = 0)
+           AND (
+                (h.scheduled_date IS NOT NULL AND h.scheduled_date BETWEEN ?1 AND ?2)
+                OR (h.deadline_date IS NOT NULL AND h.deadline_date <= ?2)
+           )
+         ORDER BY f.path, h.position",
+    )?;
+
+    let mut items = stmt
+        .query_map(rusqlite::params![start_date, end_date], |row| {
+            let scheduled_date: Option<String> = row.get(5)?;
+            let deadline_date: Option<String> = row.get(7)?;
+            let overdue = deadline_date
+                .as_deref()
+                .is_some_and(|date| date < start_date);
+            // Precedence: an in-window Scheduled date wins (a row can carry
+            // both a Scheduled and an unrelated Deadline); otherwise fall
+            // back to the Deadline leg, collapsing an overdue Deadline onto
+            // `start_date` (mirrors `today`'s overdue-collapses-to-today
+            // rule, extended so the window's first/"current" day is the
+            // collapse target).
+            let agenda_date = match scheduled_date.as_deref() {
+                Some(date) if date >= start_date && date <= end_date.as_str() => date.to_string(),
+                _ => match deadline_date.as_deref() {
+                    Some(date) if !overdue => date.to_string(),
+                    _ => start_date.to_string(),
+                },
+            };
+            Ok(AgendaItem {
+                headline_id: row.get(0)?,
+                file_path: row.get(1)?,
+                title: row.get(2)?,
+                byte_start: row.get(3)?,
+                todo_keyword: row.get(4)?,
+                scheduled_date,
+                scheduled_time: row.get(6)?,
+                deadline_date,
+                deadline_time: row.get(8)?,
+                overdue,
+                agenda_date,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    // Stable sort: ties (same `agenda_date`) keep the SQL fetch's
+    // `(file_path, position)` order, since `sort_by` never reorders equal
+    // elements. This is the backend doing the sort the frontend must not
+    // redo — the same "partition an already-sorted list" convention `today`
+    // established for per-file grouping, applied here to per-date grouping.
+    items.sort_by(|a, b| a.agenda_date.cmp(&b.agenda_date));
+
+    Ok(items)
 }
 
 #[cfg(test)]
@@ -262,6 +380,186 @@ mod tests {
                 ("a.org", "a first"),
                 ("b.org", "b first"),
                 ("b.org", "b second")
+            ]
+        );
+    }
+
+    #[test]
+    fn week_includes_scheduled_within_window_boundaries_and_excludes_outside() {
+        let mut conn = open_test_db();
+        let mut before = headline("Scheduled day before window", 0);
+        before.scheduled_date = Some("2026-09-04".to_string());
+        let mut start = headline("Scheduled on start day", 1);
+        start.scheduled_date = Some("2026-09-05".to_string());
+        let mut end = headline("Scheduled on end day", 2);
+        end.scheduled_date = Some("2026-09-11".to_string());
+        let mut after = headline("Scheduled day after window", 3);
+        after.scheduled_date = Some("2026-09-12".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![before, start, end, after]))
+            .expect("upsert");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        let titles: Vec<_> = items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            vec!["Scheduled on start day", "Scheduled on end day"]
+        );
+        assert_eq!(items[0].agenda_date, "2026-09-05");
+        assert_eq!(items[1].agenda_date, "2026-09-11");
+    }
+
+    #[test]
+    fn week_deadline_overdue_collapses_to_start_day_due_within_window_on_own_day_future_excluded() {
+        let mut conn = open_test_db();
+        let mut overdue = headline("Overdue deadline", 0);
+        overdue.deadline_date = Some("2026-09-01".to_string());
+        let mut due_mid_week = headline("Due mid-week", 1);
+        due_mid_week.deadline_date = Some("2026-09-08".to_string());
+        let mut future = headline("Future deadline", 2);
+        future.deadline_date = Some("2026-09-20".to_string());
+        crate::upsert_file(
+            &mut conn,
+            &file("a.org", vec![overdue, due_mid_week, future]),
+        )
+        .expect("upsert");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        assert_eq!(
+            items.len(),
+            2,
+            "future deadline outside the window is excluded"
+        );
+        let by_title: std::collections::HashMap<_, _> = items
+            .iter()
+            .map(|i| (i.title.as_str(), (i.overdue, i.agenda_date.as_str())))
+            .collect();
+        assert_eq!(
+            by_title.get("Overdue deadline"),
+            Some(&(true, "2026-09-05")),
+            "an overdue deadline collapses onto the window's first/current day"
+        );
+        assert_eq!(
+            by_title.get("Due mid-week"),
+            Some(&(false, "2026-09-08")),
+            "a deadline due within the window groups under its own day"
+        );
+    }
+
+    #[test]
+    fn week_excludes_done_items() {
+        let mut conn = open_test_db();
+        let mut done = headline("Already done", 0);
+        done.scheduled_date = Some("2026-09-06".to_string());
+        done.todo_keyword = Some("DONE".to_string());
+        done.todo_done = Some(true);
+        crate::upsert_file(&mut conn, &file("a.org", vec![done])).expect("upsert");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        assert!(
+            items.is_empty(),
+            "DONE items must not appear in the week agenda"
+        );
+    }
+
+    #[test]
+    fn week_excludes_quarantined_files() {
+        let mut conn = open_test_db();
+        crate::quarantine_file(&mut conn, "bad.org", 1, 1, "parse error").expect("quarantine");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn week_scheduled_leg_wins_grouping_over_an_unrelated_overdue_deadline() {
+        let mut conn = open_test_db();
+        // Both legs match: Scheduled for a mid-window day AND an unrelated,
+        // long-overdue Deadline. Grouping must follow the Scheduled date, not
+        // collapse to the window's first day.
+        let mut both = headline("Scheduled + stale deadline", 0);
+        both.scheduled_date = Some("2026-09-07".to_string());
+        both.deadline_date = Some("2026-08-01".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![both])).expect("upsert");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].agenda_date, "2026-09-07");
+        assert!(
+            items[0].overdue,
+            "the overdue flag still reflects the stale deadline independent of grouping"
+        );
+    }
+
+    #[test]
+    fn week_scheduled_out_of_window_falls_back_to_in_window_deadline_day() {
+        let mut conn = open_test_db();
+        // The subtlest arm of the `agenda_date` derivation: a row carrying a
+        // Scheduled date OUTSIDE the window (here in the past, a started-but-
+        // not-done task) but pulled in via an in-window, non-overdue Deadline.
+        // The Scheduled leg must NOT win the grouping key (its date is out of
+        // window); the row groups under the Deadline's own day. Without the
+        // `date >= start_date && date <= end_date` bounds on the Scheduled
+        // guard, `agenda_date` would become the out-of-window Scheduled date,
+        // which the frontend's fixed 7-day window would then silently drop.
+        let mut past_sched_due_this_week = headline("Started earlier, due this week", 0);
+        past_sched_due_this_week.scheduled_date = Some("2026-09-01".to_string());
+        past_sched_due_this_week.deadline_date = Some("2026-09-08".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![past_sched_due_this_week]))
+            .expect("upsert");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].agenda_date, "2026-09-08",
+            "an out-of-window Scheduled date must not win grouping; the row groups \
+             under its in-window Deadline day"
+        );
+        assert!(
+            !items[0].overdue,
+            "the in-window Deadline is not overdue (2026-09-08 >= start 2026-09-05)"
+        );
+    }
+
+    #[test]
+    fn week_groups_by_date_then_file_then_document_position() {
+        let mut conn = open_test_db();
+        // Two files, interleaved insertion order, spanning two distinct
+        // agenda dates, proves the sort is by `agenda_date` first (not
+        // insertion order or file order).
+        let mut b_day2 = headline("b day2 first", 0);
+        b_day2.scheduled_date = Some("2026-09-06".to_string());
+        let mut b_day2_second = headline("b day2 second", 1);
+        b_day2_second.scheduled_date = Some("2026-09-06".to_string());
+        let mut a_day1 = headline("a day1", 0);
+        a_day1.scheduled_date = Some("2026-09-05".to_string());
+        crate::upsert_file(&mut conn, &file("b.org", vec![b_day2, b_day2_second]))
+            .expect("upsert b");
+        crate::upsert_file(&mut conn, &file("a.org", vec![a_day1])).expect("upsert a");
+
+        let items = week(&conn, "2026-09-05").expect("query");
+
+        let ordering: Vec<_> = items
+            .iter()
+            .map(|i| {
+                (
+                    i.agenda_date.as_str(),
+                    i.file_path.as_str(),
+                    i.title.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            ordering,
+            vec![
+                ("2026-09-05", "a.org", "a day1"),
+                ("2026-09-06", "b.org", "b day2 first"),
+                ("2026-09-06", "b.org", "b day2 second"),
             ]
         );
     }

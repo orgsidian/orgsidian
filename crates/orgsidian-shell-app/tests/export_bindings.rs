@@ -89,6 +89,12 @@ fn export_bindings() {
         "generateStarterVault",
         "hasConfiguredVault",
         "StarterVaultKind",
+        // Story 6.4 (FR-7): the Week Agenda query surface + the new
+        // `AgendaItemDto` grouping field (a serde-rename/field-drop regression
+        // on it would otherwise ship green — `AgendaItemDto` alone is anchored
+        // above but its field list is not).
+        "agendaWeek",
+        "agendaDate",
         "export const events",
         "indexProgress",
         "index-progress",
