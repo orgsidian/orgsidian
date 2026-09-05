@@ -3100,6 +3100,7 @@ dependencies = [
  "orgsidian-vault",
  "orgsidian-watcher",
  "proptest",
+ "rusqlite",
  "serde",
  "serde_json",
  "specta",

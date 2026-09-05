@@ -27,6 +27,7 @@ import {
   currentPlanningValue,
   onPlanningRequested,
   setPlanning,
+  utf8ByteToJsIndex,
 } from "./schedule";
 import {
   OrgDatePicker,
@@ -133,6 +134,15 @@ interface EditorProps {
    * stays the single owner of mode + buffer.
    */
   onModeChange?: (mode: EditorMode) => void;
+  /**
+   * Story 6.3 (FR-7): a UTF-8 byte offset into the freshly loaded source —
+   * the Agenda's `/editor/$filePath/$headlineId` route passes the clicked
+   * Headline's `byte_start` here (as the `byteStart` search param) so "opens
+   * the editor" genuinely lands "at the source Headline" rather than just at
+   * the top of the file. Applied once, on the initial load only (not on every
+   * re-render); absent or out-of-range is a silent no-op, never an error.
+   */
+  initialByteOffset?: number;
 }
 
 /**
@@ -159,13 +169,25 @@ interface EditorProps {
  * Source and mode reach the frontend only through the typed `commands.*` client
  * (never raw `invoke`, never `plugin-fs`/`plugin-store` directly).
  */
-export function Editor({ filePath, ref, onModeChange }: EditorProps) {
+export function Editor({
+  filePath,
+  ref,
+  onModeChange,
+  initialByteOffset,
+}: EditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Latest `onModeChange` in a ref so emitting it never forces the mode-setting
   // paths (setMode / async load) to depend on the callback identity.
   const onModeChangeRef = useRef(onModeChange);
   useEffect(() => {
     onModeChangeRef.current = onModeChange;
+  });
+  // Story 6.3: latest `initialByteOffset` in a ref, read once by `load()`
+  // below (keyed on `filePath`, not on this value) so a parent re-render with
+  // a stable prop never re-triggers the jump-to-Headline scroll.
+  const initialByteOffsetRef = useRef(initialByteOffset);
+  useEffect(() => {
+    initialByteOffsetRef.current = initialByteOffset;
   });
   const viewRef = useRef<EditorView | null>(null);
   // The live Split surface (two synced views) when the mode is "split", else
@@ -371,6 +393,19 @@ export function Editor({ filePath, ref, onModeChange }: EditorProps) {
       // clipboard source-fidelity (Story 4.3g) are wired into every view inside
       // buildSurface, so they apply in single and split surfaces alike.
       buildSurface(mode, source, parent);
+
+      // Story 6.3 (FR-7): jump to the target Headline on initial open. A
+      // best-effort placement — an offset past the end of a since-shrunk
+      // file, or none at all, leaves the cursor at CM6's own default (start
+      // of doc) rather than erroring.
+      const byteOffset = initialByteOffsetRef.current;
+      if (byteOffset !== undefined && viewRef.current !== null) {
+        const jsPos = utf8ByteToJsIndex(source, byteOffset);
+        viewRef.current.dispatch({
+          selection: { anchor: jsPos },
+          scrollIntoView: true,
+        });
+      }
     }
 
     void load();

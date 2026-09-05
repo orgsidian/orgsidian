@@ -26,6 +26,7 @@ use orgsidian_vault::VaultError;
 use crate::error::OrgError;
 use crate::settings;
 
+pub use orgsidian_index::query::agenda::AgendaItem;
 pub use orgsidian_index::{IndexStats, IntegrityCheck, IntegrityReport};
 pub use resync::{resync_file, ResyncOutcome};
 pub use scan::{scan_vault, ScanOutcome, ScanProgress};
@@ -242,6 +243,33 @@ pub async fn rebuild_index(
     let outcome = scan_vault(&handle, cancel, progress).await;
     handle.shutdown().await;
     outcome
+}
+
+/// Implements FR-7 (Story 6.3 v0.1 Today Agenda subset): Scheduled-today +
+/// Deadline-overdue-or-today for `vault_root`'s derived index. Same read-only
+/// shape as [`index_stats`]/[`index_integrity`]: resolve the DB path, refuse
+/// if the index is absent, read through a FRESH [`IndexPool`] rather than the
+/// live [`IndexHandle`] — the Tauri command boundary hands this function a
+/// `vault_root`, not the handle managed state holds.
+///
+/// `today` is the frontend's local calendar day (`YYYY-MM-DD`) — see
+/// [`orgsidian_index::query::agenda::today`]'s docs for why the backend never
+/// assumes a timezone.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault (run `index init` first) or the read fails.
+pub async fn agenda_today(vault_root: &Path, today: &str) -> Result<Vec<AgendaItem>, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    let today = today.to_string();
+    pool.interact(move |conn| orgsidian_index::query::agenda::today(conn, &today))
+        .await
+        .map_err(index_err)
 }
 
 /// The [`OrgError::Index`] returned when `stats`/`integrity` find no index for

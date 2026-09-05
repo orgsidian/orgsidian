@@ -270,6 +270,41 @@ describe("Editor (StrictMode-safe CM6 host)", () => {
     expect(ref.current?.view).toBeTruthy();
     expect(() => ref.current?.focus()).not.toThrow();
   });
+
+  it("places the cursor at initialByteOffset on initial load (Story 6.3, FR-7)", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    const ref = createRef<EditorHandle>();
+    // SOURCE = "* Heading alpha\nbody text beta\n" — byte 16 is the 'b' that
+    // starts the second line (ASCII, so byte offset == char index here).
+    const byteOffsetOfSecondLine = 16;
+
+    await act(async () => {
+      root.render(
+        <Editor
+          filePath="/vault/notes.org"
+          ref={ref}
+          initialByteOffset={byteOffsetOfSecondLine}
+        />,
+      );
+    });
+    await flush();
+
+    expect(ref.current?.view?.state.selection.main.head).toBe(
+      byteOffsetOfSecondLine,
+    );
+  });
+
+  it("is a no-op (default cursor position) when initialByteOffset is absent", async () => {
+    mocks.openFile.mockResolvedValue(SOURCE);
+    const ref = createRef<EditorHandle>();
+
+    await act(async () => {
+      root.render(<Editor filePath="/vault/notes.org" ref={ref} />);
+    });
+    await flush();
+
+    expect(ref.current?.view?.state.selection.main.head).toBe(0);
+  });
 });
 
 /**

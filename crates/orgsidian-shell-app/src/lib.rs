@@ -84,12 +84,12 @@ impl AppState {
     }
 }
 
-/// The `OrgError::Vault` returned when an editor-mode command runs before any
-/// Vault is active — per-file prefs are Vault-scoped (LD-40), so there is
-/// nowhere to persist them yet.
+/// The `OrgError::Vault` returned when a Vault-scoped command (editor-mode
+/// prefs, LD-40; the Story 6.3 Agenda query) runs before any Vault is active
+/// — there is nowhere to persist to / nothing indexed to read yet.
 fn no_active_vault() -> OrgError {
     OrgError::Vault {
-        reason: "no active vault; designate a vault before setting the editor mode".to_string(),
+        reason: "no active vault; designate a vault first".to_string(),
     }
 }
 
@@ -160,22 +160,57 @@ async fn designate_and_scan(
     Ok(handle)
 }
 
+/// Story 6.3 code review follow-up: resolve the `open_file`/`openFile` incoming
+/// `path` against the active Vault root.
+///
+/// Agenda rows (Story 6.3's `agenda_today`) carry `files.path` — the
+/// vault-relative, `/`-normalized `rel_path` — NOT an absolute path, so a
+/// packaged app (cwd != vault root) failed to open the clicked file. A
+/// relative `path` is joined onto `vault_root`; an absolute `path` is returned
+/// unchanged (back-compat with any caller that already has a full path). A
+/// relative `path` with no Vault designated has nowhere to resolve against, so
+/// it errors with the same [`no_active_vault`] `OrgError::Vault` the other
+/// Vault-scoped commands (`agenda_today`, editor-mode prefs) use.
+///
+/// TODO(vault-scoping): this only joins the path — it does NOT canonicalize or
+/// reject `..`/symlink vault-escape. That hardening is deferred to the
+/// dedicated vault-root-scoping story (see `deferred-work.md`); this fix's
+/// scope is click-to-open working at runtime, not scoping enforcement.
+fn resolve_open_path(path: &str, vault_root: Option<&Path>) -> OrgResult<PathBuf> {
+    let candidate = Path::new(path);
+    if candidate.is_absolute() {
+        return Ok(candidate.to_path_buf());
+    }
+    let vault_root = vault_root.ok_or_else(no_active_vault)?;
+    Ok(vault_root.join(candidate))
+}
+
 /// Story 4.1: read a file's full UTF-8 source text (a `.org` file in normal
-/// use) for the CodeMirror 6 editor host. The `path` is taken verbatim — this
-/// command does no extension check nor Vault-root scoping yet; that hardening is
-/// deferred to the file-open UI story (see `deferred-work.md`). Both IO failures
-/// (missing path, permission denied) and
+/// use) for the CodeMirror 6 editor host. A relative `path` (the vault-relative
+/// `rel_path` agenda rows carry) is resolved against the active Vault root by
+/// [`resolve_open_path`] before reading; an absolute `path` is read as-is. This
+/// command does no extension check nor Vault-escape scoping yet; that
+/// hardening is deferred (see `resolve_open_path`'s `TODO(vault-scoping)` and
+/// `deferred-work.md`). Both IO failures (missing path, permission denied) and
 /// invalid-UTF-8 content collapse to [`OrgError::Io`]: `read_to_string` already
 /// surfaces non-UTF-8 bytes as an `InvalidData` IO error, so one mapping covers
 /// the whole matrix. The returned buffer is byte-faithful — CM6 owns it; it is
 /// never duplicated into state nor persisted apart from the `.org` file.
 #[tauri::command]
 #[specta::specta]
-async fn open_file(path: String) -> OrgResult<String> {
-    tokio::fs::read_to_string(&path)
+async fn open_file(path: String, state: tauri::State<'_, AppState>) -> OrgResult<String> {
+    open_file_at(&path, state.current_vault_root().as_deref()).await
+}
+
+/// The testable body of [`open_file`]: resolve `path` against `vault_root`
+/// (see [`resolve_open_path`]) then read it. Split out so unit tests can drive
+/// the resolution + read without needing a live `tauri::State`.
+async fn open_file_at(path: &str, vault_root: Option<&Path>) -> OrgResult<String> {
+    let resolved = resolve_open_path(path, vault_root)?;
+    tokio::fs::read_to_string(&resolved)
         .await
         .map_err(|err| OrgError::Io {
-            reason: format!("failed to read {path}: {err}"),
+            reason: format!("failed to read {}: {err}", resolved.display()),
         })
 }
 
@@ -444,6 +479,80 @@ async fn set_scheduled(
     })
 }
 
+/// Implements FR-7 (Story 6.3 v0.1 Today Agenda subset): wire projection of
+/// `orgsidian_core::AgendaItem` for `commands.agendaToday`. Multi-word fields
+/// need the explicit camelCase rename — same reason as [`ConflictSummary`]:
+/// the pinned `tauri-specta =2.0.0-rc.25` has no project-wide rename, and
+/// `#[specta(rename_all)]` is rejected.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AgendaItemDto {
+    /// `headlines.id` — the click-to-open target's identity (route
+    /// `$headlineId`). Narrowed from the index's `i64` rowid to `u32`:
+    /// specta-typescript forbids exporting `i64`/`u64` (BigInt precision
+    /// loss in JS `number`), and a Vault's headline count never approaches
+    /// 4 billion — the same "narrow at the IPC boundary" call
+    /// `ConflictSummary`'s byte lengths already make.
+    pub headline_id: u32,
+    /// Source file path — the grouping key and the other click-to-open
+    /// target (route `$filePath`).
+    pub file_path: String,
+    /// Headline title, stars/keyword/tags already stripped.
+    pub title: String,
+    /// The Headline's byte offset in its file's source — the optional
+    /// `byteStart` search param the editor route uses to place the cursor at
+    /// the Headline itself, not just open the file. Same `i64` → `u32`
+    /// narrowing rationale as `headline_id`.
+    pub byte_start: u32,
+    /// TODO keyword text, when the headline carries one.
+    pub todo_keyword: Option<String>,
+    /// `SCHEDULED:` date, when this row matched via the Scheduled-today leg.
+    pub scheduled_date: Option<String>,
+    /// `SCHEDULED:` time, when the timestamp carries one.
+    pub scheduled_time: Option<String>,
+    /// `DEADLINE:` date, when this row matched via the Deadline leg.
+    pub deadline_date: Option<String>,
+    /// `DEADLINE:` time, when the timestamp carries one.
+    pub deadline_time: Option<String>,
+    /// `true` when the Deadline is strictly before `today` (overdue), as
+    /// opposed to due today.
+    pub overdue: bool,
+}
+
+impl From<orgsidian_core::AgendaItem> for AgendaItemDto {
+    fn from(item: orgsidian_core::AgendaItem) -> Self {
+        AgendaItemDto {
+            headline_id: item.headline_id as u32,
+            file_path: item.file_path,
+            title: item.title,
+            byte_start: item.byte_start as u32,
+            todo_keyword: item.todo_keyword,
+            scheduled_date: item.scheduled_date,
+            scheduled_time: item.scheduled_time,
+            deadline_date: item.deadline_date,
+            deadline_time: item.deadline_time,
+            overdue: item.overdue,
+        }
+    }
+}
+
+/// Story 6.3 (FR-7): the `/today` route's data source —
+/// `shell-ui/src/components/agenda/AgendaToday.tsx` calls this once per
+/// mount. `today` is the frontend's local calendar day (`YYYY-MM-DD`), the
+/// same convention `set_scheduled` (Story 4.8) established — never a
+/// server-side clock read (see `orgsidian_core::agenda_today`'s docs).
+/// Errors with `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn agenda_today(
+    today: String,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<Vec<AgendaItemDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let items = orgsidian_core::agenda_today(&vault_root, &today).await?;
+    Ok(items.into_iter().map(AgendaItemDto::from).collect())
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -479,7 +588,8 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             open_in_default_editor,
             set_editor_mode,
             get_editor_mode,
-            set_scheduled
+            set_scheduled,
+            agenda_today
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -576,7 +686,7 @@ mod tests {
         let path = fixture("0002_map.org");
         let expected = std::fs::read_to_string(&path).expect("fixture must be readable");
 
-        let got = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+        let got = tauri::async_runtime::block_on(open_file_at(&path.to_string_lossy(), None))
             .expect("open_file should read the fixture");
 
         // Byte-faithful: the command returns exactly the file's content.
@@ -588,7 +698,7 @@ mod tests {
     fn open_file_missing_path_is_io_error() {
         let path = fixture("this-file-does-not-exist.org");
 
-        let err = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+        let err = tauri::async_runtime::block_on(open_file_at(&path.to_string_lossy(), None))
             .expect_err("a missing path must error, not read");
 
         assert!(
@@ -605,7 +715,7 @@ mod tests {
         let path = dir.path().join("invalid.org");
         std::fs::write(&path, [0xFF, 0xFE, 0xFF]).expect("write invalid bytes");
 
-        let err = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+        let err = tauri::async_runtime::block_on(open_file_at(&path.to_string_lossy(), None))
             .expect_err("non-UTF-8 content must error, not partially render");
 
         assert!(
@@ -627,12 +737,70 @@ mod tests {
         let source = "* Café ☕ 東京\n- naïve façade 🚀\r\nτίτλος\n";
         std::fs::write(&path, source).expect("write multibyte fixture");
 
-        let got = tauri::async_runtime::block_on(open_file(path.to_string_lossy().into_owned()))
+        let got = tauri::async_runtime::block_on(open_file_at(&path.to_string_lossy(), None))
             .expect("open_file should read multibyte UTF-8");
 
         // Byte-for-byte identical — no Unicode normalization, no CRLF rewrite.
         assert_eq!(got, source);
         assert_eq!(got.as_bytes(), source.as_bytes());
+    }
+
+    #[test]
+    fn resolve_open_path_joins_relative_path_onto_vault_root() {
+        // Story 6.3 code review follow-up: an agenda row's `file_path` (the
+        // vault-relative `rel_path`) must resolve against the active Vault
+        // root, not the process cwd.
+        let vault_root = PathBuf::from("/vault/root");
+        let resolved = resolve_open_path("sub/notes.org", Some(&vault_root))
+            .expect("relative path with a vault root should resolve");
+        assert_eq!(resolved, vault_root.join("sub/notes.org"));
+    }
+
+    #[test]
+    fn resolve_open_path_reads_absolute_path_unchanged() {
+        // Back-compat: a caller that already has a full path (e.g. today's
+        // direct fixture reads) is unaffected by the vault-root join.
+        let path = fixture("0002_map.org");
+        assert!(path.is_absolute(), "fixture path must be absolute");
+
+        let resolved = resolve_open_path(&path.to_string_lossy(), Some(Path::new("/some/vault")))
+            .expect("absolute path should resolve regardless of vault root");
+        assert_eq!(resolved, path);
+
+        // Also true with no vault designated at all.
+        let resolved_no_vault = resolve_open_path(&path.to_string_lossy(), None)
+            .expect("absolute path should resolve with no vault designated");
+        assert_eq!(resolved_no_vault, path);
+    }
+
+    #[test]
+    fn resolve_open_path_relative_with_no_vault_is_vault_error() {
+        // No vault designated + a relative path has nothing to resolve
+        // against — the same `no_active_vault` error other Vault-scoped
+        // commands (`agenda_today`) already return.
+        let err = resolve_open_path("sub/notes.org", None)
+            .expect_err("relative path with no vault must error, not read cwd-relative");
+
+        assert!(
+            matches!(err, OrgError::Vault { .. }),
+            "relative path with no vault should map to OrgError::Vault, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn open_file_at_resolves_relative_path_against_vault_root_end_to_end() {
+        // End-to-end through `open_file_at` (the `open_file` command's testable
+        // body): a relative path joined onto a real vault root reads the file.
+        let vault_root = fixture("0002_map.org")
+            .parent()
+            .expect("fixture dir has a parent")
+            .to_path_buf();
+
+        let got = tauri::async_runtime::block_on(open_file_at("0002_map.org", Some(&vault_root)))
+            .expect("relative path should resolve against the vault root and read");
+
+        let expected = std::fs::read_to_string(fixture("0002_map.org")).expect("fixture readable");
+        assert_eq!(got, expected);
     }
 
     /// Apply a [`PlanningEdit`] to `source` the way the CM6 transaction does.
@@ -749,5 +917,37 @@ mod tests {
         ))
         .expect_err("a date that is neither a shortcut nor ISO must error");
         assert!(matches!(err, OrgError::Parse { .. }), "got {err:?}");
+    }
+
+    /// Story 6.3: `AgendaItemDto::from` carries every field across the IPC
+    /// projection unchanged (this is a straight field copy, not a redaction —
+    /// unlike `ConflictDetected`, nothing here is sensitive).
+    #[test]
+    fn agenda_item_dto_projects_every_field() {
+        let core_item = orgsidian_core::AgendaItem {
+            headline_id: 42,
+            file_path: "inbox.org".to_string(),
+            title: "Ship v0.1".to_string(),
+            byte_start: 128,
+            todo_keyword: Some("TODO".to_string()),
+            scheduled_date: Some("2026-09-05".to_string()),
+            scheduled_time: None,
+            deadline_date: Some("2026-09-01".to_string()),
+            deadline_time: Some("17:00".to_string()),
+            overdue: true,
+        };
+
+        let dto = AgendaItemDto::from(core_item.clone());
+
+        assert_eq!(dto.headline_id, core_item.headline_id as u32);
+        assert_eq!(dto.file_path, core_item.file_path);
+        assert_eq!(dto.title, core_item.title);
+        assert_eq!(dto.byte_start, core_item.byte_start as u32);
+        assert_eq!(dto.todo_keyword, core_item.todo_keyword);
+        assert_eq!(dto.scheduled_date, core_item.scheduled_date);
+        assert_eq!(dto.scheduled_time, core_item.scheduled_time);
+        assert_eq!(dto.deadline_date, core_item.deadline_date);
+        assert_eq!(dto.deadline_time, core_item.deadline_time);
+        assert_eq!(dto.overdue, core_item.overdue);
     }
 }
