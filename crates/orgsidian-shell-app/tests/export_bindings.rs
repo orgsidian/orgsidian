@@ -80,6 +80,9 @@ fn export_bindings() {
         "saveFile",
         "discardExternalChanges",
         "openInDefaultEditor",
+        // Story 6.3 (FR-7): the Today Agenda query surface.
+        "agendaToday",
+        "AgendaItemDto",
         "export const events",
         "indexProgress",
         "index-progress",

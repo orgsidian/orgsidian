@@ -39,6 +39,10 @@
 //! with its FTS `'delete'` command row. [`identity`] is the LD-13 guard:
 //! [`stamp_application_id`] marks a fresh index and [`check_index_identity`] /
 //! [`inspect_index_file`] classify a file as ours, foreign, or version-drifted.
+//!
+//! [`query`] is the Story 6.3 read path: domain queries over the tables above
+//! (`query::agenda::today` first), the plain-function precursor to the
+//! `IndexQuery` trait Story 6.5 freezes as the v0.1 public surface.
 
 pub mod connection;
 pub mod error;
@@ -46,6 +50,7 @@ pub mod identity;
 pub mod integrity;
 pub mod migrations;
 pub mod pool;
+pub mod query;
 pub mod stats;
 pub mod sync;
 pub mod writer;

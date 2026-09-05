@@ -73,6 +73,12 @@ tokio = { workspace = true, features = ["rt", "fs"] }
 chrono = { workspace = true }
 
 [dev-dependencies]
+# Story 6.3: the perf-AC test seeds a synthetic 1000-file index directly
+# against a plain `rusqlite::Connection` (no writer/pool needed for a
+# single-threaded benchmark). Already a direct dependency of `orgsidian-index`
+# (which `orgsidian-core` wraps) and pinned in the workspace lockfile; this is
+# a dev-only re-declaration, not a new external dependency.
+rusqlite = { workspace = true }
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
 # harness. `failpoints` feature is non-negotiable — without it `fail::cfg` /
 # `fail_point!` compile to no-ops and downstream tests silently bypass.
@@ -119,6 +125,14 @@ path = "../../tests/failure_modes_coverage.rs"
 [[test]]
 name = "perf_canary"
 path = "tests/perf_canary.rs"
+required-features = ["test-support"]
+
+# Story 6.3 (FR-7 / LD-32): the Today Agenda perf-AC gate. Needs `test-support`
+# for the same reason `perf_canary` does — `assert_no_perf_regression!` pulls in
+# the `serde_json`-gated baseline JSON I/O.
+[[test]]
+name = "story_6_3_agenda_today_perf"
+path = "tests/story_6_3_agenda_today_perf.rs"
 required-features = ["test-support"]
 
 # Story 1.18 (LD-40): workspace-root drift guard for the boundary doc, mirroring
