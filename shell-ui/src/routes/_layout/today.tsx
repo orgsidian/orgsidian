@@ -6,10 +6,23 @@ import { VaultPicker } from "@/components/settings/VaultPicker";
 import { KeybindingsSettings } from "@/components/settings/KeybindingsReference";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { StarterVaultPicker } from "@/components/onboarding/StarterVaultPicker";
+import { CoachingBalloon } from "@/components/coaching/CoachingBalloon";
+import { UJ4_CAPTURE_INTRO } from "@/components/coaching/coachingIds";
 
 export const Route = createFileRoute("/_layout/today")({
   component: TodayRoute,
 });
+
+// Story 6.6 fix (post-review, 2026-09-05): the capture hotkey
+// (Cmd/Ctrl+Shift+Space) is not wired until Story 8.1 (Epic 8, after v0.1
+// Alpha) — rendering `UJ4_CAPTURE_INTRO` before then would coach a first-run
+// user toward a shortcut that does nothing. The balloon's id, copy, and
+// dismissal persistence stay fully intact (Story 8.1/11.4 inherit them
+// unchanged) — only its rendering is gated behind this constant.
+// TODO(Story 8.1): render once the capture hotkey is wired. Flip this to
+// `true` (or wire it to a real "capture hotkey available" signal once one
+// exists) — no other change needed.
+const CAPTURE_FEATURE_AVAILABLE = false;
 
 /**
  * Implements FR-7 (Story 6.3) + FR-18 (Story 6.2): the `/today` route. On
@@ -53,6 +66,29 @@ function TodayRoute() {
 
   return (
     <main className="container mx-auto p-8">
+      {/* Story 6.6 (UJ-4): the Quick Capture nudge balloon. v0.1 anchor
+          decision (see the Story 6.6 story file's Design Notes): the AC's
+          "Inbox preview section" is Epic 7 (Today Dashboard) scope and does
+          not exist on this route yet (Story 6.3 shipped only the
+          Scheduled/Deadline Agenda below) — this calm top-of-route
+          placement is the honest v0.1 stand-in. Its id/dismissal wiring is
+          real so Story 11.4 can re-anchor it without touching the seam.
+
+          GATED (post-review fix, 2026-09-05): the capture hotkey isn't wired
+          until Story 8.1, so this balloon is not rendered yet — see
+          `CAPTURE_FEATURE_AVAILABLE` above. The component/id/copy/dismissal
+          below are otherwise unchanged and ready to un-gate. */}
+      {CAPTURE_FEATURE_AVAILABLE && (
+        <CoachingBalloon
+          id={UJ4_CAPTURE_INTRO}
+          className="mb-4"
+          dismissLabel="Dismiss the Quick Capture tip"
+        >
+          <span className="font-medium">Anything on your mind?</span> Press
+          Cmd/Ctrl+Shift+Space to capture from anywhere.
+        </CoachingBalloon>
+      )}
+
       <AgendaToday />
 
       {/* Story 3.6: minimal mount for the FR-15 Vault designation surface.

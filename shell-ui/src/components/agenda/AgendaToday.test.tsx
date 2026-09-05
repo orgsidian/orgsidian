@@ -16,6 +16,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * without re-sorting, and renders a click-to-open `Link` per item to
  * `/editor/$filePath/$headlineId` (`byteStart` search param carried through
  * for the cursor-jump — see `Editor`'s `initialByteOffset` prop).
+ *
+ * Story 6.6 (UJ-4): `AgendaToday` also mounts a `CoachingBalloon` pointing at
+ * the first item, which independently calls `commands.getDismissedCoaching`.
+ * The mock below defaults it to "already dismissed" so the Story 6.3
+ * assertions below stay decoupled from the balloon; a dedicated test asserts
+ * the balloon renders when NOT dismissed (see `CoachingBalloon.test.tsx` for
+ * the balloon's own behavior).
  */
 
 type AgendaItemDto = {
@@ -33,10 +40,16 @@ type AgendaItemDto = {
 
 const mocks = vi.hoisted(() => ({
   agendaToday: vi.fn<(today: string) => Promise<AgendaItemDto[]>>(),
+  getDismissedCoaching: vi.fn<() => Promise<string[]>>(),
+  dismissCoaching: vi.fn<(id: string) => Promise<void>>(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
-  commands: { agendaToday: mocks.agendaToday },
+  commands: {
+    agendaToday: mocks.agendaToday,
+    getDismissedCoaching: mocks.getDismissedCoaching,
+    dismissCoaching: mocks.dismissCoaching,
+  },
 }));
 
 // Imported AFTER the mock is registered.
@@ -51,6 +64,8 @@ let root: Root;
 
 beforeEach(() => {
   mocks.agendaToday.mockReset();
+  mocks.getDismissedCoaching.mockReset().mockResolvedValue(["UJ4_TODAY_INTRO"]);
+  mocks.dismissCoaching.mockReset().mockResolvedValue(undefined);
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -274,5 +289,76 @@ describe("AgendaToday (Story 6.3, FR-7)", () => {
     expect(mocks.agendaToday).toHaveBeenCalledWith(
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     );
+  });
+
+  describe("Story 6.6 (UJ-4): the first-agenda-item coaching balloon", () => {
+    it("renders the UJ4_TODAY_INTRO balloon above the first item when not dismissed", async () => {
+      mocks.getDismissedCoaching.mockResolvedValue([]); // nothing dismissed yet
+      mocks.agendaToday.mockResolvedValue([
+        item({ headlineId: 1, filePath: "inbox.org", title: "Ship v0.1" }),
+      ]);
+      await act(async () => {
+        renderAgendaToday();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const balloon = container.querySelector('[data-coaching-id="UJ4_TODAY_INTRO"]');
+      expect(balloon).not.toBeNull();
+      expect(balloon?.getAttribute("role")).toBe("status");
+      expect(balloon?.getAttribute("aria-live")).toBe("polite");
+      expect(balloon?.textContent).toContain("This is your day.");
+      expect(balloon?.textContent).toContain("Click any task to open the source file.");
+    });
+
+    it("does not render the balloon when UJ4_TODAY_INTRO is already dismissed", async () => {
+      mocks.getDismissedCoaching.mockResolvedValue(["UJ4_TODAY_INTRO"]);
+      mocks.agendaToday.mockResolvedValue([
+        item({ headlineId: 1, filePath: "inbox.org", title: "Ship v0.1" }),
+      ]);
+      await act(async () => {
+        renderAgendaToday();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(container.querySelector('[data-coaching-id="UJ4_TODAY_INTRO"]')).toBeNull();
+    });
+
+    it("does not render the balloon when there are no agenda items", async () => {
+      mocks.getDismissedCoaching.mockResolvedValue([]);
+      mocks.agendaToday.mockResolvedValue([]);
+      await act(async () => {
+        renderAgendaToday();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(container.querySelector('[data-coaching-id="UJ4_TODAY_INTRO"]')).toBeNull();
+    });
+
+    it("persists the dismissal and hides the balloon on the X button", async () => {
+      mocks.getDismissedCoaching.mockResolvedValue([]);
+      mocks.agendaToday.mockResolvedValue([
+        item({ headlineId: 1, filePath: "inbox.org", title: "Ship v0.1" }),
+      ]);
+      await act(async () => {
+        renderAgendaToday();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const dismissButton = container.querySelector(
+        '[data-coaching-id="UJ4_TODAY_INTRO"] button',
+      ) as HTMLButtonElement;
+      expect(dismissButton).not.toBeNull();
+
+      await act(async () => {
+        dismissButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(container.querySelector('[data-coaching-id="UJ4_TODAY_INTRO"]')).toBeNull();
+      expect(mocks.dismissCoaching).toHaveBeenCalledWith("UJ4_TODAY_INTRO");
+    });
   });
 });

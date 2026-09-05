@@ -17,6 +17,8 @@ import { Link } from "@tanstack/react-router";
 
 import { commands, type AgendaItemDto } from "@/lib/tauri";
 import { localTodayIso } from "@/components/editor/schedule";
+import { CoachingBalloon } from "@/components/coaching/CoachingBalloon";
+import { UJ4_TODAY_INTRO } from "@/components/coaching/coachingIds";
 
 /**
  * Best-effort extraction of a human-readable message from a thrown command
@@ -122,6 +124,16 @@ export function AgendaToday() {
 
       {error === null && items !== null && items.length > 0 && (
         <div className="mt-4 flex flex-col gap-6">
+          {/* Story 6.6 (UJ-4): points at the first Agenda item — the very
+              first row of the very first group below. */}
+          <CoachingBalloon
+            id={UJ4_TODAY_INTRO}
+            dismissLabel="Dismiss the Today Agenda tip"
+          >
+            <span className="font-medium">This is your day.</span> Click any
+            task to open the source file.
+          </CoachingBalloon>
+
           {groupByFile(items).map((group) => (
             <div key={group.filePath}>
               <h2 className="text-sm font-medium text-[var(--org-fg-muted)]">

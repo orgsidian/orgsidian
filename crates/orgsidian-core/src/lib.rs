@@ -68,6 +68,15 @@ pub use orgsidian_vault::{
     BlockWithWarning, ConflictStrategy, ResolveConflict, Sha256Hash, SharedDirtyBuffers,
 };
 
+// Story 6.6 (FR-21 partial / FR-18 / UJ-4): hardcoded coaching-balloon
+// dismissal persistence at `<Vault>/.orgsidian/coaching-dismissed.json` — a
+// disposable v0.1 stand-in Story 11.4 removes wholesale (see module docs).
+pub mod coaching;
+pub use coaching::{
+    coaching_dismissed_path, dismiss_coaching, read_dismissed_coaching, UJ4_CAPTURE_INTRO,
+    UJ4_TODAY_INTRO,
+};
+
 // Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal
 // GTD + Student ship here; Freelancer (needs Story 8.7's BacklinksPanel) and
 // Empty (Story 11.1) are deferred, see `deferred-work.md`. Uses `atomic_write`
