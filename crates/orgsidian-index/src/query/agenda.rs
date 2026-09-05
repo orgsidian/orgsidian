@@ -5,8 +5,10 @@
 //! by calendar date instead). The full Today Dashboard (Today-Tag, Inbox
 //! preview, Active Clock) is Epic 7 (Story 7.1); Custom ranges are Story 7.4.
 //! Story 6.5 freezes `agenda::{today, week, custom}` together as the v0.1
-//! `IndexQuery` baseline surface — this file ships the first two, already
-//! real and tested, for that trait to wrap.
+//! `IndexQuery` baseline surface: `today`/`week` are already real and
+//! tested; `custom` (Story 7.4) ships here as a frozen-signature stub (see
+//! [`custom`]'s own docs) so the trait wraps a real, already-existing
+//! function rather than a hole in the `impl`.
 //!
 //! [`today`] is the query behind `/today`
 //! (`shell-ui/src/components/agenda/AgendaToday.tsx`): a single `SELECT` over
@@ -241,6 +243,57 @@ pub fn week(conn: &Connection, start_date: &str) -> Result<Vec<AgendaItem>, Inde
     items.sort_by(|a, b| a.agenda_date.cmp(&b.agenda_date));
 
     Ok(items)
+}
+
+/// Parameters for [`custom`] (Story 7.4's `/agenda/custom` date-range +
+/// filter view): an arbitrary `[start_date, end_date]` inclusive window plus
+/// optional tag / TODO-state / file-path filters, per that story's AC
+/// ("date range picker (start / end) + filter inputs (tag, TODO state, file
+/// path)").
+///
+/// `#[non_exhaustive]`: Story 7.4 may need another filter field (or an
+/// additional sort/limit knob) once it is actually built; freezing this
+/// shape now as growable means that addition is semver-minor, not
+/// semver-major.
+#[derive(Debug, Clone, PartialEq, Default)]
+#[non_exhaustive]
+pub struct CustomAgendaQuery {
+    /// ISO-8601 `YYYY-MM-DD`, inclusive — same caller-supplied-string
+    /// convention as [`today`]/[`week`]'s `today`/`start_date` (see the
+    /// module docs).
+    pub start_date: String,
+    /// ISO-8601 `YYYY-MM-DD`, inclusive.
+    pub end_date: String,
+    /// Optional tag filter (bare tag text, no leading `#` or trailing `:`).
+    pub tag: Option<String>,
+    /// Optional TODO-keyword filter (e.g. `"NEXT"`).
+    pub todo_state: Option<String>,
+    /// Optional file-path glob filter.
+    pub file_path_glob: Option<String>,
+}
+
+/// Scheduled/Deadline items over an arbitrary caller-supplied
+/// `[query.start_date, query.end_date]` window, with optional tag / TODO /
+/// file-path filters — the general form [`today`] and [`week`] are both
+/// fixed-window special cases of.
+///
+/// **Story 7.4 stub**: this is the v0.1 `IndexQuery` baseline signature
+/// (Story 6.5), frozen ahead of its Story 7.4 implementation. The body
+/// below returns an empty result rather than `unimplemented!()` so it is
+/// safely reachable through [`super::IndexQuery::agenda_custom`]'s default
+/// method before Story 7.4 lands (see the parent module's docs, "Why stub
+/// bodies return empty results"). Story 7.4 replaces this body with a real
+/// `SELECT` — a pure body edit, not a signature change.
+///
+/// # Errors
+///
+/// [`IndexError::Sqlite`] once implemented; the stub body never errors.
+pub fn custom(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<AgendaItem>, IndexError> {
+    // Story 7.4 TODO: implement the general Scheduled/Deadline range query
+    // with tag/todo/file-path filters. `conn`/`query` are unused until then.
+    let _ = conn;
+    let _ = query;
+    Ok(Vec::new())
 }
 
 #[cfg(test)]

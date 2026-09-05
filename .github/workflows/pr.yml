@@ -41,10 +41,15 @@ jobs:
       # tree-sitter-org grammar at crates/orgsidian-parser/grammar/ (LD-48).
       # If the submodule is ever moved to a private repo (LD-48 in-house fork
       # trigger fires), add `token: ${{ secrets.SUBMODULE_PAT }}` here.
+      # fetch-depth: 0 (full history) — Story 6.5's cargo-semver-checks step
+      # below diffs the current tree against a prior commit (`--baseline-rev`);
+      # the default shallow (depth-1) checkout would not have that commit
+      # available to check out into a worktree.
       - name: Checkout
         uses: actions/checkout@v5
         with:
           submodules: recursive
+          fetch-depth: 0
 
       # Step 1.5 — Linux native deps for Tauri 2.x (GTK3 + WebKit2GTK 4.1 +
       # libsoup3 + librsvg + ayatana-appindicator3). The GitHub-hosted
@@ -165,6 +170,86 @@ jobs:
       # never add fetch/extract invocations here.
       - name: cargo test (tools/corpus-extractor)
         run: cargo test --manifest-path tools/corpus-extractor/Cargo.toml --locked
+
+      # Step 9.4 — cargo-semver-checks freeze gate (Story 6.5, LD-32/LD-33/
+      # NFR-19): fails the PR if `orgsidian-index`'s `query::*` public API
+      # (the `IndexQuery` trait + `agenda`/`search`/`backlinks`/`graph`
+      # submodules, frozen at Story 6.5 — see
+      # `crates/orgsidian-index/CHANGELOG.md`'s "Query API: v1.0" entry)
+      # gains a breaking change. Runs on ubuntu-24.04 only (one cell is
+      # sufficient — this checks source-level API shape, not platform
+      # behavior).
+      #
+      # Baseline-rev strategy (documented deviation from the AC's literal
+      # `--baseline-rev v0.1.0-alpha.x`): that tag does not exist yet — it is
+      # created by Story 6.10, which epics.md itself notes lands AFTER
+      # Epic 7/8 in execution order, i.e. well after this gate needs to be
+      # protecting the frozen surface from exactly those epics. Pinning to a
+      # not-yet-existing tag would make the gate a no-op for the entire
+      # window it exists to guard, defeating Story 6.5's purpose. Instead the
+      # baseline floats to "the tree just before this PR's commits" — the
+      # PR's base SHA for a `pull_request` event, or the previous commit for
+      # a direct `push` (post-merge re-run) — the same "did THIS PR
+      # introduce a break versus what's already on main" comparison
+      # `cargo-semver-checks` is designed around, and it requires no
+      # pre-existing tag at all.
+      #
+      # TODO(Story 6.10): once `v0.1.0-alpha` is tagged, consider repinning
+      # `--baseline-rev` to that tag instead of the floating PR-base
+      # comparison above, if the team wants "diff against the last published
+      # release" rather than "diff against main" semantics. Either strategy
+      # already satisfies this story's AC (fails on any breaking change to
+      # `query::*`); the floating baseline is additionally live from this PR
+      # onward instead of only from v0.1.0-alpha onward.
+      - name: Determine cargo-semver-checks baseline rev
+        if: matrix.os == 'ubuntu-24.04'
+        id: semver_baseline
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "rev=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "rev=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # cargo-semver-checks needs rustdoc's (unstable) JSON output, which
+      # only a nightly rustc produces. Installed via plain `rustup` (NOT
+      # `dtolnay/rust-toolchain@nightly`, which would also flip rustup's
+      # *default* toolchain to nightly for the rest of this job — including
+      # Step 14's `pnpm build`, which shells out to `cargo test
+      # ...export_bindings...`): a bare `rustup toolchain install` only adds
+      # nightly to the available set. `rust-toolchain.toml`'s `stable` pin
+      # stays the default for every other step; cargo-semver-checks invokes
+      # `+nightly` itself internally.
+      - name: Install nightly toolchain (rustdoc JSON for cargo-semver-checks)
+        if: matrix.os == 'ubuntu-24.04'
+        run: rustup toolchain install nightly --profile minimal --no-self-update
+
+      - name: Install cargo-semver-checks
+        if: matrix.os == 'ubuntu-24.04'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-semver-checks@0.50
+
+      # --release-type minor is NOT optional: every workspace crate is
+      # version-pinned at `0.0.0` (`[workspace.package] version = "0.0.0"`,
+      # Story 1.2 — no crate is published, so nothing bumps it pre-v0.1).
+      # Without this flag, cargo-semver-checks compares `0.0.0 -> 0.0.0`,
+      # concludes "no version change; assume major", and — since a major
+      # bump permits ANY change — SKIPS ALL 254 LINTS SILENTLY ("0 checks: 0
+      # pass, 254 skip"), making the gate a complete no-op that still exits
+      # 0. Verified hands-on in this story's own sandbox (network available):
+      # forcing `--release-type minor` runs the full major-breakage lint set
+      # (196 checks) while still passing additive/non_exhaustive-growth
+      # changes, and a deliberately-introduced breaking change (an extra
+      # `agenda::today` parameter) was confirmed to fail the gate with this
+      # flag present.
+      - name: cargo-semver-checks (query::* freeze gate — Story 6.5)
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          cargo semver-checks check-release \
+            --baseline-rev "${{ steps.semver_baseline.outputs.rev }}" \
+            --release-type minor \
+            -p orgsidian-index
 
       # Step 10 — cargo-deny (uses deny.toml from Story 1.7).
       - name: cargo deny
