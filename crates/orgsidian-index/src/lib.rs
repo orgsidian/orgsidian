@@ -40,10 +40,11 @@
 //! [`stamp_application_id`] marks a fresh index and [`check_index_identity`] /
 //! [`inspect_index_file`] classify a file as ours, foreign, or version-drifted.
 //!
-//! [`query`] is the Story 6.3/6.4 read path: domain queries over the tables
-//! above (`query::agenda::today` then `query::agenda::week`), the
-//! plain-function precursor to the `IndexQuery` trait Story 6.5 freezes as
-//! the v0.1 public surface.
+//! [`query`] is the Story 6.3/6.4 read path (`query::agenda::today`/`week`),
+//! now frozen by Story 6.5 as the v0.1 `IndexQuery` public surface —
+//! `cargo-semver-checks`-enforced from `.github/workflows/pr.yml` onward —
+//! together with the not-yet-implemented `search`/`backlinks`/`graph`
+//! submodules' stub signatures (Stories 7.4/8.4/8.6/8.10/12.0).
 
 pub mod connection;
 pub mod error;
