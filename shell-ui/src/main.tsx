@@ -1,4 +1,10 @@
 import "./styles/app.css";
+// Story 6.7: side-effect import applies the cold-start ("system") theme to
+// `document.body.dataset.theme` at module-import time, before React renders any
+// content -- so no rendered UI ever paints in the wrong theme. See
+// `themes/themeMode.ts` for the session-only preference store consumed by
+// `AppearanceSettings` (and for the note on the residual empty-body flash).
+import "./themes/themeMode";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";

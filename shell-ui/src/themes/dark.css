@@ -1,0 +1,35 @@
+/*
+ * Orgsidian dark theme -- `body[data-theme="dark"]` override.
+ * LD-58 gate input. See `tokens.css` for the pair-metadata convention.
+ *
+ * Values carried over verbatim from the Story 1.17 scaffold's `.dark` block
+ * (moved here per the architecture step 3 file layout, selector updated from
+ * the Tailwind-class convention to the Story 6.7 attribute-based switch --
+ * see `styles/app.css`'s `@custom-variant dark` for the parallel update that
+ * keeps shadcn's `dark:` utilities on the same mechanism).
+ * `themeMode.ts` sets `document.body.dataset.theme = "dark"` for an explicit
+ * user choice AND for a "system" preference that resolves to dark.
+ */
+
+body[data-theme="dark"] {
+  --org-bg-canvas: #0a0a0a;
+  --org-bg-surface: #141414;
+  --org-bg-elevated: #1a1a1a;
+
+  /* @pair-role: body-text */
+  /* @pair-bg: --org-bg-canvas */
+  --org-fg-default: #f5f5f5;
+  /* @pair-role: body-text */
+  /* @pair-bg: --org-bg-surface */
+  --org-fg-muted: #b5b5b5;
+  /* @pair-role: large-text */
+  /* @pair-bg: --org-bg-surface */
+  --org-fg-subtle: #888888;
+
+  /* @pair-role: ui-chrome */
+  /* @pair-bg: --org-bg-canvas */
+  --org-border-default: #888888;
+  /* @pair-role: ui-chrome */
+  /* @pair-bg: --org-bg-canvas */
+  --org-border-focus: #3b82f6;
+}

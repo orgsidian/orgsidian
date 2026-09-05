@@ -1,0 +1,34 @@
+/*
+ * Orgsidian light theme -- explicit `body[data-theme="light"]` override.
+ * LD-58 gate input. See `tokens.css` for the pair-metadata convention and the
+ * rationale for this file existing alongside an already-light `:root`.
+ *
+ * Restates the same palette as `tokens.css`'s `:root` block (which already IS
+ * the light default) so "Light" is a real, targetable DOM state -- symmetric
+ * with `dark.css` -- rather than an implicit "whatever :root happens to be".
+ * `themeMode.ts` sets `document.body.dataset.theme = "light"` for an explicit
+ * user choice AND for a "system" preference that resolves to light.
+ */
+
+body[data-theme="light"] {
+  --org-bg-canvas: #ffffff;
+  --org-bg-surface: #f7f7f7;
+  --org-bg-elevated: #ffffff;
+
+  /* @pair-role: body-text */
+  /* @pair-bg: --org-bg-canvas */
+  --org-fg-default: #1a1a1a;
+  /* @pair-role: body-text */
+  /* @pair-bg: --org-bg-surface */
+  --org-fg-muted: #4a4a4a;
+  /* @pair-role: large-text */
+  /* @pair-bg: --org-bg-surface */
+  --org-fg-subtle: #6a6a6a;
+
+  /* @pair-role: ui-chrome */
+  /* @pair-bg: --org-bg-canvas */
+  --org-border-default: #767676;
+  /* @pair-role: ui-chrome */
+  /* @pair-bg: --org-bg-canvas */
+  --org-border-focus: #2563eb;
+}

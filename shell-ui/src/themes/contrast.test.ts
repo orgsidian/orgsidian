@@ -1,9 +1,18 @@
 /**
- * Contrast-matrix test — LD-58 gate #1 (Story 1.17).
+ * Contrast-matrix test — LD-58 gate #1 (Story 1.17; extended by Story 6.7).
  *
- * Extracts every (--org-*-fg, --org-*-bg) pair from tokens.css via the explicit
- * `@pair-role:` + `@pair-bg:` annotation convention; computes the WCAG 2.1
- * relative-luminance contrast ratio `(L1 + 0.05) / (L2 + 0.05)` per pair; asserts:
+ * Story 6.7 split the single Story 1.17 `tokens.css` scaffold into the
+ * architecture step 3 file layout (`tokens.css` + `light.css` + `dark.css`)
+ * and moved the theme-select mechanism from a `.dark` class to
+ * `body[data-theme="dark" | "light"]` (see `themeMode.ts`). This test now
+ * reads all three files and asserts across three selector blocks:
+ * `:root` (tokens.css — pre-JS / structural default), `body[data-theme="light"]`
+ * (light.css), `body[data-theme="dark"]` (dark.css).
+ *
+ * Extracts every (--org-*-fg, --org-*-bg) pair via the explicit `@pair-role:`
+ * + `@pair-bg:` annotation convention (unchanged from Story 1.17); computes the
+ * WCAG 2.1 relative-luminance contrast ratio `(L1 + 0.05) / (L2 + 0.05)` per
+ * pair; asserts:
  *   - body-text  pairs >= 4.5:1 (WCAG 2.1 SC 1.4.3 AA)
  *   - large-text pairs >= 3.0:1 (WCAG 2.1 SC 1.4.3 AA)
  *   - ui-chrome  pairs >= 3.0:1 (WCAG 2.1 SC 1.4.11 AA non-text contrast)
@@ -42,14 +51,31 @@ const ROLE_THRESHOLDS: Record<Role, number> = {
 // that would silently yield a vacuous green gate. Bump when palette grows.
 const MIN_PAIRS_PER_BLOCK = 5;
 
+// Expected selector blocks post-Story-6.7 split: tokens.css's structural
+// `:root` default, plus the explicit light + dark theme files.
+const EXPECTED_SELECTORS = [':root', 'body[data-theme="light"]', 'body[data-theme="dark"]'];
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TOKENS_CSS = readFileSync(resolve(__dirname, 'tokens.css'), 'utf-8');
+// Concatenated so `parseTokens` can locate all three selector blocks
+// regardless of which physical file declares them.
+const TOKENS_CSS = [
+  readFileSync(resolve(__dirname, 'tokens.css'), 'utf-8'),
+  readFileSync(resolve(__dirname, 'light.css'), 'utf-8'),
+  readFileSync(resolve(__dirname, 'dark.css'), 'utf-8'),
+].join('\n');
 
 export function parseTokens(css: string): SelectorBlock[] {
   const blocks: SelectorBlock[] = [];
   const selectors: { selector: string; pattern: RegExp }[] = [
     { selector: ':root', pattern: /:root\s*\{([^}]*)\}/ },
-    { selector: '.dark', pattern: /\.dark\s*\{([^}]*)\}/ },
+    {
+      selector: 'body[data-theme="light"]',
+      pattern: /body\[data-theme=["']light["']\]\s*\{([^}]*)\}/,
+    },
+    {
+      selector: 'body[data-theme="dark"]',
+      pattern: /body\[data-theme=["']dark["']\]\s*\{([^}]*)\}/,
+    },
   ];
 
   const roleRegex = /^\s*\/\*\s*@pair-role:\s*(body-text|large-text|ui-chrome)\s*\*\/\s*$/;
@@ -138,7 +164,9 @@ function parseHex(color: string): { r: number; g: number; b: number } {
   const trimmed = color.trim();
   if (trimmed.startsWith('oklch(') || trimmed.startsWith('oklab(')) {
     throw new Error(
-      `[contrast.test] OKLch/OKLab color space not supported in Story 1.17 (got ${trimmed}). Story 6.7 will add a color-space-conversion utility.`,
+      `[contrast.test] OKLch/OKLab color space not supported (got ${trimmed}). ` +
+        'Story 6.7 kept the --org-* palette hex-only; a future story adds a ' +
+        'color-space-conversion utility if the palette adopts OKLch.',
     );
   }
   const m = trimmed.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
@@ -166,12 +194,12 @@ export function contrastRatio(fg: string, bg: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('LD-58 contrast gate — tokens.css', () => {
+describe('LD-58 contrast gate — tokens.css + light.css + dark.css (Story 6.7)', () => {
   const blocks = parseTokens(TOKENS_CSS);
 
-  it('parses exactly 2 selector blocks (:root + .dark)', () => {
-    expect(blocks.map((b) => b.selector).sort()).toEqual(['.dark', ':root'].sort());
-    expect(blocks).toHaveLength(2);
+  it('parses exactly 3 selector blocks (:root + light + dark)', () => {
+    expect(blocks.map((b) => b.selector).sort()).toEqual([...EXPECTED_SELECTORS].sort());
+    expect(blocks).toHaveLength(3);
   });
 
   it('every non-bg --org-* token carries @pair-role + @pair-bg (no unpaired)', () => {

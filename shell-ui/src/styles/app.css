@@ -1,24 +1,35 @@
 @import "../themes/tokens.css";
+@import "../themes/light.css";
+@import "../themes/dark.css";
 @import "editor.css";
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * Story 6.7: theme switch is `document.body.dataset.theme = "dark" | "light"`
+ * (see `themes/themeMode.ts`), not a `.dark` class. Tailwind's `dark:` variant
+ * (used by the shadcn primitives below) is re-pointed at the same attribute so
+ * there is exactly one theme-switch mechanism, not two to keep in sync.
+ */
+@custom-variant dark (&:is(body[data-theme="dark"] *));
 
 @theme {
-  /* Orgsidian's --org-* design tokens (FR-22 vocabulary) land in Story 6.7 (themes).
-     Story 1.3 ships the Tailwind 4 plumbing only; later stories extend without
-     re-introducing the @import directive. */
+  /* Orgsidian's --org-* design tokens (FR-22 vocabulary) live in `themes/` --
+     tokens.css + light.css + dark.css, imported above (Story 6.7). Story 1.3
+     shipped the Tailwind 4 plumbing only; this block stays empty on purpose
+     so a future story extending the `--org-*` vocabulary edits `themes/`, not
+     here, without re-introducing a duplicate @import directive. */
 }
 
 /*
  * shadcn/ui neutral baseColor design tokens.
  *
  * Sourced verbatim from ui.shadcn.com/docs/installation/manual (canonical
- * neutral block, OKLch color space, light + dark variants). Story 6.7 (themes)
- * will override these with Orgsidian's --org-* vocabulary; until then the
- * shadcn components (button, dialog, input, tabs, tooltip, sonner) need these
- * variables defined so utilities like bg-primary, bg-popover, border-input
- * resolve to actual colors instead of silently no-op'ing.
+ * neutral block, OKLch color space, light + dark variants). These remain an
+ * INTERNAL IMPLEMENTATION DETAIL consumed by the shadcn primitives (button,
+ * dialog, input, tabs, tooltip, sonner) -- LD-51 scopes the public,
+ * user-overridable theme API to the `--org-*` vocabulary only (`themes/`).
+ * The dark variant's selector below is kept in lockstep with the
+ * `@custom-variant dark` above (Story 6.7) so both mechanisms flip together.
  */
 
 @theme inline {
@@ -94,7 +105,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
+body[data-theme="dark"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
