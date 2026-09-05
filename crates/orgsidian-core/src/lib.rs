@@ -68,6 +68,14 @@ pub use orgsidian_vault::{
     BlockWithWarning, ConflictStrategy, ResolveConflict, Sha256Hash, SharedDirtyBuffers,
 };
 
+// Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal
+// GTD + Student ship here; Freelancer (needs Story 8.7's BacklinksPanel) and
+// Empty (Story 11.1) are deferred, see `deferred-work.md`. Uses `atomic_write`
+// through this crate's `vault_err` mapper, same LEAF-façade pattern as
+// `conflict` above.
+pub mod starter_vault;
+pub use starter_vault::{generate_starter_vault, StarterVaultKind};
+
 // Story 5.4 (FR-16): re-export the vault's pure cursor-preservation types so the
 // shell and tests name `orgsidian_core::{CursorPosition, CursorOutcome}` rather
 // than reaching into the vault leaf directly.

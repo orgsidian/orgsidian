@@ -64,6 +64,13 @@ orgsidian-watcher = { workspace = true }
 # Story 5.4 (FR-16): `fs` adds the async `tokio::fs::read_to_string` the
 # reconciler uses to refresh a clean buffer from disk off the worker threads.
 tokio = { workspace = true, features = ["rt", "fs"] }
+# Story 6.1 (FR-18): the `starter_vault` generator stamps `SCHEDULED`/`DEADLINE`/
+# `CLOSED` timestamps relative to a caller-supplied "today" `NaiveDate` (already
+# a transitive dep via `orgsidian-parser`'s `chrono`; this is a dependency
+# *edge* only, zero new crates in the lockfile). No new feature flags needed —
+# "today" is dependency-injected by the (future Story 6.2) caller, so `core`
+# never needs the `clock` feature to read the wall clock itself.
+chrono = { workspace = true }
 
 [dev-dependencies]
 # Story 1.11 (LD-41): fault-injection helpers for the workspace-root failure-mode
