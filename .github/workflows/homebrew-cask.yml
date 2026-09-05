@@ -1,0 +1,77 @@
+# homebrew-cask.yml — Story 6.8 hardening (LD-34 distribution channels).
+#
+# Renders + pushes the Homebrew cask formula to `orgsidian/tap`, using the
+# signed+notarized macOS-arm64 DMG attached to a GitHub Release on this
+# repo.
+#
+# Why this is its own workflow, triggered on `release: published`, instead
+# of a job chained after release.yml's `macos-dmg` job: `macos-dmg` creates
+# the GitHub Release as `draft: true` (a maintainer reviews it before
+# Story 6.10's "go public" step). While a release is a draft, its assets'
+# public download URL (`releases/download/<tag>/<asset>`) 404s for
+# unauthenticated requests — which is exactly how `brew install` fetches
+# the cask's `url`. Publishing the cask right after `macos-dmg` would write
+# a cask pointing at a URL that doesn't resolve yet. Triggering on
+# `release: published` instead means this only runs once the release (and
+# therefore the DMG's public URL) is actually live — whether that publish
+# happens via the GitHub UI or `gh release edit <tag> --draft=false`.
+#
+# Flow this fits into (see docs/releasing.md for the full writeup):
+#   Story 6.8 (this repo, release.yml)  -> builds/signs/notarizes, creates
+#                                           the DRAFT release
+#   Story 6.9 (this repo, release.yml)  -> adds the Linux AppImage job
+#                                           alongside macos-dmg
+#   Story 6.10 (maintainer action)      -> reviews + publishes the release
+#   this workflow (release: published)  -> publishes/updates the cask
+#
+# Version policy: action versions semver-major-pinned (`@v5`); runner
+# PINNED (`ubuntu-24.04`) — never `*-latest` per [[feedback_version_policy]],
+# matching pr.yml and release.yml.
+
+name: homebrew-cask
+
+on:
+  release:
+    types: [published]
+
+# One cask-publish run per release tag at a time.
+concurrency:
+  group: homebrew-cask-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish-cask:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Guard: only act on the LD-33 `v*` tag scheme this repo actually
+    # releases under (kept in lockstep with cliff.toml's `tag_pattern` and
+    # release.yml's push-tag trigger), and skip defensively if a draft ever
+    # reaches this event (should be impossible for `published`, per GitHub's
+    # own event semantics, but cheap to assert).
+    if: |
+      startsWith(github.event.release.tag_name, 'v') &&
+      github.event.release.draft == false
+    # Least-privilege: this job's GITHUB_TOKEN only READS the (now
+    # published) release on this repo (`gh release view`/`download`); the
+    # cross-repo write to orgsidian/tap goes through
+    # HOMEBREW_TAP_GITHUB_TOKEN, not GITHUB_TOKEN.
+    permissions:
+      contents: read
+    steps:
+      # Checking out the default ref for a `release` event resolves to the
+      # release's tag, so scripts/publish-homebrew-cask.sh and the cask
+      # template come from the same tag the release was cut from.
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: false
+
+      - name: Publish Homebrew cask to orgsidian/tap
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: bash scripts/publish-homebrew-cask.sh

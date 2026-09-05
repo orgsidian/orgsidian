@@ -1,0 +1,39 @@
+# orgsidian.rb.tmpl — Story 6.8 (LD-34 distribution channels).
+#
+# Homebrew cask template, rendered by scripts/publish-homebrew-cask.sh and
+# pushed to `Casks/orgsidian.rb` in the external `orgsidian/tap` repository
+# on every `v0.1.0-alpha.x` release. Placeholders (substituted verbatim by
+# the publish script — do not rename without updating it too):
+#   __VERSION__   the tag with its leading `v` stripped (e.g. 0.1.0-alpha.3)
+#   __URL__       the release-asset download URL for the signed+notarized DMG
+#   __SHA256__    sha256 of that DMG, computed by the publish script
+#
+# This file is NOT itself consumed by Homebrew — it never leaves this repo
+# except as the source the publish script reads and renders. The rendered
+# `Casks/orgsidian.rb` is what actually lands in orgsidian/tap.
+
+cask "orgsidian" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "__URL__",
+      verified: "github.com/orgsidian/orgsidian/"
+  name "Orgsidian"
+  desc "Cross-platform desktop org-mode app"
+  homepage "https://github.com/orgsidian/orgsidian"
+
+  # v0.1.0-alpha.x builds are Apple-Silicon-only (Story 6.8 AC — macOS-arm64
+  # DMG). Revisit once an Intel (x86_64-apple-darwin) build ships.
+  depends_on arch: :arm64
+
+  auto_updates false
+
+  app "Orgsidian.app"
+
+  zap trash: [
+    "~/Library/Application Support/com.orgsidian.app",
+    "~/Library/Caches/com.orgsidian.app",
+    "~/Library/Logs/Orgsidian",
+    "~/Library/Saved Application State/com.orgsidian.app.savedState",
+  ]
+end
