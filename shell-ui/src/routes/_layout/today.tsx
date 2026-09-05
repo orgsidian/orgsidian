@@ -4,6 +4,7 @@ import { commands } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { VaultPicker } from "@/components/settings/VaultPicker";
 import { KeybindingsSettings } from "@/components/settings/KeybindingsReference";
+import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 
 export const Route = createFileRoute("/_layout/today")({
   component: TodayPlaceholder,
@@ -39,6 +40,12 @@ function TodayPlaceholder() {
           placeholder settings route until the real Settings flow (Epic 6 / 11)
           provides dedicated navigation. */}
       <KeybindingsSettings className="mt-8" />
+
+      {/* Story 6.7 (FR-22): Settings → Appearance — dark / light / system-default
+          theme toggle. Hosted here until the real Settings flow (Epic 6 / 11)
+          provides dedicated navigation, matching the KeybindingsSettings /
+          VaultPicker placeholder-route convention above. */}
+      <AppearanceSettings className="mt-8" />
     </main>
   );
 }
