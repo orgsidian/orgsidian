@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  com.orgsidian.app.metainfo.xml — Story 6.9 (LD-34 distribution channels).
+
+  SCAFFOLD ONLY, minimal placeholder — see com.orgsidian.app.yml's header
+  comment for the full "not submission-ready" caveat. This has NOT been run
+  through `appstreamcli validate`; a real Flathub submission needs real
+  screenshots (hosted per Flathub's screenshot guidelines), a fuller
+  <description>, and a release entry per tagged version (this file has
+  none yet since no version has actually released).
+-->
+<component type="desktop-application">
+  <id>com.orgsidian.app</id>
+  <name>Orgsidian</name>
+  <summary>A cross-platform org-mode desktop app</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      Orgsidian is a spec-driven, open-source, cross-platform desktop app
+      for plain-text org-mode files: agenda views, headline capture,
+      clocking, search, and a backlink graph over a plain directory of
+      .org files you already own.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.orgsidian.app.desktop</launchable>
+  <url type="homepage">https://github.com/orgsidian/orgsidian</url>
+  <url type="bugtracker">https://github.com/orgsidian/orgsidian/issues</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <!-- PLACEHOLDER: no version has shipped yet as of this scaffold; a real
+         submission adds a <release version="..." date="..."/> entry per
+         tagged v0.1.0-alpha.x release. -->
+  </releases>
+</component>

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Orgsidian
+Comment=A cross-platform org-mode desktop app
+Exec=orgsidian %F
+Icon=com.orgsidian.app
+Terminal=false
+Categories=Office;TextEditor;
+MimeType=text/x-org;
+StartupNotify=true

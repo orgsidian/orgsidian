@@ -1,0 +1,86 @@
+# com.orgsidian.app.yml — Story 6.9 (LD-34 distribution channels).
+#
+# SCAFFOLD ONLY — best-effort per the Story 6.9 AC ("a Flathub manifest is
+# filed best-effort per LD-34"). This manifest is NOT submission-ready and
+# this story deliberately does NOT submit it to Flathub. See
+# docs/releasing.md's "Flathub (best-effort, not submitted)" section for
+# what a maintainer must still do before an actual Flathub PR:
+#
+#   - Flathub's review bot requires network-isolated builds. That means no
+#     `cargo build` / `pnpm install` network access during the Flatpak
+#     build itself — every crate and npm package must be pre-declared as a
+#     `sources:` entry (crates via a `cargo-sources.json` generated with
+#     Flathub's `flatpak-cargo-generator.py`, JS deps via a comparable
+#     offline mirror/lockfile-derived source list). Neither is generated
+#     here.
+#   - Flathub requires a validated AppStream metainfo file (this scaffold
+#     ships a minimal one — see com.orgsidian.app.metainfo.xml — but it has
+#     not been run through `appstreamcli validate` or reviewed for
+#     Flathub's content guidelines, e.g. real screenshots).
+#   - `runtime-version` / `sdk-extensions` pins below are current as of
+#     this story's authoring date and will need bumping as the runtime
+#     ages.
+#   - The `build-commands` below assume a prebuilt AppImage is unpacked
+#     rather than the app being compiled from source inside the sandbox —
+#     Flathub does not accept manifests that merely repackage another
+#     distribution format (AppImage, .deb, etc.); this is flagged
+#     explicitly as a placeholder, not a real build recipe.
+#
+# Workflow shape (runtime/sdk naming, finish-args, sdk-extensions) checked
+# against the current Tauri 2.x + Flatpak conventions available at
+# authoring time; NOT ctx7-verified line-by-line the way release.yml's
+# GitHub Actions steps were, since this file is explicitly best-effort
+# scaffolding rather than a shipped release mechanism.
+
+app-id: com.orgsidian.app
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: orgsidian
+finish-args:
+  # Wayland-first with X11 fallback, matching Tauri's default WebKitGTK
+  # windowing support.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  # GPU acceleration for the WebKitGTK webview.
+  - --device=dri
+  # A Vault is a plain directory of .org files the user picks explicitly
+  # (Starter Vault picker / "open folder") — home access is the least
+  # -surprising sandbox grant for that model. A real Flathub submission
+  # should revisit this against Flathub's "use the portal instead of
+  # --filesystem=home where possible" review guidance (e.g. the
+  # xdg-desktop-portal file chooser) before submitting.
+  - --filesystem=home
+
+modules:
+  - name: orgsidian
+    buildsystem: simple
+    # PLACEHOLDER build recipe — see the file header. This unpacks a
+    # prebuilt AppImage rather than building from source, which Flathub's
+    # review process rejects; a real submission replaces this whole
+    # `modules:` entry with a `cargo`/`meson`-style from-source build using
+    # a generated `cargo-sources.json`.
+    build-commands:
+      - install -Dm755 orgsidian.AppImage /app/bin/orgsidian
+      - install -Dm644 com.orgsidian.app.desktop /app/share/applications/com.orgsidian.app.desktop
+      - install -Dm644 com.orgsidian.app.metainfo.xml /app/share/metainfo/com.orgsidian.app.metainfo.xml
+      - install -Dm644 icon.png /app/share/icons/hicolor/128x128/apps/com.orgsidian.app.png
+    sources:
+      - type: file
+        # PLACEHOLDER: a real submission cannot reference a GitHub Release
+        # asset by a moving `download/latest` style URL — Flathub requires
+        # a pinned URL + sha256 per release, updated by its own automated
+        # version-bump tooling. Left as a documented gap, not filled with a
+        # fabricated hash.
+        url: https://github.com/orgsidian/orgsidian/releases/latest/download/orgsidian_amd64.AppImage
+        sha256: REPLACE_WITH_RELEASE_APPIMAGE_SHA256
+        dest-filename: orgsidian.AppImage
+      - type: file
+        path: com.orgsidian.app.desktop
+      - type: file
+        path: com.orgsidian.app.metainfo.xml
+      - type: file
+        path: ../../crates/orgsidian-shell-app/icons/icon.png

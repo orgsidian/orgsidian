@@ -1,11 +1,20 @@
-# release.yml — Story 6.8 (LD-19 code signing / LD-34 distribution channels).
+# release.yml — Story 6.8 (LD-19 code signing / LD-34 distribution channels)
+# + Story 6.9 (Linux AppImage, LD-34).
 #
-# Builds, signs, and notarizes the macOS-arm64 DMG via the Tauri bundler and
-# uploads it to a (draft, prerelease) GitHub Release. Triggered by pushing a
+# Builds, signs, and notarizes the macOS-arm64 DMG via the Tauri bundler
+# (`macos-dmg` job) and builds + GPG-signs the Linux-x86_64 AppImage
+# (`linux-appimage` job), uploading both to the SAME (draft, prerelease)
+# GitHub Release for the pushed tag. Triggered by pushing a
 # `v0.1.0-alpha.x` tag (the LD-33 `v*` tag scheme — pattern kept in lockstep
-# with cliff.toml's `tag_pattern`). Story 6.9 adds the Linux AppImage job to
-# this same file; Windows MSI is a later story (LD-34: "Chocolatey/Scoop
-# deferred post-v1.0" — the MSI job itself is not yet scoped to a story).
+# with cliff.toml's `tag_pattern`). Windows MSI is a later story (LD-34:
+# "Chocolatey/Scoop deferred post-v1.0" — the MSI job itself is not yet
+# scoped to a story).
+#
+# `linux-appimage` deliberately `needs: macos-dmg` (see that job's comment
+# below) so the two jobs never race to create the release for the tag —
+# `macos-dmg` always creates it first via `tauri-apps/tauri-action`, and
+# `linux-appimage` finds that same (still-draft) release by tag and appends
+# the AppImage + its checksums to it.
 #
 # The Homebrew cask publish step used to be a job chained directly after
 # this one, but that races the release's draft state: the cask's `url`
@@ -16,13 +25,14 @@
 # instead. See docs/releasing.md for the full 6.8 -> 6.9 -> 6.10 flow.
 #
 # Workflow shape verified 2026-09-05 against the current Tauri 2.x docs
-# (tauri-apps/tauri-docs, "Pipelines > GitHub" + "Sign > macOS") via the
-# project's ctx7 documentation rule — see the per-step comments below for
-# what came from there vs. house convention.
+# (tauri-apps/tauri-docs, "Pipelines > GitHub" + "Sign > macOS" +
+# "Sign > Linux" + "Start > Prerequisites" + "Distribute > AppImage") via
+# the project's ctx7 documentation rule — see the per-step comments below
+# for what came from there vs. house convention.
 #
 # ****************************************************************
 # * REQUIRED REPOSITORY SECRETS — see docs/releasing.md for the   *
-# * full runbook. This job does nothing useful until ALL of the   *
+# * full runbook. These jobs do nothing useful until ALL of the   *
 # * below are configured (Settings → Secrets and variables →      *
 # * Actions):                                                     *
 # *                                                                *
@@ -37,8 +47,14 @@
 # *                                Apple ID (NOT the account pwd)  *
 # *   APPLE_TEAM_ID                10-char Apple Developer Team ID *
 # *                                                                *
+# *   LINUX_GPG_PRIVATE_KEY       base64 of the exported ASCII-    *
+# *                                armored GPG private key used to *
+# *                                sign the AppImage (Story 6.9)   *
+# *   LINUX_GPG_PASSPHRASE        passphrase for that GPG key      *
+# *                                                                *
 # * GITHUB_TOKEN (built-in, no setup needed) creates the release   *
-# * and uploads the DMG to orgsidian/orgsidian itself.             *
+# * and uploads the DMG/AppImage/checksums to orgsidian/orgsidian  *
+# * itself.                                                        *
 # *                                                                *
 # * HOMEBREW_TAP_GITHUB_TOKEN is NOT used by this workflow — it is *
 # * consumed by .github/workflows/homebrew-cask.yml, which runs    *
@@ -48,7 +64,9 @@
 #
 # Version policy: action versions semver-major-pinned (`@v5`, `@v1`);
 # runner PINNED (`macos-14`, `ubuntu-24.04`) — never `*-latest` per
-# [[feedback_version_policy]], matching pr.yml.
+# [[feedback_version_policy]], matching pr.yml. `linux-appimage` is the one
+# deliberate exception: it pins `ubuntu-22.04`, NOT `ubuntu-24.04` — see
+# that job's comment for why (AppImage glibc baseline, ctx7-verified).
 
 name: release
 
@@ -70,9 +88,10 @@ permissions:
 jobs:
   # macOS-arm64 DMG: build (Tauri bundler) + sign (Developer ID Application
   # cert) + notarize (notarytool, staple attached) + upload to the GitHub
-  # Release for this tag. Story 6.9 (Linux AppImage) adds a sibling job here
-  # — kept as a single top-level job for now since it is the only platform
-  # in this story's AC.
+  # Release for this tag. Runs first (not in parallel with
+  # `linux-appimage`, which declares `needs: macos-dmg`) so it is always the
+  # job that creates the draft release for this tag; `linux-appimage` then
+  # appends to that same release rather than racing to create its own.
   macos-dmg:
     runs-on: macos-14
     timeout-minutes: 60
@@ -221,6 +240,220 @@ jobs:
       - name: Clean up keychain
         if: always()
         run: security delete-keychain build.keychain || true
+
+  # Linux-x86_64 AppImage (Story 6.9, LD-34): build (Tauri bundler) + GPG
+  # -sign + publish checksums, appended to the SAME draft release
+  # `macos-dmg` creates for this tag.
+  #
+  # `needs: macos-dmg` is deliberate, not incidental: `tauri-apps/tauri-action`
+  # looks up (or creates) the GitHub Release for `github.ref_name` on every
+  # invocation. If both jobs ran in parallel and neither release existed
+  # yet, both could attempt to *create* it at the same moment — GitHub's
+  # API rejects the loser of that race with an "already_exists" error
+  # rather than silently merging the two, which would fail this job for no
+  # good reason. Serializing behind `macos-dmg` means the release always
+  # already exists (as a draft) by the time this job's `tauri-action` step
+  # runs, so it deterministically appends the AppImage to it instead.
+  #
+  # Runner pin: `ubuntu-22.04`, NOT `ubuntu-24.04` (unlike every other
+  # `ubuntu-*` job in this repo, e.g. homebrew-cask.yml / pr.yml). This is
+  # the one deliberate exception to [[feedback_version_policy]]'s "pin the
+  # newest LTS" default: per the ctx7-verified Tauri 2.x docs
+  # ("Distribute > AppImage", Limitations section), an AppImage must be
+  # built on the OLDEST base system you intend to support, because glibc
+  # symbol versioning only gets newer over time — a binary built on
+  # ubuntu-24.04 would raise the minimum glibc version end users need,
+  # breaking exactly the "run anywhere" promise an AppImage exists for.
+  # Ubuntu 22.04 is the oldest release that still ships
+  # `libwebkit2gtk-4.1-dev` (Tauri v2's required WebKitGTK) from its normal
+  # apt repositories, so it's the correct baseline, not merely an older
+  # pin for its own sake.
+  linux-appimage:
+    needs: macos-dmg
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    # Same tag-ref guard as macos-dmg — a manual workflow_dispatch against a
+    # branch must not fall through to tauri-action creating/mutating a
+    # release under that branch name.
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      # Step 1 — checkout, same as macos-dmg (submodules: recursive for the
+      # tree-sitter-org grammar, LD-48).
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Step 2 — Linux system dependencies for building + bundling a Tauri
+      # v2 app as an AppImage. Merged from two ctx7-verified
+      # tauri-apps/tauri-docs pages (fetched 2026-09-05): the canonical
+      # "Start > Prerequisites > Install dependencies (Debian/Ubuntu)" list
+      # (libwebkit2gtk-4.1-dev, build-essential, curl, wget, file,
+      # libxdo-dev, libssl-dev, librsvg2-dev) plus the AppImage-specific
+      # extras from "Distribute > Pipelines > GitHub"'s reference workflow
+      # (appindicator dev headers, patchelf, xdg-utils — patchelf and
+      # xdg-utils are needed by the AppImage bundler itself, not just the
+      # app). `libayatana-appindicator3-dev` is used rather than the
+      # legacy `libappindicator3-dev` name that page's snippet shows, since
+      # ayatana is the maintained package on ubuntu-22.04. `gnupg2` is a
+      # house addition (not from either doc page): appimagetool signs via
+      # `gpg2` per "Distribute > Sign > Linux", and while ubuntu-22.04
+      # runner images normally ship gnupg2 preinstalled, pinning it
+      # explicitly here makes that a hard requirement instead of an
+      # incidental image detail this workflow silently depends on.
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            gnupg2
+
+      # Step 3 — Rust toolchain + cache, mirroring macos-dmg. No explicit
+      # `targets:` needed: ubuntu-22.04 runners are native x86_64, so the
+      # default host triple (`x86_64-unknown-linux-gnu`) already matches
+      # the AC's "Linux-x86_64" without passing `--target` to the build.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-ubuntu-22.04
+          workspaces: .
+
+      # Step 4 — pnpm + Node, same order-matters rule as macos-dmg / pr.yml.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11.1.1
+      - name: Install Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
+
+      # Step 5 — import the GPG private key used to sign the AppImage
+      # (LINUX_GPG_PRIVATE_KEY, base64-encoded ASCII-armored export, same
+      # base64-wrapping convention as APPLE_CERTIFICATE) into this runner's
+      # ephemeral GNUPGHOME, then configure loopback pinentry so the
+      # non-interactive signing steps below (both appimagetool's own and
+      # the detached SHA256SUMS signature) never block on a pinentry
+      # prompt that can't be answered in CI — a standard headless-GPG
+      # requirement, not specific to Tauri.
+      - name: Import GPG signing key
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$LINUX_GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --reload gpg-agent
+
+      # Step 6 — resolve the imported key's ID for SIGN_KEY / --local-user
+      # below, the same "import then resolve the identity" shape as
+      # macos-dmg's "Resolve signing identity" step (fail fast with a
+      # pointer at docs/releasing.md rather than silently signing with the
+      # wrong/no key).
+      - name: Resolve GPG signing key ID
+        run: |
+          set -euo pipefail
+          GPG_KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ {print $5; exit}')"
+          if [ -z "$GPG_KEY_ID" ]; then
+            echo "::error::No secret key found after importing LINUX_GPG_PRIVATE_KEY. Check the secret (see docs/releasing.md)."
+            exit 1
+          fi
+          echo "GPG_KEY_ID=$GPG_KEY_ID" >> "$GITHUB_ENV"
+          echo "Resolved GPG signing key: $GPG_KEY_ID"
+
+      # Step 7 — build the AppImage (Tauri bundler, native x86_64) with
+      # appimagetool's built-in GPG signing enabled (SIGN=1 / SIGN_KEY /
+      # APPIMAGETOOL_SIGN_PASSPHRASE / APPIMAGETOOL_FORCE_SIGN, the exact
+      # env-var contract documented at "Distribute > Sign > Linux",
+      # ctx7-verified 2026-09-05 — APPIMAGETOOL_FORCE_SIGN=1 so a signing
+      # failure fails the build loudly instead of silently shipping an
+      # unsigned AppImage), then publish via tauri-apps/tauri-action to the
+      # SAME release `macos-dmg` already created for this tag (`tagName`
+      # left unset for the same reason as macos-dmg: the action resolves
+      # `github.ref_name` from the already-pushed tag rather than minting
+      # its own `__VERSION__` tag).
+      - name: Build, sign, and publish AppImage (tauri-action)
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGN: 1
+          SIGN_KEY: ${{ env.GPG_KEY_ID }}
+          APPIMAGETOOL_SIGN_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          APPIMAGETOOL_FORCE_SIGN: 1
+        with:
+          projectPath: crates/orgsidian-shell-app
+          releaseName: 'Orgsidian ${{ github.ref_name }}'
+          releaseBody: 'GPG-signed Linux-x86_64 AppImage. See CHANGELOG.md for what changed.'
+          releaseDraft: true
+          prerelease: true
+          includeUpdaterJson: false
+
+      # Step 8 — checksums + a detached, independently-verifiable signature
+      # over them. The AppImage's own embedded GPG signature from Step 7 is
+      # only checkable with appimagetool itself
+      # (`./orgsidian.AppImage --appimage-signature`); publishing a
+      # SHA256SUMS + SHA256SUMS.asc pair alongside it (a common OSS release
+      # convention, not a Tauri-specific mechanism) lets an adopter verify
+      # the download with plain `sha256sum` + `gpg --verify` and no
+      # AppImage-specific tooling — belt-and-suspenders on top of the AC's
+      # literal "GPG-signed with checksums published alongside", not a
+      # replacement for the embedded signature.
+      - name: Publish checksums + detached signature
+        env:
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BUNDLE_DIR="target/release/bundle/appimage"
+          APPIMAGE_PATH="$(find "$BUNDLE_DIR" -maxdepth 1 -name '*.AppImage' | head -n1)"
+          if [ -z "$APPIMAGE_PATH" ]; then
+            echo "::error::No .AppImage found in ${BUNDLE_DIR} — did the tauri-action build step succeed?"
+            exit 1
+          fi
+          echo "Found AppImage: $APPIMAGE_PATH"
+          ( cd "$(dirname "$APPIMAGE_PATH")" && sha256sum "$(basename "$APPIMAGE_PATH")" ) > SHA256SUMS
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$LINUX_GPG_PASSPHRASE" \
+            --local-user "$GPG_KEY_ID" --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+          gh release upload "${GITHUB_REF_NAME}" SHA256SUMS SHA256SUMS.asc \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+
+      # Step 9 — GPG cleanup. Always runs so a re-run never trips over a
+      # stale imported secret key from a previous attempt (mirrors
+      # macos-dmg's keychain cleanup step).
+      - name: Clean up imported GPG key
+        if: always()
+        run: |
+          if [ -n "${GPG_KEY_ID:-}" ]; then
+            gpg --batch --yes --delete-secret-and-public-key "$GPG_KEY_ID" || true
+          fi
+          # Belt-and-suspenders: if the "Resolve GPG signing key ID" step
+          # failed *after* the import step ran, GPG_KEY_ID is never set and
+          # the targeted delete above is skipped — which would leave the
+          # imported secret key sitting in this run's GNUPGHOME. Wipe the
+          # ephemeral GNUPGHOME unconditionally so no key material can
+          # survive a runner reuse regardless of which step failed (mirrors
+          # macos-dmg's unconditional `security delete-keychain`).
+          rm -rf ~/.gnupg
 
   # NOTE: the Homebrew cask publish step is intentionally NOT a job here.
   # See .github/workflows/homebrew-cask.yml, which publishes the cask once
