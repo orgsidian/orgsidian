@@ -116,17 +116,17 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: v0.1 Alpha Release — First Launch & Day-One Agenda Snapshot
-  epic-6: backlog
-  6-1-implement-personal-gtd-student-freelancer-starter-vault-content-generator: backlog
-  6-2-implement-starter-vault-picker-ui-on-first-launch: backlog
-  6-3-implement-basic-today-agenda-view: backlog
-  6-4-implement-week-agenda-view: backlog
-  6-5-freeze-indexquery-trait-public-api-automated-via-cargo-semver-checks: backlog
-  6-6-hardcoded-coaching-balloons-for-uj-4-v0-1-first-run-party-mode-round-2-p0-sally: backlog
-  6-7-ship-dark-light-default-themes-wcag-aa: backlog
-  6-8-implement-macos-dmg-packaging-signing-notarization: backlog
-  6-9-implement-linux-appimage-packaging: backlog
-  6-10-publish-v0-1-alpha-readme-landing-page-announcement: backlog
+  epic-6: done
+  6-1-implement-personal-gtd-student-freelancer-starter-vault-content-generator: done
+  6-2-implement-starter-vault-picker-ui-on-first-launch: done
+  6-3-implement-basic-today-agenda-view: done
+  6-4-implement-week-agenda-view: done
+  6-5-freeze-indexquery-trait-public-api-automated-via-cargo-semver-checks: done
+  6-6-hardcoded-coaching-balloons-for-uj-4-v0-1-first-run-party-mode-round-2-p0-sally: done
+  6-7-ship-dark-light-default-themes-wcag-aa: done
+  6-8-implement-macos-dmg-packaging-signing-notarization: done
+  6-9-implement-linux-appimage-packaging: done
+  6-10-publish-v0-1-alpha-readme-landing-page-announcement: done
   epic-6-retrospective: optional
 
   # Epic 7: Today Dashboard & Time Tracking
