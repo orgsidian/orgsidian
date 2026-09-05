@@ -681,9 +681,15 @@ pub struct AgendaItemDto {
     pub deadline_date: Option<String>,
     /// `DEADLINE:` time, when the timestamp carries one.
     pub deadline_time: Option<String>,
-    /// `true` when the Deadline is strictly before `today` (overdue), as
-    /// opposed to due today.
+    /// `true` when the Deadline is strictly before the query's anchor date
+    /// (`today` for `commands.agendaToday`, `startDate` for
+    /// `commands.agendaWeek`) — overdue, as opposed to due today/in-window.
     pub overdue: bool,
+    /// The calendar day (`YYYY-MM-DD`) this row is grouped under — see
+    /// `orgsidian_core::AgendaItem::agenda_date`'s docs (Story 6.4). Always
+    /// present, including for `commands.agendaToday` rows (trivially `today`
+    /// itself).
+    pub agenda_date: String,
 }
 
 impl From<orgsidian_core::AgendaItem> for AgendaItemDto {
@@ -699,6 +705,7 @@ impl From<orgsidian_core::AgendaItem> for AgendaItemDto {
             deadline_date: item.deadline_date,
             deadline_time: item.deadline_time,
             overdue: item.overdue,
+            agenda_date: item.agenda_date,
         }
     }
 }
@@ -717,6 +724,23 @@ async fn agenda_today(
 ) -> OrgResult<Vec<AgendaItemDto>> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
     let items = orgsidian_core::agenda_today(&vault_root, &today).await?;
+    Ok(items.into_iter().map(AgendaItemDto::from).collect())
+}
+
+/// Story 6.4 (FR-7): the `/agenda/week` route's data source —
+/// `shell-ui/src/components/agenda/AgendaWeek.tsx` calls this once per mount.
+/// `start_date` is the frontend's local calendar day (`YYYY-MM-DD`), the
+/// window's first ("current") day — same convention `agenda_today` uses (see
+/// `orgsidian_core::agenda_week`'s docs). Errors with `OrgError::Vault` when
+/// no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn agenda_week(
+    start_date: String,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<Vec<AgendaItemDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let items = orgsidian_core::agenda_week(&vault_root, &start_date).await?;
     Ok(items.into_iter().map(AgendaItemDto::from).collect())
 }
 
@@ -758,7 +782,8 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             set_scheduled,
             agenda_today,
             generate_starter_vault,
-            has_configured_vault
+            has_configured_vault,
+            agenda_week
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -1104,6 +1129,7 @@ mod tests {
             deadline_date: Some("2026-09-01".to_string()),
             deadline_time: Some("17:00".to_string()),
             overdue: true,
+            agenda_date: "2026-09-05".to_string(),
         };
 
         let dto = AgendaItemDto::from(core_item.clone());
@@ -1118,6 +1144,7 @@ mod tests {
         assert_eq!(dto.deadline_date, core_item.deadline_date);
         assert_eq!(dto.deadline_time, core_item.deadline_time);
         assert_eq!(dto.overdue, core_item.overdue);
+        assert_eq!(dto.agenda_date, core_item.agenda_date);
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal

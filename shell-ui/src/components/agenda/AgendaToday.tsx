@@ -23,7 +23,7 @@ import { localTodayIso } from "@/components/editor/schedule";
  * error (mirrors `VaultPicker`'s helper — `ErrorHandlingMode::Throw` throws
  * the serialized `OrgError` `{ kind, reason }`).
  */
-function errorMessage(err: unknown): string {
+export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "reason" in err) {
     return String((err as { reason: unknown }).reason);
   }
@@ -88,12 +88,21 @@ export function AgendaToday() {
 
   return (
     <section aria-labelledby="agenda-today-heading">
-      <h1
-        id="agenda-today-heading"
-        className="text-2xl font-semibold text-[var(--org-fg-default)]"
-      >
-        Today
-      </h1>
+      <div className="flex items-baseline justify-between">
+        <h1
+          id="agenda-today-heading"
+          className="text-2xl font-semibold text-[var(--org-fg-default)]"
+        >
+          Today
+        </h1>
+        {/* Story 6.4: the view-switch into the rolling 7-day Week Agenda. */}
+        <Link
+          to="/agenda/week"
+          className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
+        >
+          View week
+        </Link>
+      </div>
 
       {error !== null && (
         <p role="alert" className="mt-3 text-sm text-destructive">
@@ -138,7 +147,7 @@ export function AgendaToday() {
  * carry a FUTURE Deadline (it matched via the Scheduled leg), which must not be
  * mislabelled as due today.
  */
-function deadlineLabel(item: AgendaItemDto, todayIso: string): string {
+export function deadlineLabel(item: AgendaItemDto, todayIso: string): string {
   if (item.overdue) return "Overdue";
   if (item.deadlineDate === todayIso) return "Due today";
   return "Due";

@@ -1,0 +1,11 @@
+{
+  "story_id": "story-6.4-agenda-week",
+  "tolerance_pct": 20,
+  "samples": 5,
+  "baselines": {
+    "macos-aarch64": {
+      "median_ns": 2083833,
+      "created_at": "2026-09-05T10:15:50Z"
+    }
+  }
+}

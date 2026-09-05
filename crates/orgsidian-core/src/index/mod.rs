@@ -272,6 +272,33 @@ pub async fn agenda_today(vault_root: &Path, today: &str) -> Result<Vec<AgendaIt
         .map_err(index_err)
 }
 
+/// Implements FR-7 (Story 6.4 Week Agenda view): Scheduled-within-the-window +
+/// Deadline-overdue-or-within-the-window for `vault_root`'s derived index,
+/// over the caller-supplied rolling 7-day window `[start_date, start_date + 6
+/// days]`. Same read-only shape as [`agenda_today`]/[`index_stats`]: resolve
+/// the DB path, refuse if the index is absent, read through a FRESH
+/// [`IndexPool`].
+///
+/// `start_date` is the frontend's local calendar day (`YYYY-MM-DD`) — see
+/// [`orgsidian_index::query::agenda::week`]'s docs for why the backend never
+/// assumes a timezone (nor computes the `+6 days` end of the window in Rust).
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault (run `index init` first) or the read fails.
+pub async fn agenda_week(vault_root: &Path, start_date: &str) -> Result<Vec<AgendaItem>, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    let start_date = start_date.to_string();
+    pool.interact(move |conn| orgsidian_index::query::agenda::week(conn, &start_date))
+        .await
+        .map_err(index_err)
+}
+
 /// The [`OrgError::Index`] returned when `stats`/`integrity` find no index for
 /// the target vault — it names the missing path and points at `index init`,
 /// and (per the read-only contract) is raised *without* creating a DB.

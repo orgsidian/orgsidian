@@ -135,6 +135,13 @@ name = "story_6_3_agenda_today_perf"
 path = "tests/story_6_3_agenda_today_perf.rs"
 required-features = ["test-support"]
 
+# Story 6.4 (FR-7 / LD-32): the Week Agenda / view-switch perf-AC gate. Needs
+# `test-support` for the same reason `perf_canary`/`story_6_3_...` do.
+[[test]]
+name = "story_6_4_agenda_week_perf"
+path = "tests/story_6_4_agenda_week_perf.rs"
+required-features = ["test-support"]
+
 # Story 1.18 (LD-40): workspace-root drift guard for the boundary doc, mirroring
 # the failure_modes pattern above. Lives at workspace `tests/` because the
 # boundary doc is a cross-cutting architecture artifact.

@@ -40,9 +40,10 @@
 //! [`stamp_application_id`] marks a fresh index and [`check_index_identity`] /
 //! [`inspect_index_file`] classify a file as ours, foreign, or version-drifted.
 //!
-//! [`query`] is the Story 6.3 read path: domain queries over the tables above
-//! (`query::agenda::today` first), the plain-function precursor to the
-//! `IndexQuery` trait Story 6.5 freezes as the v0.1 public surface.
+//! [`query`] is the Story 6.3/6.4 read path: domain queries over the tables
+//! above (`query::agenda::today` then `query::agenda::week`), the
+//! plain-function precursor to the `IndexQuery` trait Story 6.5 freezes as
+//! the v0.1 public surface.
 
 pub mod connection;
 pub mod error;

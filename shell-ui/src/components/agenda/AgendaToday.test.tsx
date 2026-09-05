@@ -63,8 +63,9 @@ afterEach(() => {
 
 /**
  * A minimal router carrying just enough of the real route tree for
- * `AgendaToday`'s `Link`s to resolve `/editor/$filePath/$headlineId` — no
- * full app route tree needed for a component test.
+ * `AgendaToday`'s `Link`s to resolve `/editor/$filePath/$headlineId` and
+ * `/agenda/week` (Story 6.4's view-switch) — no full app route tree needed
+ * for a component test.
  */
 function testRouter() {
   const rootRoute = createRootRoute();
@@ -72,8 +73,12 @@ function testRouter() {
     getParentRoute: () => rootRoute,
     path: "/editor/$filePath/$headlineId",
   });
+  const agendaWeekRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/agenda/week",
+  });
   return createRouter({
-    routeTree: rootRoute.addChildren([editorRoute]),
+    routeTree: rootRoute.addChildren([editorRoute, agendaWeekRoute]),
     history: createMemoryHistory({ initialEntries: ["/today"] }),
   });
 }
@@ -134,6 +139,21 @@ describe("AgendaToday (Story 6.3, FR-7)", () => {
     expect(alert?.textContent).toBe("no active vault; designate a vault first");
   });
 
+  it("renders the Story 6.4 view-switch Link to /agenda/week", async () => {
+    // The view-switch the perf AC is named after — assert it points at the
+    // Week Agenda route, so retargeting/removing it fails loudly rather than
+    // silently sending the user to the wrong place.
+    mocks.agendaToday.mockResolvedValue([]);
+    await act(async () => {
+      renderAgendaToday();
+      await Promise.resolve();
+    });
+
+    const viewWeek = container.querySelector('a[href="/agenda/week"]');
+    expect(viewWeek).not.toBeNull();
+    expect(viewWeek?.textContent).toContain("View week");
+  });
+
   it("groups items by source file, preserving the backend's sort order", async () => {
     mocks.agendaToday.mockResolvedValue([
       item({ headlineId: 1, filePath: "a.org", title: "a first" }),
@@ -168,7 +188,9 @@ describe("AgendaToday (Story 6.3, FR-7)", () => {
       await Promise.resolve();
     });
 
-    const link = container.querySelector("a");
+    // Filtered by prefix: the header's Story 6.4 "View week" Link
+    // (`/agenda/week`) is also an `<a>` and renders first in the DOM.
+    const link = container.querySelector('a[href^="/editor/"]');
     expect(link).not.toBeNull();
     expect(link?.getAttribute("href")).toBe("/editor/inbox.org/42?byteStart=128");
   });
@@ -182,7 +204,7 @@ describe("AgendaToday (Story 6.3, FR-7)", () => {
       await Promise.resolve();
     });
 
-    const link = container.querySelector("a");
+    const link = container.querySelector('a[href^="/editor/"]');
     // TanStack Router's default `Link` param encoding turns `/` into `%2F` so
     // the whole vault-relative path stays inside the `$filePath` segment
     // rather than being split into extra path segments.
