@@ -83,6 +83,12 @@ fn export_bindings() {
         // Story 6.3 (FR-7): the Today Agenda query surface.
         "agendaToday",
         "AgendaItemDto",
+        // Story 6.2: the Starter Vault picker's generate-then-designate command
+        // + the onboarding-gate query. A regression dropping either fails
+        // loudly here.
+        "generateStarterVault",
+        "hasConfiguredVault",
+        "StarterVaultKind",
         "export const events",
         "indexProgress",
         "index-progress",
