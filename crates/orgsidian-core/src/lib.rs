@@ -33,10 +33,11 @@ pub use orgsidian_parser as parser;
 // `Document` → index-row mapping.
 pub mod index;
 pub use index::{
-    agenda_today, agenda_week, designate_vault, index_integrity, index_stats, open_index,
-    rebuild_index, resolve_index_db_path, resync_file, scan_vault, today_dashboard, ActiveClock,
-    AgendaItem, DashboardParams, InboxItem, IndexHandle, IndexStats, IntegrityCheck,
-    IntegrityReport, ResyncOutcome, ScanOutcome, ScanProgress, TodayDashboard,
+    agenda_custom, agenda_today, agenda_week, designate_vault, index_integrity, index_stats,
+    open_index, rebuild_index, resolve_index_db_path, resync_file, scan_vault, today_dashboard,
+    ActiveClock, AgendaItem, CustomAgendaQuery, DashboardParams, InboxItem, IndexHandle,
+    IndexStats, IntegrityCheck, IntegrityReport, ResyncOutcome, ScanOutcome, ScanProgress,
+    TodayDashboard,
 };
 
 // Story 5.4 (LD-7 / LD-9 / FR-16): the external-edits reconciler — the hub that

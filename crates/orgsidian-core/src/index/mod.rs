@@ -26,7 +26,7 @@ use orgsidian_vault::VaultError;
 use crate::error::OrgError;
 use crate::settings;
 
-pub use orgsidian_index::query::agenda::AgendaItem;
+pub use orgsidian_index::query::agenda::{AgendaItem, CustomAgendaQuery};
 pub use orgsidian_index::query::dashboard::{
     ActiveClock, DashboardParams, InboxItem, TodayDashboard,
 };
@@ -326,6 +326,35 @@ pub async fn today_dashboard(
     }
     let pool = IndexPool::new(&db_path).map_err(index_err)?;
     pool.interact(move |conn| orgsidian_index::query::dashboard::today(conn, &params))
+        .await
+        .map_err(index_err)
+}
+
+/// Implements FR-7 (Story 7.4 Custom Agenda view): Scheduled/Deadline items
+/// over an arbitrary caller-supplied `[query.start_date, query.end_date]`
+/// window, with optional tag / TODO-state / file-path-glob filters, for
+/// `vault_root`'s derived index. Same read-only shape as
+/// [`agenda_today`]/[`agenda_week`]: resolve the DB path, refuse if the index
+/// is absent, read through a FRESH [`IndexPool`].
+///
+/// `query.start_date` / `query.end_date` are the frontend's local calendar
+/// days (`YYYY-MM-DD`) — see [`orgsidian_index::query::agenda::custom`]'s docs
+/// for why the backend never assumes a timezone.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault (run `index init` first) or the read fails.
+pub async fn agenda_custom(
+    vault_root: &Path,
+    query: CustomAgendaQuery,
+) -> Result<Vec<AgendaItem>, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(move |conn| orgsidian_index::query::agenda::custom(conn, &query))
         .await
         .map_err(index_err)
 }

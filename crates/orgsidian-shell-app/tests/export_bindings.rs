@@ -107,6 +107,10 @@ fn export_bindings() {
         "todayTag",
         "inbox",
         "activeClock",
+        // Story 7.4 (FR-7): the Custom Agenda range+filter query surface + its
+        // parameter DTO. A regression dropping either fails loudly here.
+        "agendaCustom",
+        "CustomAgendaQueryDto",
         // Story 6.6 (FR-21 partial / UJ-4): the hardcoded coaching-balloon
         // dismissal read/write commands. A regression dropping either fails
         // loudly here.

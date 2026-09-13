@@ -347,3 +347,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/7-1-implement-today-dashboard-surface.md`
   summary: Add command-level integration test proving the today_dashboard Tauri command wires today_tag/inbox_preview_count from vault settings into DashboardParams.
   evidence: The shell-app has no command-execution test harness (export_bindings only checks the generated type surface; sibling agenda_week is likewise untested), so swapping/ignoring the two settings reads would ship undetected.
+- source_spec: `7-4-implement-custom-agenda-view-with-date-range-picker.md`
+  summary: Add an `agenda_custom` IndexQuery-trait forwarding test and freshen the now-obsolete `stub_queries_are_reachable_through_the_trait_without_panicking` naming in `crates/orgsidian-index/src/query/mod.rs`.
+  evidence: Story 7.4 filled the `agenda::custom` stub body, but the trait default `IndexQuery::agenda_custom` has no forwarding-matches-free-function test (unlike `agenda_today`); the stub-reachability test still passes only incidentally against an empty DB. Pre-existing test-suite gap surfaced by verification-gap review, not a regression in the changed code.
+- source_spec: `7-4-implement-custom-agenda-view-with-date-range-picker.md`
+  summary: Add integration coverage for the core `orgsidian_core::agenda_custom` async wrapper (incl. its index-absent error path) and the `agenda_custom` Tauri command DTO round-trip.
+  evidence: These wrappers are executed by no test today; only the DTO->query mapping and the export-bindings surface are guarded. This mirrors the already-untested `agenda_week`/`agenda_today` wrapper pattern — a consistent pre-existing area-wide gap, not introduced by this story.
+- source_spec: `7-4-implement-custom-agenda-view-with-date-range-picker.md`
+  summary: Localize the Agenda view surfaces (Today/Week/Custom) with `@lingui/react` macros — their user-facing strings are hardcoded English.
+  evidence: `AgendaCustom` matches the existing hardcoded-English convention already present in `AgendaToday`/`AgendaWeek` (headings, "Loading...", empty states, view-switch links). Making only the new component translatable would be inconsistent; this is an area-wide i18n follow-up, not this story's problem.

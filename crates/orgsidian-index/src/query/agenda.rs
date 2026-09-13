@@ -277,23 +277,117 @@ pub struct CustomAgendaQuery {
 /// file-path filters — the general form [`today`] and [`week`] are both
 /// fixed-window special cases of.
 ///
-/// **Story 7.4 stub**: this is the v0.1 `IndexQuery` baseline signature
-/// (Story 6.5), frozen ahead of its Story 7.4 implementation. The body
-/// below returns an empty result rather than `unimplemented!()` so it is
-/// safely reachable through [`super::IndexQuery::agenda_custom`]'s default
-/// method before Story 7.4 lands (see the parent module's docs, "Why stub
-/// bodies return empty results"). Story 7.4 replaces this body with a real
-/// `SELECT` — a pure body edit, not a signature change.
+/// **Story 7.4**: this fills the Story 6.5 frozen-signature stub with the
+/// real query. Per the parent module's freeze contract, replacing the stub
+/// `Ok(Vec::new())` body with this `SELECT` is a pure BODY edit —
+/// `cargo-semver-checks` sees no API change (the signature and
+/// [`CustomAgendaQuery`] shape are unchanged).
+///
+/// The two date legs mirror [`week`] exactly (Scheduled within
+/// `[start_date, end_date]`; Deadline overdue-or-within-the-window, i.e.
+/// `<= end_date`), as does the [`AgendaItem::agenda_date`] derivation and
+/// the trailing stable sort — the difference from [`week`] is only that the
+/// window end is caller-supplied rather than `start_date + 6 days`, plus the
+/// three optional filters below.
+///
+/// The optional `tag` / `todo_state` / `file_path_glob` filters are applied
+/// with the `(?N IS NULL OR <cond>)` idiom so the statement stays a single
+/// prepared query with no dynamic SQL string building: rusqlite binds an
+/// `Option::None` to SQL `NULL`, which makes the `?N IS NULL` arm true and
+/// disables that filter. The tag filter is an `EXISTS` subquery over `tags`
+/// (hits `idx_tags_tag_headline_id`); the file-path filter uses SQLite
+/// `GLOB` against `files.path`.
+///
+/// `query.start_date` / `query.end_date` are ISO-8601 `YYYY-MM-DD` calendar
+/// days — the frontend's local `new Date()`, never a server-side clock read
+/// (see module docs).
 ///
 /// # Errors
 ///
-/// [`IndexError::Sqlite`] once implemented; the stub body never errors.
+/// [`IndexError::Sqlite`] if the query fails to prepare or run.
 pub fn custom(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<AgendaItem>, IndexError> {
-    // Story 7.4 TODO: implement the general Scheduled/Deadline range query
-    // with tag/todo/file-path filters. `conn`/`query` are unused until then.
-    let _ = conn;
-    let _ = query;
-    Ok(Vec::new())
+    // An inverted window (`start_date` lexically after `end_date`) has no valid
+    // days. Without this guard the Scheduled `BETWEEN` leg would already match
+    // nothing, but the Deadline `<= end_date` leg would still surface (overdue)
+    // rows collapsed onto a `start_date` that is after `end_date` — silently
+    // deadline-only results. Return empty so an inverted range is uniformly
+    // empty. (ISO-8601 dates sort lexicographically, so the string compare is a
+    // valid ordering test — see the module docs.)
+    if query.start_date.as_str() > query.end_date.as_str() {
+        return Ok(Vec::new());
+    }
+
+    let mut stmt = conn.prepare(
+        "SELECT h.id, f.path, h.title, h.byte_start, h.todo_keyword,
+                h.scheduled_date, h.scheduled_time,
+                h.deadline_date, h.deadline_time
+         FROM headlines h
+         JOIN files f ON f.id = h.file_id
+         WHERE f.quarantined = 0
+           AND h.kind = 'headline'
+           AND (h.todo_done IS NULL OR h.todo_done = 0)
+           AND (
+                (h.scheduled_date IS NOT NULL AND h.scheduled_date BETWEEN ?1 AND ?2)
+                OR (h.deadline_date IS NOT NULL AND h.deadline_date <= ?2)
+           )
+           AND (?3 IS NULL OR h.todo_keyword = ?3)
+           AND (?4 IS NULL OR f.path GLOB ?4)
+           AND (?5 IS NULL OR EXISTS (
+                SELECT 1 FROM tags t WHERE t.headline_id = h.id AND t.tag = ?5
+           ))
+         ORDER BY f.path, h.position",
+    )?;
+
+    let start_date = query.start_date.as_str();
+    let end_date = query.end_date.as_str();
+
+    let mut items = stmt
+        .query_map(
+            rusqlite::params![
+                start_date,
+                end_date,
+                query.todo_state,
+                query.file_path_glob,
+                query.tag,
+            ],
+            |row| {
+                let scheduled_date: Option<String> = row.get(5)?;
+                let deadline_date: Option<String> = row.get(7)?;
+                let overdue = deadline_date.as_deref().is_some_and(|date| date < start_date);
+                // Precedence identical to `week`: an in-window Scheduled date
+                // wins; otherwise fall back to the Deadline leg, collapsing an
+                // overdue Deadline onto `start_date`.
+                let agenda_date = match scheduled_date.as_deref() {
+                    Some(date) if date >= start_date && date <= end_date => date.to_string(),
+                    _ => match deadline_date.as_deref() {
+                        Some(date) if !overdue => date.to_string(),
+                        _ => start_date.to_string(),
+                    },
+                };
+                Ok(AgendaItem {
+                    headline_id: row.get(0)?,
+                    file_path: row.get(1)?,
+                    title: row.get(2)?,
+                    byte_start: row.get(3)?,
+                    todo_keyword: row.get(4)?,
+                    scheduled_date,
+                    scheduled_time: row.get(6)?,
+                    deadline_date,
+                    deadline_time: row.get(8)?,
+                    overdue,
+                    agenda_date,
+                })
+            },
+        )?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    // Stable sort by `agenda_date` (ties keep the SQL fetch's `(file_path,
+    // position)` order) — the same "partition an already-sorted list"
+    // convention `week` established, so the frontend groups by date without a
+    // second sort.
+    items.sort_by(|a, b| a.agenda_date.cmp(&b.agenda_date));
+
+    Ok(items)
 }
 
 #[cfg(test)]
@@ -613,6 +707,231 @@ mod tests {
                 ("2026-09-05", "a.org", "a day1"),
                 ("2026-09-06", "b.org", "b day2 first"),
                 ("2026-09-06", "b.org", "b day2 second"),
+            ]
+        );
+    }
+
+    // --- Story 7.4: `custom` (arbitrary range + optional filters) ---
+
+    /// A `[start_date, end_date]`-only query, no filters — the base case the
+    /// filter tests below narrow.
+    fn range(start: &str, end: &str) -> CustomAgendaQuery {
+        CustomAgendaQuery {
+            start_date: start.to_string(),
+            end_date: end.to_string(),
+            tag: None,
+            todo_state: None,
+            file_path_glob: None,
+        }
+    }
+
+    #[test]
+    fn custom_includes_scheduled_within_range_and_excludes_outside() {
+        let mut conn = open_test_db();
+        let mut before = headline("day before window", 0);
+        before.scheduled_date = Some("2026-09-04".to_string());
+        let mut start = headline("on start day", 1);
+        start.scheduled_date = Some("2026-09-05".to_string());
+        let mut mid = headline("mid window", 2);
+        mid.scheduled_date = Some("2026-09-20".to_string());
+        let mut end = headline("on end day", 3);
+        end.scheduled_date = Some("2026-10-04".to_string());
+        let mut after = headline("day after window", 4);
+        after.scheduled_date = Some("2026-10-05".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![before, start, mid, end, after]))
+            .expect("upsert");
+
+        let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
+
+        let titles: Vec<_> = items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(titles, vec!["on start day", "mid window", "on end day"]);
+        assert_eq!(items[0].agenda_date, "2026-09-05");
+        assert_eq!(items[2].agenda_date, "2026-10-04");
+    }
+
+    #[test]
+    fn custom_deadline_overdue_collapses_to_start_within_range_on_own_day_future_excluded() {
+        let mut conn = open_test_db();
+        let mut overdue = headline("Overdue deadline", 0);
+        overdue.deadline_date = Some("2026-08-01".to_string());
+        let mut due_in_range = headline("Due in range", 1);
+        due_in_range.deadline_date = Some("2026-09-20".to_string());
+        let mut future = headline("Future deadline", 2);
+        future.deadline_date = Some("2026-12-01".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![overdue, due_in_range, future]))
+            .expect("upsert");
+
+        let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
+
+        assert_eq!(items.len(), 2, "future deadline outside the window is excluded");
+        let by_title: std::collections::HashMap<_, _> = items
+            .iter()
+            .map(|i| (i.title.as_str(), (i.overdue, i.agenda_date.as_str())))
+            .collect();
+        assert_eq!(by_title.get("Overdue deadline"), Some(&(true, "2026-09-05")));
+        assert_eq!(by_title.get("Due in range"), Some(&(false, "2026-09-20")));
+    }
+
+    #[test]
+    fn custom_excludes_done_and_quarantined() {
+        let mut conn = open_test_db();
+        let mut done = headline("Already done", 0);
+        done.scheduled_date = Some("2026-09-10".to_string());
+        done.todo_keyword = Some("DONE".to_string());
+        done.todo_done = Some(true);
+        crate::upsert_file(&mut conn, &file("a.org", vec![done])).expect("upsert");
+        crate::quarantine_file(&mut conn, "bad.org", 1, 1, "parse error").expect("quarantine");
+
+        let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
+
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn custom_tag_filter_narrows_to_matching_headlines() {
+        let mut conn = open_test_db();
+        let mut tagged = headline("Home task", 0);
+        tagged.scheduled_date = Some("2026-09-10".to_string());
+        tagged.tags = vec!["home".to_string()];
+        let mut untagged = headline("Work task", 1);
+        untagged.scheduled_date = Some("2026-09-10".to_string());
+        untagged.tags = vec!["work".to_string()];
+        crate::upsert_file(&mut conn, &file("a.org", vec![tagged, untagged])).expect("upsert");
+
+        let mut q = range("2026-09-05", "2026-10-04");
+        q.tag = Some("home".to_string());
+        let items = custom(&conn, &q).expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Home task");
+    }
+
+    #[test]
+    fn custom_todo_state_filter_narrows_to_matching_keyword() {
+        let mut conn = open_test_db();
+        let mut next = headline("Next task", 0);
+        next.scheduled_date = Some("2026-09-10".to_string());
+        next.todo_keyword = Some("NEXT".to_string());
+        let mut todo = headline("Plain todo", 1);
+        todo.scheduled_date = Some("2026-09-10".to_string());
+        todo.todo_keyword = Some("TODO".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![next, todo])).expect("upsert");
+
+        let mut q = range("2026-09-05", "2026-10-04");
+        q.todo_state = Some("NEXT".to_string());
+        let items = custom(&conn, &q).expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Next task");
+    }
+
+    #[test]
+    fn custom_file_path_glob_filter_narrows_to_matching_files() {
+        let mut conn = open_test_db();
+        let mut in_projects = headline("Project task", 0);
+        in_projects.scheduled_date = Some("2026-09-10".to_string());
+        let mut in_inbox = headline("Inbox task", 0);
+        in_inbox.scheduled_date = Some("2026-09-10".to_string());
+        crate::upsert_file(&mut conn, &file("projects/app.org", vec![in_projects]))
+            .expect("upsert projects");
+        crate::upsert_file(&mut conn, &file("inbox.org", vec![in_inbox])).expect("upsert inbox");
+
+        let mut q = range("2026-09-05", "2026-10-04");
+        q.file_path_glob = Some("projects/*".to_string());
+        let items = custom(&conn, &q).expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Project task");
+    }
+
+    #[test]
+    fn custom_filters_combine_conjunctively() {
+        let mut conn = open_test_db();
+        // Only this row satisfies all three filters at once.
+        let mut match_all = headline("Match all", 0);
+        match_all.scheduled_date = Some("2026-09-10".to_string());
+        match_all.todo_keyword = Some("NEXT".to_string());
+        match_all.tags = vec!["home".to_string()];
+        // Fails the tag filter only.
+        let mut wrong_tag = headline("Wrong tag", 1);
+        wrong_tag.scheduled_date = Some("2026-09-10".to_string());
+        wrong_tag.todo_keyword = Some("NEXT".to_string());
+        wrong_tag.tags = vec!["work".to_string()];
+        crate::upsert_file(&mut conn, &file("projects/app.org", vec![match_all, wrong_tag]))
+            .expect("upsert");
+
+        let mut q = range("2026-09-05", "2026-10-04");
+        q.tag = Some("home".to_string());
+        q.todo_state = Some("NEXT".to_string());
+        q.file_path_glob = Some("projects/*".to_string());
+        let items = custom(&conn, &q).expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Match all");
+    }
+
+    #[test]
+    fn custom_scheduled_leg_wins_grouping_over_an_unrelated_overdue_deadline() {
+        let mut conn = open_test_db();
+        // Both legs match: Scheduled for an in-range day AND an unrelated,
+        // long-overdue Deadline. Grouping must follow the Scheduled date, not
+        // collapse to `start_date` (mirrors the `week` precedence branch).
+        let mut both = headline("Scheduled + stale deadline", 0);
+        both.scheduled_date = Some("2026-09-20".to_string());
+        both.deadline_date = Some("2026-08-01".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![both])).expect("upsert");
+
+        let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].agenda_date, "2026-09-20");
+        assert!(
+            items[0].overdue,
+            "the overdue flag still reflects the stale deadline independent of grouping"
+        );
+    }
+
+    #[test]
+    fn custom_inverted_range_returns_empty() {
+        let mut conn = open_test_db();
+        let mut sched = headline("Scheduled", 0);
+        sched.scheduled_date = Some("2026-09-10".to_string());
+        let mut overdue = headline("Overdue deadline", 1);
+        overdue.deadline_date = Some("2026-08-01".to_string());
+        crate::upsert_file(&mut conn, &file("a.org", vec![sched, overdue])).expect("upsert");
+
+        // start is AFTER end — no valid days. Must be uniformly empty, never
+        // silently deadline-only.
+        let items = custom(&conn, &range("2026-10-04", "2026-09-05")).expect("query");
+
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn custom_groups_by_date_then_file_then_document_position() {
+        let mut conn = open_test_db();
+        let mut b_day2 = headline("b day2 first", 0);
+        b_day2.scheduled_date = Some("2026-09-20".to_string());
+        let mut b_day2_second = headline("b day2 second", 1);
+        b_day2_second.scheduled_date = Some("2026-09-20".to_string());
+        let mut a_day1 = headline("a day1", 0);
+        a_day1.scheduled_date = Some("2026-09-10".to_string());
+        crate::upsert_file(&mut conn, &file("b.org", vec![b_day2, b_day2_second]))
+            .expect("upsert b");
+        crate::upsert_file(&mut conn, &file("a.org", vec![a_day1])).expect("upsert a");
+
+        let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
+
+        let ordering: Vec<_> = items
+            .iter()
+            .map(|i| (i.agenda_date.as_str(), i.file_path.as_str(), i.title.as_str()))
+            .collect();
+        assert_eq!(
+            ordering,
+            vec![
+                ("2026-09-10", "a.org", "a day1"),
+                ("2026-09-20", "b.org", "b day2 first"),
+                ("2026-09-20", "b.org", "b day2 second"),
             ]
         );
     }

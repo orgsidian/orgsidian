@@ -922,6 +922,59 @@ fn dashboard_params(
     }
 }
 
+/// Implements FR-7 (Story 7.4 Custom Agenda view): wire projection of
+/// `orgsidian_core::CustomAgendaQuery` for `commands.agendaCustom`. Multi-word
+/// fields need the explicit camelCase rename — same reason as
+/// [`AgendaItemDto`]: the pinned `tauri-specta =2.0.0-rc.25` has no
+/// project-wide rename.
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomAgendaQueryDto {
+    /// ISO-8601 `YYYY-MM-DD`, inclusive — the frontend's local calendar day
+    /// (see `orgsidian_core::agenda_custom`).
+    pub start_date: String,
+    /// ISO-8601 `YYYY-MM-DD`, inclusive.
+    pub end_date: String,
+    /// Optional tag filter (bare tag text, no leading `#` or trailing `:`).
+    pub tag: Option<String>,
+    /// Optional TODO-keyword filter (e.g. `"NEXT"`).
+    pub todo_state: Option<String>,
+    /// Optional file-path glob filter (SQLite `GLOB` against `files.path`).
+    pub file_path_glob: Option<String>,
+}
+
+impl From<CustomAgendaQueryDto> for orgsidian_core::CustomAgendaQuery {
+    fn from(dto: CustomAgendaQueryDto) -> Self {
+        // `CustomAgendaQuery` is `#[non_exhaustive]`, so it is constructed
+        // through its `Default` + field assignment rather than a struct
+        // literal (a downstream crate cannot literal-construct it).
+        let mut query = orgsidian_core::CustomAgendaQuery::default();
+        query.start_date = dto.start_date;
+        query.end_date = dto.end_date;
+        query.tag = dto.tag;
+        query.todo_state = dto.todo_state;
+        query.file_path_glob = dto.file_path_glob;
+        query
+    }
+}
+
+/// Story 7.4 (FR-7): the `/agenda/custom` route's data source —
+/// `shell-ui/src/components/agenda/AgendaCustom.tsx` calls this whenever the
+/// date range or filters change. `query` carries the frontend's local
+/// calendar days plus the optional tag / TODO / file-path filters (see
+/// `orgsidian_core::agenda_custom`'s docs). Errors with `OrgError::Vault`
+/// when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn agenda_custom(
+    query: CustomAgendaQueryDto,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<Vec<AgendaItemDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let items = orgsidian_core::agenda_custom(&vault_root, query.into()).await?;
+    Ok(items.into_iter().map(AgendaItemDto::from).collect())
+}
+
 /// Story 6.6 (FR-21 partial / FR-18 / UJ-4): the ids of the hardcoded coaching
 /// balloons dismissed in the active Vault, read from
 /// `<Vault>/.orgsidian/coaching-dismissed.json`. `CoachingBalloon` calls this
@@ -987,6 +1040,7 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             has_configured_vault,
             agenda_week,
             today_dashboard,
+            agenda_custom,
             get_dismissed_coaching,
             dismiss_coaching,
             get_today_dashboard_prefs,
@@ -1352,6 +1406,47 @@ mod tests {
         assert_eq!(dto.deadline_time, core_item.deadline_time);
         assert_eq!(dto.overdue, core_item.overdue);
         assert_eq!(dto.agenda_date, core_item.agenda_date);
+    }
+
+    /// Story 7.4: `CustomAgendaQueryDto` maps every field onto the core
+    /// `CustomAgendaQuery` (a straight copy across the IPC boundary,
+    /// preserving the optional filters as-is).
+    #[test]
+    fn custom_agenda_query_dto_maps_every_field() {
+        let dto = CustomAgendaQueryDto {
+            start_date: "2026-09-05".to_string(),
+            end_date: "2026-10-04".to_string(),
+            tag: Some("home".to_string()),
+            todo_state: Some("NEXT".to_string()),
+            file_path_glob: Some("projects/*".to_string()),
+        };
+
+        let query: orgsidian_core::CustomAgendaQuery = dto.into();
+
+        assert_eq!(query.start_date, "2026-09-05");
+        assert_eq!(query.end_date, "2026-10-04");
+        assert_eq!(query.tag.as_deref(), Some("home"));
+        assert_eq!(query.todo_state.as_deref(), Some("NEXT"));
+        assert_eq!(query.file_path_glob.as_deref(), Some("projects/*"));
+    }
+
+    /// Story 7.4: the optional filters round-trip as `None` when absent — the
+    /// no-filter Custom Agenda query.
+    #[test]
+    fn custom_agenda_query_dto_maps_absent_filters_to_none() {
+        let dto = CustomAgendaQueryDto {
+            start_date: "2026-09-05".to_string(),
+            end_date: "2026-10-04".to_string(),
+            tag: None,
+            todo_state: None,
+            file_path_glob: None,
+        };
+
+        let query: orgsidian_core::CustomAgendaQuery = dto.into();
+
+        assert!(query.tag.is_none());
+        assert!(query.todo_state.is_none());
+        assert!(query.file_path_glob.is_none());
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal
