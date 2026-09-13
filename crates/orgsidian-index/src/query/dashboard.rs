@@ -238,6 +238,8 @@ fn active_clock(conn: &Connection) -> Result<Option<ActiveClock>, IndexError> {
          JOIN headlines h ON h.id = c.headline_id
          JOIN files f ON f.id = h.file_id
          WHERE c.end_at IS NULL
+           AND f.quarantined = 0
+           AND h.kind = 'headline'
          ORDER BY c.id
          LIMIT 1",
     )?;
@@ -468,6 +470,31 @@ mod tests {
     }
 
     #[test]
+    fn inbox_section_includes_done_items() {
+        // Capture-queue semantics: the Inbox preview is a raw view of the first
+        // N `inbox.org` headlines and, unlike the agenda sections, deliberately
+        // does NOT filter out DONE. A future "consistency fix" that copied the
+        // DONE predicate from the sibling sections must break this test.
+        let mut conn = open_test_db();
+        let mut open_item = headline("Open capture", 0);
+        open_item.todo_keyword = None;
+        open_item.todo_done = None;
+        let mut done = headline("Captured then done", 1);
+        done.todo_keyword = Some("DONE".to_string());
+        done.todo_done = Some(true);
+        crate::upsert_file(&mut conn, &file("inbox.org", vec![open_item, done])).expect("upsert");
+
+        let dash = today(&conn, &params("2026-09-05")).expect("query");
+
+        let titles: Vec<_> = dash.inbox.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            vec!["Open capture", "Captured then done"],
+            "the DONE capture must remain in the Inbox preview"
+        );
+    }
+
+    #[test]
     fn active_clock_reads_the_one_running_entry() {
         let mut conn = open_test_db();
         let mut running = headline("Clocked in", 0);
@@ -575,13 +602,47 @@ mod tests {
     #[test]
     fn sections_exclude_quarantined_files() {
         let mut conn = open_test_db();
-        crate::quarantine_file(&mut conn, "bad.org", 1, 1, "parse error").expect("quarantine");
+
+        // Seed a headline in `bad.org` that would land in every headline-backed
+        // section — scheduled today, overdue deadline, today-tagged, and with a
+        // running clock — plus a preview-eligible `inbox.org` headline, then
+        // flip `quarantined = 1` on both files WITHOUT clearing their rows (a
+        // direct UPDATE, not `quarantine_file`, which wipes the file's rows and
+        // so would let the assertions pass without exercising the join filter).
+        // With the rows intact, ALL FIVE sections must still come back empty
+        // purely because each SELECT carries `f.quarantined = 0`.
+        let mut everything = headline("Would-be everywhere", 0);
+        everything.scheduled_date = Some("2026-09-05".to_string());
+        everything.deadline_date = Some("2026-09-01".to_string());
+        everything.tags = vec!["today".to_string()];
+        everything.clock_entries = vec![ClockInput {
+            start_at: "2026-09-05T09:00:00".to_string(),
+            end_at: None,
+            duration_seconds: None,
+        }];
+        crate::upsert_file(&mut conn, &file("bad.org", vec![everything])).expect("upsert bad");
+        crate::upsert_file(
+            &mut conn,
+            &file("inbox.org", vec![headline("Inbox item", 0)]),
+        )
+        .expect("upsert inbox");
+        conn.execute(
+            "UPDATE files SET quarantined = 1, quarantine_reason = 'parse error'
+             WHERE path IN ('bad.org', 'inbox.org')",
+            [],
+        )
+        .expect("mark quarantined");
 
         let dash = today(&conn, &params("2026-09-05")).expect("query");
 
         assert!(dash.scheduled.is_empty());
         assert!(dash.deadlines.is_empty());
         assert!(dash.today_tag.is_empty());
+        assert!(dash.inbox.is_empty(), "quarantined inbox.org yields no preview");
+        assert!(
+            dash.active_clock.is_none(),
+            "a running clock in a quarantined file must not surface"
+        );
     }
 
     #[test]

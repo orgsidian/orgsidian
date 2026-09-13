@@ -184,14 +184,25 @@ describe("TodayDashboard (Story 7.1, FR-6)", () => {
     const triggers = Array.from(container.querySelectorAll("button"));
     // One collapsible trigger (a button) per section, in render order.
     expect(triggers).toHaveLength(5);
+
+    // Assert each of the five specific sections is present DISTINCTLY, in order,
+    // and that each carries its OWN accessible count label scoped to that
+    // section — so a swapped, dropped, or mislabeled section is caught (a single
+    // page-wide `[aria-label="0 items"]` would pass even if two sections were
+    // identical or one were missing).
     headers.forEach((title, i) => {
-      expect(triggers[i].textContent).toContain(title);
+      const trigger = triggers[i];
+      expect(trigger.textContent).toContain(title);
+      // The per-section count carries an accessible label (WCAG gate): a bare
+      // number span would announce e.g. "Scheduled 0" with no meaning. All
+      // sections are empty here, so each label reads "0 items".
+      const count = trigger.querySelector('[aria-label="0 items"]');
+      expect(count, `${title} section must carry its own count label`).not.toBeNull();
+      expect(count?.textContent).toBe("0");
     });
 
-    // The per-section count carries an accessible label (WCAG gate): a bare
-    // number span would announce e.g. "Scheduled 0" with no meaning.
-    const labelled = container.querySelector('[aria-label="0 items"]');
-    expect(labelled).not.toBeNull();
+    // Exactly one labelled count per section — no extras, no missing.
+    expect(container.querySelectorAll('[aria-label="0 items"]')).toHaveLength(5);
   });
 
   it("renders each section's rows and the active clock", async () => {

@@ -167,7 +167,7 @@ function DashboardSection({
         </span>
         <span
           className="text-xs text-[var(--org-fg-subtle)]"
-          aria-label={`${count} items`}
+          aria-label={`${count} ${count === 1 ? "item" : "items"}`}
         >
           {count}
         </span>
