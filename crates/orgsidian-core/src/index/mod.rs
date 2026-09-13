@@ -27,6 +27,9 @@ use crate::error::OrgError;
 use crate::settings;
 
 pub use orgsidian_index::query::agenda::AgendaItem;
+pub use orgsidian_index::query::dashboard::{
+    ActiveClock, DashboardParams, InboxItem, TodayDashboard,
+};
 pub use orgsidian_index::{IndexStats, IntegrityCheck, IntegrityReport};
 pub use resync::{resync_file, ResyncOutcome};
 pub use scan::{scan_vault, ScanOutcome, ScanProgress};
@@ -295,6 +298,34 @@ pub async fn agenda_week(vault_root: &Path, start_date: &str) -> Result<Vec<Agen
     let pool = IndexPool::new(&db_path).map_err(index_err)?;
     let start_date = start_date.to_string();
     pool.interact(move |conn| orgsidian_index::query::agenda::week(conn, &start_date))
+        .await
+        .map_err(index_err)
+}
+
+/// Implements FR-6 (Story 7.1 Today Dashboard): the five-section computed view
+/// (Scheduled / Deadline / Today-tag / Inbox preview / Active clock) for
+/// `vault_root`'s derived index. Same read-only shape as
+/// [`agenda_today`]/[`index_stats`]: resolve the DB path, refuse if the index
+/// is absent, read through a FRESH [`IndexPool`] rather than the live
+/// [`IndexHandle`] — the Tauri command boundary hands this function a
+/// `vault_root` plus a [`DashboardParams`] (the caller's local `today`, the
+/// configurable today-tag, and the Inbox-preview count, all read from Vault
+/// settings at that boundary), not the handle managed state holds.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault (run `index init` first) or the read fails.
+pub async fn today_dashboard(
+    vault_root: &Path,
+    params: DashboardParams,
+) -> Result<TodayDashboard, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(move |conn| orgsidian_index::query::dashboard::today(conn, &params))
         .await
         .map_err(index_err)
 }

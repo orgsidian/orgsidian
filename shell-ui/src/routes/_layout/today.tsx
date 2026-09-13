@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { commands } from "@/lib/tauri";
-import { AgendaToday } from "@/components/agenda/AgendaToday";
+import { TodayDashboard } from "@/components/today/TodayDashboard";
 import { VaultPicker } from "@/components/settings/VaultPicker";
 import { KeybindingsSettings } from "@/components/settings/KeybindingsReference";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
@@ -27,10 +27,9 @@ const CAPTURE_FEATURE_AVAILABLE = false;
 /**
  * Implements FR-7 (Story 6.3) + FR-18 (Story 6.2): the `/today` route. On
  * first launch (no configured Vault) it shows the `StarterVaultPicker`
- * onboarding gate; once a Vault is configured it renders the Agenda Today
- * view. Story 7.1 upgrades the agenda into the full five-section Today
- * Dashboard (Scheduled | Deadline | Today-Tag | Inbox Preview | Active
- * Clock); until then this route IS the Agenda.
+ * onboarding gate; once a Vault is configured it renders the full five-section
+ * Today Dashboard (Scheduled | Deadline | Today-Tag | Inbox Preview | Active
+ * Clock) — Story 7.1's upgrade of Story 6.3's Agenda Today list (FR-6).
  */
 function TodayRoute() {
   // Story 6.2 (FR-18): the first-launch onboarding gate. `null` while the
@@ -89,7 +88,7 @@ function TodayRoute() {
         </CoachingBalloon>
       )}
 
-      <AgendaToday />
+      <TodayDashboard />
 
       {/* Story 3.6: minimal mount for the FR-15 Vault designation surface.
           Story 6.2 hosts the first-launch onboarding picker above (the

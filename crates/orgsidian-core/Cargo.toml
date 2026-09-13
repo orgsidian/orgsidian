@@ -152,6 +152,21 @@ name = "story_6_4_agenda_week_perf"
 path = "tests/story_6_4_agenda_week_perf.rs"
 required-features = ["test-support"]
 
+# Story 7.1 (FR-6 / LD-32): the Today Dashboard assembly perf-AC gate. Needs
+# `test-support` for the same reason the other perf gates do.
+[[test]]
+name = "story_7_1_today_dashboard_perf"
+path = "tests/story_7_1_today_dashboard_perf.rs"
+required-features = ["test-support"]
+
+# Story 7.1: FR → implementing-module traceability grep-smoke. Lives at the
+# workspace `tests/` root (cross-cutting artifact, mirroring `settings_trace` /
+# `failure_modes`); Cargo does not auto-discover workspace-root `tests/*.rs`
+# from the virtual root, so declare it here against the file two levels up.
+[[test]]
+name = "traceability"
+path = "../../tests/traceability.rs"
+
 # Story 1.18 (LD-40): workspace-root drift guard for the boundary doc, mirroring
 # the failure_modes pattern above. Lives at workspace `tests/` because the
 # boundary doc is a cross-cutting architecture artifact.

@@ -43,9 +43,12 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: unknown) => ({ options: opts }),
 }));
 
-// Stub the heavy sibling surfaces — not under test here.
-vi.mock("@/components/agenda/AgendaToday", () => ({
-  AgendaToday: () => <div data-testid="agenda-stub" />,
+// Stub the heavy sibling surfaces — not under test here. Story 7.1 swapped the
+// route's primary surface from `AgendaToday` to the five-section
+// `TodayDashboard`; stub that instead so this route test stays focused on the
+// coaching-balloon gate.
+vi.mock("@/components/today/TodayDashboard", () => ({
+  TodayDashboard: () => <div data-testid="today-dashboard-stub" />,
 }));
 vi.mock("@/components/settings/VaultPicker", () => ({
   VaultPicker: () => <div data-testid="vault-picker-stub" />,

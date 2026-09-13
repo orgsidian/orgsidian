@@ -80,6 +80,15 @@ pub struct AgendaPreset {
 }
 
 /// FR-6 Today Dashboard section preferences (Story 7.2 lands the toggles).
+///
+/// Story 7.1 adds the two content knobs the dashboard query reads: the
+/// configurable "today" tag and the Inbox-preview count. A settings file
+/// written before Story 7.1 (which has neither key) already reads back the
+/// correct non-zero defaults via the container-level `#[serde(default)]`, which
+/// fills any missing field from this struct's `Default`. The explicit per-field
+/// `#[serde(default = "…")]` below is belt-and-suspenders: it keeps each
+/// field's own default correct even if the container attribute is ever dropped,
+/// and documents the intended default right at the field.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(default)]
 pub struct TodayDashboardSections {
@@ -87,6 +96,23 @@ pub struct TodayDashboardSections {
     pub show_deadlines: bool,
     pub show_clock: bool,
     pub show_inbox: bool,
+    /// The bare tag text the Today-Tag section matches on (no leading `#`,
+    /// no trailing `:`). Default `today`.
+    #[serde(default = "default_today_tag")]
+    pub today_tag: String,
+    /// How many `inbox.org` headlines the Inbox preview shows. Default 5.
+    #[serde(default = "default_inbox_preview_count")]
+    pub inbox_preview_count: usize,
+}
+
+/// The default "today" tag ([`TodayDashboardSections::today_tag`]).
+fn default_today_tag() -> String {
+    "today".to_string()
+}
+
+/// The default Inbox-preview count ([`TodayDashboardSections::inbox_preview_count`]).
+fn default_inbox_preview_count() -> usize {
+    5
 }
 
 impl Default for TodayDashboardSections {
@@ -96,6 +122,8 @@ impl Default for TodayDashboardSections {
             show_deadlines: true,
             show_clock: true,
             show_inbox: true,
+            today_tag: default_today_tag(),
+            inbox_preview_count: default_inbox_preview_count(),
         }
     }
 }

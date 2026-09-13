@@ -44,7 +44,10 @@
 //! now frozen by Story 6.5 as the v0.1 `IndexQuery` public surface —
 //! `cargo-semver-checks`-enforced from `.github/workflows/pr.yml` onward —
 //! together with the not-yet-implemented `search`/`backlinks`/`graph`
-//! submodules' stub signatures (Stories 7.4/8.4/8.6/8.10/12.0).
+//! submodules' stub signatures (Stories 7.4/8.4/8.6/8.10/12.0). Story 7.1
+//! (FR-6) adds `query::dashboard::today` (the five-section Today Dashboard) as
+//! a plain sibling free function OUTSIDE the frozen trait, reached the same way
+//! as `query::agenda::today`.
 
 pub mod connection;
 pub mod error;
