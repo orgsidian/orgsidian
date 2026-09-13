@@ -397,7 +397,11 @@ mod tests {
         let dash = today(&conn, &params("2026-09-05")).expect("query");
 
         let titles: Vec<_> = dash.today_tag.iter().map(|i| i.title.as_str()).collect();
-        assert_eq!(titles, vec!["Tagged today"], "one row per matching headline");
+        assert_eq!(
+            titles,
+            vec!["Tagged today"],
+            "one row per matching headline"
+        );
     }
 
     #[test]
@@ -466,7 +470,10 @@ mod tests {
 
         let dash = today(&conn, &params("2026-09-05")).expect("query");
 
-        assert!(dash.inbox.is_empty(), "no inbox.org at root → empty preview");
+        assert!(
+            dash.inbox.is_empty(),
+            "no inbox.org at root → empty preview"
+        );
     }
 
     #[test]
@@ -638,7 +645,10 @@ mod tests {
         assert!(dash.scheduled.is_empty());
         assert!(dash.deadlines.is_empty());
         assert!(dash.today_tag.is_empty());
-        assert!(dash.inbox.is_empty(), "quarantined inbox.org yields no preview");
+        assert!(
+            dash.inbox.is_empty(),
+            "quarantined inbox.org yields no preview"
+        );
         assert!(
             dash.active_clock.is_none(),
             "a running clock in a quarantined file must not surface"
@@ -659,7 +669,10 @@ mod tests {
 
         assert_eq!(dash.scheduled.len(), 1);
         assert_eq!(dash.deadlines.len(), 1);
-        assert!(dash.scheduled[0].overdue, "carries the overdue deadline flag");
+        assert!(
+            dash.scheduled[0].overdue,
+            "carries the overdue deadline flag"
+        );
         assert!(dash.deadlines[0].overdue);
     }
 

@@ -117,10 +117,26 @@ fn today_dashboard_assembly_stays_within_perf_baseline_on_1000_file_vault() {
     // Sanity: the synthetic Vault actually populates every section — otherwise
     // this would silently benchmark empty-result fast paths.
     let dash = dashboard::today(&conn, &params()).expect("query must succeed");
-    assert_eq!(dash.scheduled.len(), FILE_COUNT, "one Scheduled-today row per file");
-    assert_eq!(dash.deadlines.len(), FILE_COUNT, "one Deadline-today row per file");
-    assert_eq!(dash.today_tag.len(), FILE_COUNT, "one today-tagged row per file");
-    assert_eq!(dash.inbox.len(), INBOX_PREVIEW_COUNT, "the first N inbox entries");
+    assert_eq!(
+        dash.scheduled.len(),
+        FILE_COUNT,
+        "one Scheduled-today row per file"
+    );
+    assert_eq!(
+        dash.deadlines.len(),
+        FILE_COUNT,
+        "one Deadline-today row per file"
+    );
+    assert_eq!(
+        dash.today_tag.len(),
+        FILE_COUNT,
+        "one today-tagged row per file"
+    );
+    assert_eq!(
+        dash.inbox.len(),
+        INBOX_PREVIEW_COUNT,
+        "the first N inbox entries"
+    );
 
     assert_no_perf_regression!(
         "story-7.1-today-dashboard",

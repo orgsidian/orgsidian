@@ -216,7 +216,14 @@ fn today_dashboard_strategy() -> impl Strategy<Value = TodayDashboardSections> {
         0usize..20,
     )
         .prop_map(
-            |(show_scheduled, show_deadlines, show_clock, show_inbox, today_tag, inbox_preview_count)| {
+            |(
+                show_scheduled,
+                show_deadlines,
+                show_clock,
+                show_inbox,
+                today_tag,
+                inbox_preview_count,
+            )| {
                 TodayDashboardSections {
                     show_scheduled,
                     show_deadlines,

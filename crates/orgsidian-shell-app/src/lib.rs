@@ -3,8 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use orgsidian_core::{
-    ConflictNotice, DashboardParams, IndexHandle, OrgError, Result as OrgResult, SharedDirtyBuffers,
-    SharedPendingConflicts,
+    ConflictNotice, DashboardParams, IndexHandle, OrgError, Result as OrgResult,
+    SharedDirtyBuffers, SharedPendingConflicts,
 };
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
@@ -828,9 +828,21 @@ pub struct TodayDashboardDto {
 impl From<orgsidian_core::TodayDashboard> for TodayDashboardDto {
     fn from(dash: orgsidian_core::TodayDashboard) -> Self {
         TodayDashboardDto {
-            scheduled: dash.scheduled.into_iter().map(AgendaItemDto::from).collect(),
-            deadlines: dash.deadlines.into_iter().map(AgendaItemDto::from).collect(),
-            today_tag: dash.today_tag.into_iter().map(AgendaItemDto::from).collect(),
+            scheduled: dash
+                .scheduled
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
+            deadlines: dash
+                .deadlines
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
+            today_tag: dash
+                .today_tag
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
             inbox: dash.inbox.into_iter().map(InboxItemDto::from).collect(),
             active_clock: dash.active_clock.map(ActiveClockDto::from),
         }
@@ -1438,7 +1450,10 @@ mod tests {
         );
         // Guard against a silent field swap: neither param may hold the OTHER
         // field's default.
-        assert_ne!(params.today_tag, "today", "must not fall back to the default tag");
+        assert_ne!(
+            params.today_tag, "today",
+            "must not fall back to the default tag"
+        );
         assert_ne!(
             params.inbox_preview_count, 5,
             "must not fall back to the default preview count"
