@@ -127,7 +127,7 @@ Default range when params absent: `start = today`, `end = today + 29 days` (a 30
 **Supporting**
 
 - Rust unit tests covering every I/O-matrix row (range bounds, overdue collapse, filters, inverted range).
-  [`agenda.rs:530`](../../crates/orgsidian-index/src/query/agenda.rs#L530)
+  [`agenda.rs:715`](../../crates/orgsidian-index/src/query/agenda.rs#L715)
 
 - Component tests (mock `@/lib/tauri` + `useVirtualizer`): grouping, search-param wiring, default-range width, Apply.
   [`AgendaCustom.test.tsx:1`](../../shell-ui/src/components/agenda/AgendaCustom.test.tsx#L1)

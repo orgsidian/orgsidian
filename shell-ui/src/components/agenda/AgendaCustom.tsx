@@ -197,8 +197,8 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
     onSearchChange({
       start: startDraft,
       end: endDraft,
-      tag: tagDraft === "" ? undefined : tagDraft,
-      todo: todoDraft === "" ? undefined : todoDraft,
+      tag: tagDraft.trim() === "" ? undefined : tagDraft.trim(),
+      todo: todoDraft.trim() === "" ? undefined : todoDraft.trim(),
     });
     setAppliedFilePath(filePathDraft.trim());
   }

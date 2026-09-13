@@ -5,10 +5,11 @@
 //! by calendar date instead). The full Today Dashboard (Today-Tag, Inbox
 //! preview, Active Clock) is Epic 7 (Story 7.1); Custom ranges are Story 7.4.
 //! Story 6.5 freezes `agenda::{today, week, custom}` together as the v0.1
-//! `IndexQuery` baseline surface: `today`/`week` are already real and
-//! tested; `custom` (Story 7.4) ships here as a frozen-signature stub (see
-//! [`custom`]'s own docs) so the trait wraps a real, already-existing
-//! function rather than a hole in the `impl`.
+//! `IndexQuery` baseline surface: `today`/`week` shipped their real bodies in
+//! Stories 6.3/6.4, and `custom` (Story 7.4) now fills its frozen signature
+//! with the real query (see [`custom`]'s own docs) — a pure body edit under
+//! the freeze, so the trait wraps a real, already-existing function rather
+//! than a hole in the `impl`.
 //!
 //! [`today`] is the query behind `/today`
 //! (`shell-ui/src/components/agenda/AgendaToday.tsx`): a single `SELECT` over
@@ -353,7 +354,9 @@ pub fn custom(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<Agenda
             |row| {
                 let scheduled_date: Option<String> = row.get(5)?;
                 let deadline_date: Option<String> = row.get(7)?;
-                let overdue = deadline_date.as_deref().is_some_and(|date| date < start_date);
+                let overdue = deadline_date
+                    .as_deref()
+                    .is_some_and(|date| date < start_date);
                 // Precedence identical to `week`: an in-window Scheduled date
                 // wins; otherwise fall back to the Deadline leg, collapsing an
                 // overdue Deadline onto `start_date`.
@@ -738,8 +741,11 @@ mod tests {
         end.scheduled_date = Some("2026-10-04".to_string());
         let mut after = headline("day after window", 4);
         after.scheduled_date = Some("2026-10-05".to_string());
-        crate::upsert_file(&mut conn, &file("a.org", vec![before, start, mid, end, after]))
-            .expect("upsert");
+        crate::upsert_file(
+            &mut conn,
+            &file("a.org", vec![before, start, mid, end, after]),
+        )
+        .expect("upsert");
 
         let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
 
@@ -758,17 +764,27 @@ mod tests {
         due_in_range.deadline_date = Some("2026-09-20".to_string());
         let mut future = headline("Future deadline", 2);
         future.deadline_date = Some("2026-12-01".to_string());
-        crate::upsert_file(&mut conn, &file("a.org", vec![overdue, due_in_range, future]))
-            .expect("upsert");
+        crate::upsert_file(
+            &mut conn,
+            &file("a.org", vec![overdue, due_in_range, future]),
+        )
+        .expect("upsert");
 
         let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
 
-        assert_eq!(items.len(), 2, "future deadline outside the window is excluded");
+        assert_eq!(
+            items.len(),
+            2,
+            "future deadline outside the window is excluded"
+        );
         let by_title: std::collections::HashMap<_, _> = items
             .iter()
             .map(|i| (i.title.as_str(), (i.overdue, i.agenda_date.as_str())))
             .collect();
-        assert_eq!(by_title.get("Overdue deadline"), Some(&(true, "2026-09-05")));
+        assert_eq!(
+            by_title.get("Overdue deadline"),
+            Some(&(true, "2026-09-05"))
+        );
         assert_eq!(by_title.get("Due in range"), Some(&(false, "2026-09-20")));
     }
 
@@ -780,7 +796,22 @@ mod tests {
         done.todo_keyword = Some("DONE".to_string());
         done.todo_done = Some(true);
         crate::upsert_file(&mut conn, &file("a.org", vec![done])).expect("upsert");
-        crate::quarantine_file(&mut conn, "bad.org", 1, 1, "parse error").expect("quarantine");
+
+        // A quarantined file that DOES hold a real, non-DONE, in-window
+        // headline: `custom` must still exclude it via `f.quarantined = 0`.
+        // Index the headline first, then flip the file's quarantine flag
+        // directly — a genuine `quarantine_file` clears a file's rows, so we
+        // reconstruct the state (row present + quarantined) the query guard is
+        // meant to defend against. Drop `AND f.quarantined = 0` from the query
+        // and this headline leaks, failing the assertion below.
+        let mut poisoned = headline("In a quarantined file", 0);
+        poisoned.scheduled_date = Some("2026-09-10".to_string());
+        crate::upsert_file(&mut conn, &file("bad.org", vec![poisoned])).expect("upsert");
+        conn.execute(
+            "UPDATE files SET quarantined = 1, quarantine_reason = 'parse error' WHERE path = ?1",
+            rusqlite::params!["bad.org"],
+        )
+        .expect("mark quarantined");
 
         let items = custom(&conn, &range("2026-09-05", "2026-10-04")).expect("query");
 
@@ -857,8 +888,11 @@ mod tests {
         wrong_tag.scheduled_date = Some("2026-09-10".to_string());
         wrong_tag.todo_keyword = Some("NEXT".to_string());
         wrong_tag.tags = vec!["work".to_string()];
-        crate::upsert_file(&mut conn, &file("projects/app.org", vec![match_all, wrong_tag]))
-            .expect("upsert");
+        crate::upsert_file(
+            &mut conn,
+            &file("projects/app.org", vec![match_all, wrong_tag]),
+        )
+        .expect("upsert");
 
         let mut q = range("2026-09-05", "2026-10-04");
         q.tag = Some("home".to_string());
@@ -924,7 +958,13 @@ mod tests {
 
         let ordering: Vec<_> = items
             .iter()
-            .map(|i| (i.agenda_date.as_str(), i.file_path.as_str(), i.title.as_str()))
+            .map(|i| {
+                (
+                    i.agenda_date.as_str(),
+                    i.file_path.as_str(),
+                    i.title.as_str(),
+                )
+            })
             .collect();
         assert_eq!(
             ordering,

@@ -15,13 +15,13 @@
 //! plain, tested functions; this story does not touch their signatures or
 //! bodies. It adds:
 //!
-//! - the sibling stub signatures later stories fill in — [`agenda::custom`]
-//!   (Story 7.4), [`search::query`]/[`search::search_stream`] (Story 8.4),
-//!   [`backlinks::for_headline`] (Story 8.6),
-//!   [`backlinks::unlinked_mentions`] (Story 12.0), [`graph::adjacency`]
-//!   (Story 8.10) — each a real, frozen signature with a body that returns
-//!   an empty result (see "Why stub bodies return empty, never
-//!   `unimplemented!()`" below);
+//! - the sibling signatures later stories fill in — [`agenda::custom`] now
+//!   carries its real Story 7.4 body, while [`search::query`] /
+//!   [`search::search_stream`] (Story 8.4), [`backlinks::for_headline`]
+//!   (Story 8.6), [`backlinks::unlinked_mentions`] (Story 12.0), and
+//!   [`graph::adjacency`] (Story 8.10) each remain a real, frozen signature
+//!   with a stub body that returns an empty result (see "Why stub bodies
+//!   return empty, never `unimplemented!()`" below);
 //! - the [`IndexQuery`] trait, wrapping the whole set as default-bodied
 //!   methods over an explicit `&Connection` parameter (so a caller can reach
 //!   every query through one `impl IndexQuery` value — [`DefaultIndexQuery`]
@@ -330,11 +330,12 @@ mod tests {
         assert_eq!(via_trait.len(), 1);
     }
 
-    /// The stub queries (unbuilt stories) must not panic when reached
-    /// through the trait's default methods — they return empty results, not
-    /// `unimplemented!()` (see the module docs).
+    /// The trait's default methods must be reachable without panicking:
+    /// `agenda::custom` now runs its real (Story 7.4) body — empty here only
+    /// because the DB is empty — while the still-unbuilt stories' queries
+    /// return empty results rather than `unimplemented!()` (see the module docs).
     #[test]
-    fn stub_queries_are_reachable_through_the_trait_without_panicking() {
+    fn trait_query_methods_are_reachable_without_panicking() {
         let conn = open_test_db();
         let q = DefaultIndexQuery;
 
@@ -349,7 +350,7 @@ mod tests {
                     file_path_glob: None,
                 },
             )
-            .expect("stub must not error");
+            .expect("custom must not error");
         assert!(custom.is_empty());
 
         let searched = q

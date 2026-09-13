@@ -6,7 +6,7 @@ import {
 } from "@/components/agenda/AgendaCustom";
 
 /** A real `YYYY-MM-DD` calendar day, or `undefined` for anything malformed. */
-function isoDateOrUndefined(value: unknown): string | undefined {
+export function isoDateOrUndefined(value: unknown): string | undefined {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return undefined;
   }
