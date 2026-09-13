@@ -34,10 +34,10 @@ pub use orgsidian_parser as parser;
 pub mod index;
 pub use index::{
     agenda_custom, agenda_today, agenda_week, designate_vault, index_integrity, index_stats,
-    open_index, rebuild_index, resolve_index_db_path, resync_file, scan_vault, today_dashboard,
-    ActiveClock, AgendaItem, CustomAgendaQuery, DashboardParams, InboxItem, IndexHandle,
-    IndexStats, IntegrityCheck, IntegrityReport, ResyncOutcome, ScanOutcome, ScanProgress,
-    TodayDashboard,
+    locate_headline, open_index, rebuild_index, resolve_index_db_path, resync_file, scan_vault,
+    today_dashboard, ActiveClock, AgendaItem, CustomAgendaQuery, DashboardParams, HeadlineLocation,
+    InboxItem, IndexHandle, IndexStats, IntegrityCheck, IntegrityReport, ResyncOutcome,
+    ScanOutcome, ScanProgress, TodayDashboard,
 };
 
 // Story 5.4 (LD-7 / LD-9 / FR-16): the external-edits reconciler — the hub that
@@ -90,6 +90,23 @@ pub use agenda_presets::{
     DONE_THIS_MONTH, DONE_THIS_WEEK, RESERVED_PRESET_NAMES,
 };
 pub use settings::schema::AgendaPreset;
+
+// Story 7.6 (FR-8 functional): the Clock manager — clock in/out/resume writing
+// standard org `CLOCK:` lines into the `:LOGBOOK:` drawer (the org file is the
+// source of truth, via byte-faithful splices + `atomic_write`), a per-Vault
+// `<Vault>/.orgsidian/active-clock.json` pointer, and pure `totals` time
+// aggregation. Follows the `coaching` per-Vault-JSON pattern above.
+//
+// Rebase note (Epic 7 integration): the clock manager's own running-clock type
+// is `clock::ActiveClock`, but Story 7.1's Today Dashboard already re-exports a
+// distinct read-only `ActiveClock` (the dashboard display projection) at the
+// crate root. To let both coexist, the clock-manager type is re-exported here
+// as `ActiveClockState`; consumers name `orgsidian_core::ActiveClockState`.
+pub mod clock;
+pub use clock::{
+    active_clock, active_clock_path, clock_in, clock_out, clock_resume, refresh_active_clock,
+    totals, ActiveClock as ActiveClockState, ClockScope, DateRange,
+};
 
 // Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal
 // GTD + Student ship here; Freelancer (needs Story 8.7's BacklinksPanel) and
