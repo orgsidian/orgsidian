@@ -9,11 +9,17 @@
 // component's job is render only: never a second fetch, never a client-side
 // re-sort.
 //
-// Out of scope here (see the Story 7.1 spec's Never list): section
-// collapse/expand PERSISTENCE (Story 7.2); copy-blessed empty-state coaching
-// via the coaching registry (Story 7.3) — the blank bodies below are the
-// minimal v0.1 stand-in; clock in/out/write + LOGBOOK persistence (Story 7.6)
-// — the Active Clock section only READS the running clock for display.
+// Story 7.2 (FR-6) adds section collapse/expand PERSISTENCE: each section seeds
+// its initial toggle from `commands.getTodayDashboardPrefs` (per-Vault view
+// state at `<Vault>/.orgsidian/today-prefs.json`, LD-40) and persists each
+// chevron toggle fire-and-forget via
+// `commands.setTodayDashboardSectionCollapsed`.
+//
+// Out of scope here (see the Story 7.1 spec's Never list): copy-blessed
+// empty-state coaching via the coaching registry (Story 7.3) — the blank bodies
+// below are the minimal v0.1 stand-in; clock in/out/write + LOGBOOK persistence
+// (Story 7.6) — the Active Clock section only READS the running clock for
+// display.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -23,8 +29,10 @@ import {
   commands,
   type ActiveClockDto,
   type AgendaItemDto,
+  type DashboardSection as DashboardSectionId,
   type InboxItemDto,
   type TodayDashboardDto,
+  type TodayDashboardPrefs,
 } from "@/lib/tauri";
 import { localTodayIso } from "@/components/editor/schedule";
 import { deadlineLabel, errorMessage } from "@/components/agenda/AgendaToday";
@@ -39,9 +47,23 @@ import {
  * (query failed — most commonly "no active Vault"), or the five collapsible
  * sections.
  */
+/** All sections expanded — the default before prefs load and if the read fails. */
+const ALL_EXPANDED: TodayDashboardPrefs = {
+  scheduled: false,
+  deadline: false,
+  todayTag: false,
+  inboxPreview: false,
+  activeClock: false,
+};
+
 export function TodayDashboard() {
   const [data, setData] = useState<TodayDashboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Persisted section collapse state (Story 7.2). `null` until the read settles,
+  // so the sections are seeded from real prefs on their first render rather than
+  // mounting expanded and snapping shut. A failed read falls back to
+  // all-expanded — a lost view toggle must never block the dashboard.
+  const [prefs, setPrefs] = useState<TodayDashboardPrefs | null>(null);
   // Computed ONCE so the fetch anchor and the deadline badges can never
   // disagree across a midnight rollover mid-render.
   const todayIso = useMemo(() => localTodayIso(), []);
@@ -50,6 +72,7 @@ export function TodayDashboard() {
     let disposed = false;
     setError(null);
     setData(null);
+    setPrefs(null);
 
     commands
       .todayDashboard(todayIso)
@@ -58,6 +81,17 @@ export function TodayDashboard() {
       })
       .catch((err: unknown) => {
         if (!disposed) setError(errorMessage(err));
+      });
+
+    // Fire alongside the dashboard query; prefs failure is non-fatal (fall back
+    // to all-expanded) so it never surfaces the error alert.
+    commands
+      .getTodayDashboardPrefs()
+      .then((result) => {
+        if (!disposed) setPrefs(result);
+      })
+      .catch(() => {
+        if (!disposed) setPrefs(ALL_EXPANDED);
       });
 
     return () => {
@@ -82,13 +116,18 @@ export function TodayDashboard() {
         </p>
       )}
 
-      {error === null && data === null && (
+      {error === null && (data === null || prefs === null) && (
         <p className="mt-3 text-sm text-[var(--org-fg-muted)]">Loading…</p>
       )}
 
-      {error === null && data !== null && (
+      {error === null && data !== null && prefs !== null && (
         <div className="mt-6 flex flex-col gap-7">
-          <DashboardSection title="Scheduled" count={data.scheduled.length}>
+          <DashboardSection
+            title="Scheduled"
+            section="scheduled"
+            collapsed={prefs.scheduled}
+            count={data.scheduled.length}
+          >
             <AgendaList
               items={data.scheduled}
               todayIso={todayIso}
@@ -96,7 +135,12 @@ export function TodayDashboard() {
             />
           </DashboardSection>
 
-          <DashboardSection title="Deadline" count={data.deadlines.length}>
+          <DashboardSection
+            title="Deadline"
+            section="deadline"
+            collapsed={prefs.deadline}
+            count={data.deadlines.length}
+          >
             <AgendaList
               items={data.deadlines}
               todayIso={todayIso}
@@ -104,7 +148,12 @@ export function TodayDashboard() {
             />
           </DashboardSection>
 
-          <DashboardSection title="Today-Tag" count={data.todayTag.length}>
+          <DashboardSection
+            title="Today-Tag"
+            section="todayTag"
+            collapsed={prefs.todayTag}
+            count={data.todayTag.length}
+          >
             <AgendaList
               items={data.todayTag}
               todayIso={todayIso}
@@ -112,12 +161,19 @@ export function TodayDashboard() {
             />
           </DashboardSection>
 
-          <DashboardSection title="Inbox Preview" count={data.inbox.length}>
+          <DashboardSection
+            title="Inbox Preview"
+            section="inboxPreview"
+            collapsed={prefs.inboxPreview}
+            count={data.inbox.length}
+          >
             <InboxList items={data.inbox} />
           </DashboardSection>
 
           <DashboardSection
             title="Active Clock"
+            section="activeClock"
+            collapsed={prefs.activeClock}
             count={data.activeClock !== null ? 1 : 0}
           >
             <ActiveClockView clock={data.activeClock} />
@@ -129,25 +185,37 @@ export function TodayDashboard() {
 }
 
 /**
- * One collapsible dashboard section: a chevron-toggle header (default expanded)
- * over its body. Local `open` state only — collapse/expand PERSISTENCE is Story
- * 7.2 (see the module header).
+ * One collapsible dashboard section: a chevron-toggle header over its body.
+ * Seeds its initial open state from the persisted `collapsed` pref (Story 7.2)
+ * and persists every toggle fire-and-forget via
+ * `commands.setTodayDashboardSectionCollapsed` — a persistence failure never
+ * disrupts the in-memory toggle the user just made.
  */
 function DashboardSection({
   title,
+  section,
+  collapsed,
   count,
   children,
 }: {
   title: string;
+  section: DashboardSectionId;
+  collapsed: boolean;
   count: number;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!collapsed);
 
   return (
     <Collapsible
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // `open` is expanded; the store records the collapsed state.
+        commands
+          .setTodayDashboardSectionCollapsed(section, !next)
+          .catch(() => {});
+      }}
       className="border-b border-[var(--org-border-default)] pb-4"
     >
       <CollapsibleTrigger className="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-[var(--org-bg-surface)]">

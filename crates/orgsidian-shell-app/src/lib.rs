@@ -10,7 +10,9 @@ use orgsidian_core::{
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, collect_events, Builder, ErrorHandlingMode, Event};
 
+mod dashboard_prefs;
 mod editor_prefs;
+use dashboard_prefs::{DashboardSection, TodayDashboardPrefs};
 use editor_prefs::EditorMode;
 
 #[tauri::command]
@@ -521,6 +523,36 @@ async fn get_editor_mode(
     editor_prefs::read_mode(&app, &vault_root, &file_path)
 }
 
+/// Story 7.2 (FR-6): read every Today Dashboard section's persisted
+/// collapsed/expanded state via `tauri-plugin-store` at
+/// `<Vault>/.orgsidian/today-prefs.json` (LD-40). The frontend seeds each
+/// section's initial toggle from this map. Errors with `OrgError::Vault` when no
+/// Vault is active (nothing to restore).
+#[tauri::command]
+#[specta::specta]
+async fn get_today_dashboard_prefs(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<TodayDashboardPrefs> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    dashboard_prefs::read_all_collapsed(&app, &vault_root)
+}
+
+/// Story 7.2 (FR-6): persist `collapsed` for one Today Dashboard `section` via
+/// `tauri-plugin-store` at `<Vault>/.orgsidian/today-prefs.json` (LD-40).
+/// Errors with `OrgError::Vault` when no Vault is active (nowhere to store).
+#[tauri::command]
+#[specta::specta]
+async fn set_today_dashboard_section_collapsed(
+    section: DashboardSection,
+    collapsed: bool,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    dashboard_prefs::persist_collapsed(&app, &vault_root, section, collapsed)
+}
+
 /// Story 4.8 (FR-9): which planning keyword a `set_scheduled` write targets.
 /// Wire shape `"scheduled" | "deadline"` (camelCase per the project convention),
 /// mapped to the parser's `PlanningKind` inside the command.
@@ -956,7 +988,9 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             agenda_week,
             today_dashboard,
             get_dismissed_coaching,
-            dismiss_coaching
+            dismiss_coaching,
+            get_today_dashboard_prefs,
+            set_today_dashboard_section_collapsed
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —

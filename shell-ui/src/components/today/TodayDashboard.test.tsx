@@ -56,10 +56,36 @@ type TodayDashboardDto = {
   activeClock: ActiveClockDto | null;
 };
 
+type DashboardSection =
+  | "scheduled"
+  | "deadline"
+  | "todayTag"
+  | "inboxPreview"
+  | "activeClock";
+
+type TodayDashboardPrefs = {
+  scheduled: boolean;
+  deadline: boolean;
+  todayTag: boolean;
+  inboxPreview: boolean;
+  activeClock: boolean;
+};
+
+const ALL_EXPANDED: TodayDashboardPrefs = {
+  scheduled: false,
+  deadline: false,
+  todayTag: false,
+  inboxPreview: false,
+  activeClock: false,
+};
+
 const mocks = vi.hoisted(() => ({
   todayDashboard: vi.fn<(today: string) => Promise<TodayDashboardDto>>(),
   getDismissedCoaching: vi.fn<() => Promise<string[]>>(),
   dismissCoaching: vi.fn<(id: string) => Promise<void>>(),
+  getTodayDashboardPrefs: vi.fn<() => Promise<TodayDashboardPrefs>>(),
+  setTodayDashboardSectionCollapsed:
+    vi.fn<(section: DashboardSection, collapsed: boolean) => Promise<void>>(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -67,6 +93,8 @@ vi.mock("@/lib/tauri", () => ({
     todayDashboard: mocks.todayDashboard,
     getDismissedCoaching: mocks.getDismissedCoaching,
     dismissCoaching: mocks.dismissCoaching,
+    getTodayDashboardPrefs: mocks.getTodayDashboardPrefs,
+    setTodayDashboardSectionCollapsed: mocks.setTodayDashboardSectionCollapsed,
   },
 }));
 
@@ -83,6 +111,11 @@ beforeEach(() => {
   mocks.todayDashboard.mockReset();
   mocks.getDismissedCoaching.mockReset().mockResolvedValue([]);
   mocks.dismissCoaching.mockReset().mockResolvedValue(undefined);
+  // Story 7.2: sections default to all-expanded unless a test overrides.
+  mocks.getTodayDashboardPrefs.mockReset().mockResolvedValue(ALL_EXPANDED);
+  mocks.setTodayDashboardSectionCollapsed
+    .mockReset()
+    .mockResolvedValue(undefined);
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -145,6 +178,10 @@ function dashboard(overrides: Partial<TodayDashboardDto>): TodayDashboardDto {
   };
 }
 
+function prefs(overrides: Partial<TodayDashboardPrefs>): TodayDashboardPrefs {
+  return { ...ALL_EXPANDED, ...overrides };
+}
+
 /** The trigger button whose header text starts with `title`. */
 function sectionTrigger(title: string): HTMLButtonElement | undefined {
   return Array.from(container.querySelectorAll("button")).find((b) =>
@@ -155,6 +192,7 @@ function sectionTrigger(title: string): HTMLButtonElement | undefined {
 describe("TodayDashboard (Story 7.1, FR-6)", () => {
   it("shows a loading placeholder before the query resolves", () => {
     mocks.todayDashboard.mockReturnValue(new Promise(() => {})); // never resolves
+    mocks.getTodayDashboardPrefs.mockReturnValue(new Promise(() => {})); // never resolves — avoid a post-render setPrefs() outside act()
     renderDashboard();
 
     expect(container.textContent).toContain("Loading…");
@@ -301,5 +339,72 @@ describe("TodayDashboard (Story 7.1, FR-6)", () => {
     expect(mocks.todayDashboard).toHaveBeenCalledWith(
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     );
+  });
+
+  // Story 7.2 (FR-6): section collapse state persists across restarts.
+  it("restores each section's collapsed state from persisted prefs on mount", async () => {
+    mocks.todayDashboard.mockResolvedValue(
+      dashboard({
+        scheduled: [agendaItem({ headlineId: 1, title: "Persisted hidden row" })],
+        deadlines: [agendaItem({ headlineId: 2, title: "Persisted visible row" })],
+      }),
+    );
+    // Scheduled was collapsed last session; Deadline expanded.
+    mocks.getTodayDashboardPrefs.mockResolvedValue(prefs({ scheduled: true }));
+
+    await act(async () => {
+      renderDashboard();
+      await Promise.resolve();
+    });
+
+    // Collapsed section: its body row is absent from the DOM, header present.
+    expect(sectionTrigger("Scheduled")).not.toBeUndefined();
+    expect(container.textContent).not.toContain("Persisted hidden row");
+    // Expanded section: its body row is visible.
+    expect(container.textContent).toContain("Persisted visible row");
+  });
+
+  it("persists a section's collapsed state fire-and-forget when its chevron is toggled", async () => {
+    mocks.todayDashboard.mockResolvedValue(
+      dashboard({
+        scheduled: [agendaItem({ headlineId: 1, title: "Toggle me" })],
+      }),
+    );
+    mocks.getTodayDashboardPrefs.mockResolvedValue(ALL_EXPANDED);
+
+    await act(async () => {
+      renderDashboard();
+      await Promise.resolve();
+    });
+
+    // Nothing persisted until the user toggles.
+    expect(mocks.setTodayDashboardSectionCollapsed).not.toHaveBeenCalled();
+
+    // Collapse Scheduled → persist ("scheduled", collapsed = true).
+    const trigger = sectionTrigger("Scheduled");
+    expect(trigger).not.toBeUndefined();
+    await act(async () => {
+      trigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(mocks.setTodayDashboardSectionCollapsed).toHaveBeenLastCalledWith(
+      "scheduled",
+      true,
+    );
+
+    // Expand it again → persist ("scheduled", collapsed = false).
+    await act(async () => {
+      sectionTrigger("Scheduled")!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(mocks.setTodayDashboardSectionCollapsed).toHaveBeenLastCalledWith(
+      "scheduled",
+      false,
+    );
+    expect(mocks.setTodayDashboardSectionCollapsed).toHaveBeenCalledTimes(2);
   });
 });
