@@ -79,6 +79,18 @@ pub use coaching::{
     UJ4_TODAY_INTRO,
 };
 
+// Story 7.5 (FR-7): saved agenda filter presets — CRUD over the per-Vault TOML
+// settings `[agenda_presets]` table plus the two default presets seeded on
+// first launch. A read-modify-write layer over `settings::vault`, same shape as
+// `coaching` above. `AgendaPreset` is re-exported from `settings::schema` (its
+// locked home) so consumers name `orgsidian_core::AgendaPreset`.
+pub mod agenda_presets;
+pub use agenda_presets::{
+    default_agenda_presets, delete_agenda_preset, list_agenda_presets, save_agenda_preset,
+    DONE_THIS_MONTH, DONE_THIS_WEEK, RESERVED_PRESET_NAMES,
+};
+pub use settings::schema::AgendaPreset;
+
 // Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal
 // GTD + Student ship here; Freelancer (needs Story 8.7's BacklinksPanel) and
 // Empty (Story 11.1) are deferred, see `deferred-work.md`. Uses `atomic_write`

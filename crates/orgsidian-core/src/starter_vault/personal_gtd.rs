@@ -52,6 +52,7 @@ fn projects(today: NaiveDate) -> String {
     let scheduled_in_3 = active_timestamp(today + Duration::days(3));
     let deadline_in_5 = active_timestamp(today + Duration::days(5));
     let closed_2_ago = inactive_timestamp(today - Duration::days(2));
+    let closed_5_ago = inactive_timestamp(today - Duration::days(5));
 
     format!(
         "\
@@ -64,6 +65,8 @@ add your own projects alongside it as they come off the Inbox.
 
 ** DONE Clear out the garage and cover the floor
    CLOSED: {closed_2_ago}
+** DONE Scrape and sand the old paint
+   CLOSED: {closed_5_ago}
 ** TODO Buy primer and exterior paint
    SCHEDULED: {scheduled_today}
 ** NEXT Mask the windows and trim
@@ -147,7 +150,7 @@ mod tests {
             .find(|h| h.title.trim() == "Repaint the garage")
             .expect("project headline present");
         let actions = &project.children;
-        assert_eq!(actions.len(), 4);
+        assert_eq!(actions.len(), 5);
 
         let scheduled_today = actions
             .iter()
@@ -171,19 +174,34 @@ mod tests {
             "one Next Action is in the NEXT state"
         );
 
-        let done = actions
+        // Story 7.5: the starter ships >=2 DONE Next Actions completed inside
+        // the rolling-7-day window, so the default `Done This Week` / `Done This
+        // Month` presets are non-empty on first launch.
+        let done: Vec<_> = actions
             .iter()
-            .find(|h| h.todo_state.as_ref().map(|s| s.keyword.as_str()) == Some("DONE"))
-            .expect("one Next Action already DONE");
-        // A completed action's CLOSED stamp must be in the past and it must not
-        // still be SCHEDULED, or it would leak back into the agenda.
-        let closed = done.closed.as_ref().expect("DONE action carries CLOSED");
-        assert!(closed.date < today(), "CLOSED must be in the past");
-        assert!(!closed.active, "CLOSED must be an inactive timestamp");
-        assert!(
-            done.scheduled.is_none(),
-            "DONE action must not be SCHEDULED"
-        );
+            .filter(|h| h.todo_state.as_ref().map(|s| s.keyword.as_str()) == Some("DONE"))
+            .collect();
+        assert!(done.len() >= 2, "at least two Next Actions already DONE");
+        for action in &done {
+            // A completed action's CLOSED stamp must be recent (inside the last
+            // 7 days) and inactive, and it must not still be SCHEDULED, or it
+            // would leak back into the scheduled/deadline agenda.
+            let closed = action.closed.as_ref().expect("DONE action carries CLOSED");
+            assert!(closed.date < today(), "CLOSED must be in the past");
+            // The `Done This Week` default resolves to the inclusive window
+            // `[today-6, today]` (see `resolvePresetWindow`); pin the fixtures to
+            // that exact window so they are guaranteed non-empty in the preset.
+            assert!(
+                ((today() - Duration::days(6))..=today()).contains(&closed.date),
+                "CLOSED {} must be inside the rolling-7-day window [today-6, today]",
+                closed.date
+            );
+            assert!(!closed.active, "CLOSED must be an inactive timestamp");
+            assert!(
+                action.scheduled.is_none(),
+                "DONE action must not be SCHEDULED"
+            );
+        }
 
         // The combined-planning-line action carries *both* stamps with the
         // correct, distinct dates (guards the same-line `DEADLINE: <..>

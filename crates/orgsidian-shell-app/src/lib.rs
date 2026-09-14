@@ -941,6 +941,12 @@ pub struct CustomAgendaQueryDto {
     pub todo_state: Option<String>,
     /// Optional file-path glob filter (SQLite `GLOB` against `files.path`).
     pub file_path_glob: Option<String>,
+    /// Story 7.5 completion mode: when `true`, filter the window on the
+    /// `CLOSED:` completion date and include DONE headlines (the "Done This …"
+    /// preset semantics) instead of the default Scheduled/Deadline legs.
+    /// Defaults to `false` so an omitted field keeps the Story 7.4 behavior.
+    #[serde(default)]
+    pub completed_in_range: bool,
 }
 
 impl From<CustomAgendaQueryDto> for orgsidian_core::CustomAgendaQuery {
@@ -954,6 +960,7 @@ impl From<CustomAgendaQueryDto> for orgsidian_core::CustomAgendaQuery {
         query.tag = dto.tag;
         query.todo_state = dto.todo_state;
         query.file_path_glob = dto.file_path_glob;
+        query.completed_in_range = dto.completed_in_range;
         query
     }
 }
@@ -996,6 +1003,113 @@ async fn get_dismissed_coaching(state: tauri::State<'_, AppState>) -> OrgResult<
 async fn dismiss_coaching(id: String, state: tauri::State<'_, AppState>) -> OrgResult<()> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
     orgsidian_core::dismiss_coaching(&vault_root, &id)?;
+    Ok(())
+}
+
+/// Implements FR-7 (Story 7.5 saved agenda filter presets): the wire
+/// projection of `orgsidian_core::AgendaPreset` plus its `name` (the preset's
+/// map key in the settings store). Both directions are needed — `list` returns
+/// it, `save` accepts it — so it derives `Serialize` + `Deserialize`. Multi-word
+/// fields need the explicit camelCase rename, same reason as [`AgendaItemDto`].
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AgendaPresetDto {
+    /// The preset's display name — its unique key in the settings store.
+    pub name: String,
+    /// Which agenda surface to recall (`"custom"` in v0.1).
+    pub view: String,
+    /// Absolute window start (`YYYY-MM-DD`), when the preset pins a fixed window.
+    pub start: Option<String>,
+    /// Absolute window end (`YYYY-MM-DD`).
+    pub end: Option<String>,
+    /// Rolling window length in days, resolved to `[today-(n-1), today]` at
+    /// recall time (the shipped `Done This …` defaults use this).
+    pub rolling_days: Option<u32>,
+    /// Tag filter (bare tag text).
+    pub tag: Option<String>,
+    /// TODO-keyword filter (e.g. `"DONE"`).
+    pub todo_state: Option<String>,
+    /// File-path glob filter.
+    pub file_path_glob: Option<String>,
+    /// Completion mode — filter the window on `CLOSED:` date, include DONE.
+    pub completed: bool,
+}
+
+impl AgendaPresetDto {
+    /// Build the DTO from a `(name, preset)` entry of the settings map.
+    fn from_named(name: String, preset: orgsidian_core::AgendaPreset) -> Self {
+        AgendaPresetDto {
+            name,
+            view: preset.view,
+            start: preset.start,
+            end: preset.end,
+            rolling_days: preset.rolling_days,
+            tag: preset.tag,
+            todo_state: preset.todo_state,
+            file_path_glob: preset.file_path_glob,
+            completed: preset.completed,
+        }
+    }
+
+    /// Split the DTO into the settings map's `(name, preset)` shape.
+    fn into_core(self) -> (String, orgsidian_core::AgendaPreset) {
+        (
+            self.name,
+            orgsidian_core::AgendaPreset {
+                view: self.view,
+                start: self.start,
+                end: self.end,
+                rolling_days: self.rolling_days,
+                tag: self.tag,
+                todo_state: self.todo_state,
+                file_path_glob: self.file_path_glob,
+                completed: self.completed,
+            },
+        )
+    }
+}
+
+/// Story 7.5 (FR-7): the Agenda sidebar's data source —
+/// `shell-ui/src/components/agenda/AgendaPresetSidebar.tsx` calls this to list
+/// the saved presets, seeding the two default presets on first ever call.
+/// Errors with `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn list_agenda_presets(state: tauri::State<'_, AppState>) -> OrgResult<Vec<AgendaPresetDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let presets = orgsidian_core::list_agenda_presets(&vault_root)?;
+    Ok(presets
+        .into_iter()
+        .map(|(name, preset)| AgendaPresetDto::from_named(name, preset))
+        .collect())
+}
+
+/// Story 7.5 (FR-7): upsert a named agenda filter preset into the active
+/// Vault's settings store. Errors with `OrgError::Vault` when no Vault is
+/// active, and also with `OrgError::Vault` when `name` is one of the two
+/// reserved evergreen default preset names (`Done This Week` / `Done This
+/// Month`) — the sidebar surfaces that `reason` inline rather than silently
+/// clobbering the built-in default.
+#[tauri::command]
+#[specta::specta]
+async fn save_agenda_preset(
+    preset: AgendaPresetDto,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let (name, core) = preset.into_core();
+    orgsidian_core::save_agenda_preset(&vault_root, &name, core)?;
+    Ok(())
+}
+
+/// Story 7.5 (FR-7): remove a named agenda filter preset from the active
+/// Vault's settings store (the sidebar's context-menu Delete). A missing name
+/// is a no-op. Errors with `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn delete_agenda_preset(name: String, state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    orgsidian_core::delete_agenda_preset(&vault_root, &name)?;
     Ok(())
 }
 
@@ -1044,7 +1158,10 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             get_dismissed_coaching,
             dismiss_coaching,
             get_today_dashboard_prefs,
-            set_today_dashboard_section_collapsed
+            set_today_dashboard_section_collapsed,
+            list_agenda_presets,
+            save_agenda_preset,
+            delete_agenda_preset
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -1419,6 +1536,7 @@ mod tests {
             tag: Some("home".to_string()),
             todo_state: Some("NEXT".to_string()),
             file_path_glob: Some("projects/*".to_string()),
+            completed_in_range: true,
         };
 
         let query: orgsidian_core::CustomAgendaQuery = dto.into();
@@ -1428,6 +1546,8 @@ mod tests {
         assert_eq!(query.tag.as_deref(), Some("home"));
         assert_eq!(query.todo_state.as_deref(), Some("NEXT"));
         assert_eq!(query.file_path_glob.as_deref(), Some("projects/*"));
+        // Story 7.5: the completion-mode flag crosses the boundary too.
+        assert!(query.completed_in_range);
     }
 
     /// Story 7.4: the optional filters round-trip as `None` when absent — the
@@ -1440,6 +1560,7 @@ mod tests {
             tag: None,
             todo_state: None,
             file_path_glob: None,
+            completed_in_range: false,
         };
 
         let query: orgsidian_core::CustomAgendaQuery = dto.into();
@@ -1447,6 +1568,33 @@ mod tests {
         assert!(query.tag.is_none());
         assert!(query.todo_state.is_none());
         assert!(query.file_path_glob.is_none());
+        assert!(!query.completed_in_range);
+    }
+
+    /// Story 7.5: `AgendaPresetDto` round-trips through the core `AgendaPreset`
+    /// (name + every filter field), so the sidebar's list→save cycle preserves
+    /// exactly what the user stored.
+    #[test]
+    fn agenda_preset_dto_round_trips_through_core() {
+        let core = orgsidian_core::AgendaPreset {
+            view: "custom".to_string(),
+            start: None,
+            end: None,
+            rolling_days: Some(7),
+            tag: Some("home".to_string()),
+            todo_state: Some("DONE".to_string()),
+            file_path_glob: Some("projects/*".to_string()),
+            completed: true,
+        };
+
+        let dto = AgendaPresetDto::from_named("Done This Week".to_string(), core.clone());
+        assert_eq!(dto.name, "Done This Week");
+        assert_eq!(dto.rolling_days, Some(7));
+        assert!(dto.completed);
+
+        let (name, back) = dto.into_core();
+        assert_eq!(name, "Done This Week");
+        assert_eq!(back, core);
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal

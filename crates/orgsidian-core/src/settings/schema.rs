@@ -69,14 +69,42 @@ pub enum UiMode {
     Power,
 }
 
-/// FR-7 saved named agenda filter preset (Story 7.5 lands the UI).
+/// FR-7 saved named agenda filter preset (Story 7.5).
+///
+/// The map key in [`VaultSettings::agenda_presets`] is the preset's display
+/// name; this struct is the view + filters recalled when the preset is
+/// clicked. Story 1.18 reserved this type as a `view`/`filters` placeholder
+/// ("semantics finalized in Story 7.5"); this is that finalization. Every
+/// field is `#[serde(default)]` so a preset written by a future version with
+/// more filters still round-trips through an older binary, and the `toml`
+/// crate omits `None`/`false`/empty values on write so the TOML stays terse.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(default)]
 pub struct AgendaPreset {
-    /// "today" | "week" | "custom". Semantics finalized in Story 7.5.
+    /// Which agenda surface the preset recalls. v0.1 writes only `"custom"`
+    /// (the only preset-bearing view); `"today"`/`"week"` are reserved for
+    /// future fixed-window presets.
     pub view: String,
-    /// Free-form tag/TODO-state filter; semantics finalized in Story 7.5.
-    pub filters: Vec<String>,
+    /// Absolute window start (`YYYY-MM-DD`) when the preset pins a fixed
+    /// window. Mutually exclusive with `rolling_days`; when both are unset the
+    /// recalled view falls back to its own default window.
+    pub start: Option<String>,
+    /// Absolute window end (`YYYY-MM-DD`).
+    pub end: Option<String>,
+    /// Rolling window length in days, resolved to `[today-(n-1), today]` at
+    /// recall time. Powers the shipped `Done This Week` (7) / `Done This
+    /// Month` (30) defaults so they always mean "the last N days".
+    pub rolling_days: Option<u32>,
+    /// Tag filter (bare tag text, no leading `#` or trailing `:`).
+    pub tag: Option<String>,
+    /// TODO-keyword filter (e.g. `"DONE"`, `"NEXT"`).
+    pub todo_state: Option<String>,
+    /// File-path glob filter (SQLite `GLOB` against `files.path`).
+    pub file_path_glob: Option<String>,
+    /// When `true`, the window filters on completion (`CLOSED:`) date and
+    /// includes DONE headlines — the "Done This …" semantics. When `false`
+    /// (default), the Story 7.4 scheduled/deadline semantics apply.
+    pub completed: bool,
 }
 
 /// FR-6 Today Dashboard section preferences (Story 7.2 lands the toggles).
@@ -148,6 +176,12 @@ pub struct VaultSettings {
 
     /// FR-7 saved named agenda filter presets.
     pub agenda_presets: BTreeMap<String, AgendaPreset>,
+
+    /// FR-7: whether the built-in default presets (`Done This Week` /
+    /// `Done This Month`) have been seeded into `agenda_presets` yet. Set once
+    /// on first seed (Story 7.5) so a user who deletes a default is never
+    /// forced to see it resurrected on the next launch.
+    pub agenda_presets_seeded: bool,
 
     /// FR-21 dismissed coaching IDs (Story 11.5 lands the persist).
     pub dismissed_coaching: BTreeSet<String>,

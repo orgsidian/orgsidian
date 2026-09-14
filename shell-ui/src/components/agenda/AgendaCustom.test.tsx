@@ -60,7 +60,13 @@ vi.mock("@tanstack/react-virtual", () => ({
 }));
 
 // Imported AFTER the mocks are registered.
-import { AgendaCustom, type AgendaCustomSearch } from "./AgendaCustom";
+import {
+  AgendaCustom,
+  presetToRecall,
+  resolvePresetWindow,
+  type AgendaCustomProps,
+  type AgendaCustomSearch,
+} from "./AgendaCustom";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -105,6 +111,18 @@ function renderCustom(
     root.render(
       <RouterContextProvider router={router}>
         <AgendaCustom search={search} onSearchChange={onSearchChange} />
+      </RouterContextProvider>,
+    );
+  });
+}
+
+/** Render with an arbitrary prop set — used by the Story 7.5 prop tests. */
+function renderCustomWith(props: AgendaCustomProps) {
+  const router = testRouter();
+  act(() => {
+    root.render(
+      <RouterContextProvider router={router}>
+        <AgendaCustom {...props} />
       </RouterContextProvider>,
     );
   });
@@ -308,5 +326,156 @@ describe("AgendaCustom (Story 7.4, FR-7)", () => {
     const calls = mocks.agendaCustom.mock.calls;
     const lastQuery = calls[calls.length - 1][0] as Record<string, unknown>;
     expect(lastQuery.filePathGlob).toBe("projects/*");
+  });
+
+  it("defaults completedInRange to false in the query (Story 7.5)", async () => {
+    mocks.agendaCustom.mockResolvedValue([]);
+    await act(async () => {
+      renderCustom({ start: "2026-09-05", end: "2026-10-04" });
+      await Promise.resolve();
+    });
+
+    const query = mocks.agendaCustom.mock.calls[0][0] as Record<string, unknown>;
+    expect(query.completedInRange).toBe(false);
+  });
+
+  it("sets completedInRange after toggling the Completed checkbox and applying", async () => {
+    mocks.agendaCustom.mockResolvedValue([]);
+    await act(async () => {
+      renderCustom({ start: "2026-09-05", end: "2026-10-04" });
+      await Promise.resolve();
+    });
+
+    const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(checkbox).not.toBeNull();
+    await act(async () => {
+      checkbox!.click(); // toggles checked + fires React onChange
+      const form = container.querySelector("form");
+      form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+
+    const calls = mocks.agendaCustom.mock.calls;
+    const lastQuery = calls[calls.length - 1][0] as Record<string, unknown>;
+    expect(lastQuery.completedInRange).toBe(true);
+  });
+
+  it("reports the applied filter snapshot via onAppliedChange (Story 7.5)", async () => {
+    mocks.agendaCustom.mockResolvedValue([]);
+    const onAppliedChange = vi.fn();
+    await act(async () => {
+      renderCustomWith({
+        search: { start: "2026-09-05", end: "2026-10-04", tag: "home" },
+        onSearchChange: () => {},
+        onAppliedChange,
+      });
+      await Promise.resolve();
+    });
+
+    expect(onAppliedChange).toHaveBeenCalled();
+    const snapshot = onAppliedChange.mock.calls[onAppliedChange.mock.calls.length - 1][0];
+    expect(snapshot).toMatchObject({
+      start: "2026-09-05",
+      end: "2026-10-04",
+      tag: "home",
+      filePathGlob: "",
+      completed: false,
+    });
+  });
+
+  it("applies a preset's local filters (completed + file path) via presetApply (Story 7.5)", async () => {
+    mocks.agendaCustom.mockResolvedValue([]);
+    await act(async () => {
+      renderCustomWith({
+        search: { start: "2026-09-05", end: "2026-10-04" },
+        onSearchChange: () => {},
+        presetApply: { nonce: 1, completed: true, filePathGlob: "projects/*" },
+      });
+      await Promise.resolve();
+    });
+
+    const calls = mocks.agendaCustom.mock.calls;
+    const lastQuery = calls[calls.length - 1][0] as Record<string, unknown>;
+    expect(lastQuery.completedInRange).toBe(true);
+    expect(lastQuery.filePathGlob).toBe("projects/*");
+  });
+});
+
+describe("resolvePresetWindow (Story 7.5)", () => {
+  it("resolves a rolling preset to the last N days ending today", () => {
+    // N=7 → today plus the previous six days.
+    expect(
+      resolvePresetWindow({ rollingDays: 7, start: null, end: null }, "2026-09-14"),
+    ).toEqual({ start: "2026-09-08", end: "2026-09-14" });
+    // N=30 → today minus 29.
+    expect(
+      resolvePresetWindow({ rollingDays: 30, start: null, end: null }, "2026-09-14"),
+    ).toEqual({ start: "2026-08-16", end: "2026-09-14" });
+  });
+
+  it("restores an absolute preset's stored window unchanged", () => {
+    expect(
+      resolvePresetWindow(
+        { rollingDays: null, start: "2026-09-01", end: "2026-09-30" },
+        "2026-09-14",
+      ),
+    ).toEqual({ start: "2026-09-01", end: "2026-09-30" });
+  });
+
+  it("falls back to undefined bounds when an absolute preset has no window", () => {
+    expect(
+      resolvePresetWindow({ rollingDays: null, start: null, end: null }, "2026-09-14"),
+    ).toEqual({ start: undefined, end: undefined });
+  });
+});
+
+describe("presetToRecall (Story 7.5)", () => {
+  it("maps every preset field to the correct recall slot", () => {
+    const recall = presetToRecall(
+      {
+        rollingDays: null,
+        start: "2026-09-01",
+        end: "2026-09-30",
+        tag: "home",
+        todoState: "NEXT",
+        filePathGlob: "projects/*",
+        completed: true,
+      },
+      "2026-09-14",
+    );
+    // tag/todo land in the URL search (never swapped), window is the absolute one.
+    expect(recall.search).toEqual({
+      start: "2026-09-01",
+      end: "2026-09-30",
+      tag: "home",
+      todo: "NEXT",
+    });
+    // completed + file-path are the local-only filters.
+    expect(recall.completed).toBe(true);
+    expect(recall.filePathGlob).toBe("projects/*");
+  });
+
+  it("resolves a rolling 'Done This Week' default and normalizes nulls", () => {
+    const recall = presetToRecall(
+      {
+        rollingDays: 7,
+        start: null,
+        end: null,
+        tag: null,
+        todoState: "DONE",
+        filePathGlob: null,
+        completed: true,
+      },
+      "2026-09-14",
+    );
+    expect(recall.search).toEqual({
+      start: "2026-09-08",
+      end: "2026-09-14",
+      tag: undefined,
+      todo: "DONE",
+    });
+    expect(recall.completed).toBe(true);
+    // A null glob becomes the empty string (no filter), never the string "null".
+    expect(recall.filePathGlob).toBe("");
   });
 });

@@ -1,9 +1,16 @@
+import { useCallback, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
 import {
   AgendaCustom,
+  presetToRecall,
   type AgendaCustomSearch,
+  type AgendaPresetApply,
+  type AppliedAgendaFilters,
 } from "@/components/agenda/AgendaCustom";
+import { AgendaPresetSidebar } from "@/components/agenda/AgendaPresetSidebar";
+import { localTodayIso } from "@/components/editor/schedule";
+import type { AgendaPresetDto } from "@/lib/tauri";
 
 /** A real `YYYY-MM-DD` calendar day, or `undefined` for anything malformed. */
 export function isoDateOrUndefined(value: unknown): string | undefined {
@@ -52,14 +59,47 @@ function AgendaCustomRoute() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
+  // Story 7.5: the live filter snapshot (for "Save preset") and the one-shot
+  // preset-application signal (for "Recall preset"). `setApplied` is a stable
+  // dispatch, so passing it straight as `onAppliedChange` never re-fires the
+  // component's report effect.
+  const [applied, setApplied] = useState<AppliedAgendaFilters | null>(null);
+  const [presetApply, setPresetApply] = useState<AgendaPresetApply | null>(null);
+
+  const applyPreset = useCallback(
+    (preset: AgendaPresetDto) => {
+      // Map the preset to its concrete recall payload (resolved window +
+      // tag/todo → URL; completed + file-path → local filters).
+      const recall = presetToRecall(preset, localTodayIso());
+      void navigate({ search: recall.search });
+      // `setPresetApply` builds a fresh object each apply, so its identity
+      // already changes every time and the consuming effect re-syncs even when
+      // the same preset is re-applied; `nonce` is a human-readable trace token,
+      // not what drives the re-sync.
+      setPresetApply({
+        nonce: Date.now(),
+        completed: recall.completed,
+        filePathGlob: recall.filePathGlob,
+      });
+    },
+    [navigate],
+  );
+
   return (
     <main className="container mx-auto p-8">
-      <AgendaCustom
-        search={search}
-        onSearchChange={(next) => {
-          void navigate({ search: next });
-        }}
-      />
+      <div className="flex gap-6">
+        <AgendaPresetSidebar current={applied} onApply={applyPreset} />
+        <div className="min-w-0 flex-1">
+          <AgendaCustom
+            search={search}
+            onSearchChange={(next) => {
+              void navigate({ search: next });
+            }}
+            onAppliedChange={setApplied}
+            presetApply={presetApply}
+          />
+        </div>
+      </div>
     </main>
   );
 }

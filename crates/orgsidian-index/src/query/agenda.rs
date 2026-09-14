@@ -271,6 +271,13 @@ pub struct CustomAgendaQuery {
     pub todo_state: Option<String>,
     /// Optional file-path glob filter.
     pub file_path_glob: Option<String>,
+    /// Completion mode (Story 7.5): when `true`, the `[start_date, end_date]`
+    /// window filters on the `CLOSED:` completion date and INCLUDES DONE
+    /// headlines — the "Done This Week/Month" preset semantics — instead of the
+    /// default Scheduled/Deadline legs (which exclude DONE). Added as a growable
+    /// `#[non_exhaustive]` field, so it is a semver-minor addition under the
+    /// Story 6.5 freeze.
+    pub completed_in_range: bool,
 }
 
 /// Scheduled/Deadline items over an arbitrary caller-supplied
@@ -316,6 +323,13 @@ pub fn custom(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<Agenda
     // valid ordering test — see the module docs.)
     if query.start_date.as_str() > query.end_date.as_str() {
         return Ok(Vec::new());
+    }
+
+    // Completion mode (Story 7.5): a wholly different WHERE — filter on the
+    // `CLOSED:` date and INCLUDE DONE headlines — so it is its own prepared
+    // statement rather than a flag threaded through the Scheduled/Deadline SQL.
+    if query.completed_in_range {
+        return completed(conn, query);
     }
 
     let mut stmt = conn.prepare(
@@ -389,6 +403,87 @@ pub fn custom(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<Agenda
     // convention `week` established, so the frontend groups by date without a
     // second sort.
     items.sort_by(|a, b| a.agenda_date.cmp(&b.agenda_date));
+
+    Ok(items)
+}
+
+/// Completion-mode branch of [`custom`] (Story 7.5): DONE headlines whose
+/// `CLOSED:` completion date falls inside `[start_date, end_date]`, grouped by
+/// that completion date — the "Done This Week/Month" preset semantics.
+///
+/// Unlike the default [`custom`] legs this INCLUDES DONE items (`closed_date IS
+/// NOT NULL` is what selects them — only completed headlines carry a `CLOSED:`
+/// stamp) and never touches Scheduled/Deadline. The optional `todo_state` /
+/// `file_path_glob` / `tag` filters reuse the same `(?N IS NULL OR <cond>)`
+/// idiom, so a preset can pin `todo_state = "DONE"` (or leave it open for any
+/// completed keyword). `agenda_date` is the completion date, so the Story 7.4
+/// frontend groups completed rows by their close date with no UI change.
+///
+/// The window is a `closed_date BETWEEN` scan. There is deliberately **no**
+/// `idx_headlines_closed_date` yet: adding one means a new `0002` migration,
+/// which cascades into `EXPECTED_USER_VERSION` + the LD-13 drift checks + the
+/// migration test corpus — disproportionate for a scan that is sub-millisecond
+/// at v0.1 Vault scale. It is a deferred optimization to make against a real
+/// query plan, exactly the call `migrations/0001` already records for the
+/// partial Scheduled/Deadline index variants.
+///
+/// # Errors
+///
+/// [`IndexError::Sqlite`] if the query fails to prepare or run.
+fn completed(conn: &Connection, query: &CustomAgendaQuery) -> Result<Vec<AgendaItem>, IndexError> {
+    let mut stmt = conn.prepare(
+        "SELECT h.id, f.path, h.title, h.byte_start, h.todo_keyword,
+                h.scheduled_date, h.scheduled_time,
+                h.deadline_date, h.deadline_time,
+                h.closed_date
+         FROM headlines h
+         JOIN files f ON f.id = h.file_id
+         WHERE f.quarantined = 0
+           AND h.kind = 'headline'
+           AND h.closed_date IS NOT NULL
+           AND h.closed_date BETWEEN ?1 AND ?2
+           AND (?3 IS NULL OR h.todo_keyword = ?3)
+           AND (?4 IS NULL OR f.path GLOB ?4)
+           AND (?5 IS NULL OR EXISTS (
+                SELECT 1 FROM tags t WHERE t.headline_id = h.id AND t.tag = ?5
+           ))
+         ORDER BY h.closed_date, f.path, h.position",
+    )?;
+
+    let items = stmt
+        .query_map(
+            rusqlite::params![
+                query.start_date,
+                query.end_date,
+                query.todo_state,
+                query.file_path_glob,
+                query.tag,
+            ],
+            |row| {
+                let closed_date: String = row.get(9)?;
+                Ok(AgendaItem {
+                    headline_id: row.get(0)?,
+                    file_path: row.get(1)?,
+                    title: row.get(2)?,
+                    byte_start: row.get(3)?,
+                    todo_keyword: row.get(4)?,
+                    scheduled_date: row.get(5)?,
+                    scheduled_time: row.get(6)?,
+                    deadline_date: row.get(7)?,
+                    deadline_time: row.get(8)?,
+                    // A completed item is never "overdue" — the concept applies
+                    // only to open Deadlines.
+                    overdue: false,
+                    // Group by the completion date: the frontend's date grouping
+                    // then reads as "what I finished on each day".
+                    agenda_date: closed_date,
+                })
+            },
+        )?
+        // Already ordered by `closed_date, f.path, h.position` in SQL — the
+        // frontend groups by `agenda_date` without a second sort, same contract
+        // as the default `custom` path.
+        .collect::<rusqlite::Result<Vec<_>>>()?;
 
     Ok(items)
 }
@@ -725,7 +820,27 @@ mod tests {
             tag: None,
             todo_state: None,
             file_path_glob: None,
+            completed_in_range: false,
         }
+    }
+
+    /// A completion-mode query over `[start, end]` filtering DONE headlines by
+    /// their `CLOSED:` date (Story 7.5's default-preset semantics).
+    fn completed_range(start: &str, end: &str) -> CustomAgendaQuery {
+        CustomAgendaQuery {
+            completed_in_range: true,
+            todo_state: Some("DONE".to_string()),
+            ..range(start, end)
+        }
+    }
+
+    /// A DONE headline completed on `closed_date` (`CLOSED:` set, `todo_done`).
+    fn done_headline(title: &str, position: i64, closed_date: &str) -> HeadlineInput {
+        let mut h = headline(title, position);
+        h.todo_keyword = Some("DONE".to_string());
+        h.todo_done = Some(true);
+        h.closed_date = Some(closed_date.to_string());
+        h
     }
 
     #[test]
@@ -974,5 +1089,76 @@ mod tests {
                 ("2026-09-20", "b.org", "b day2 second"),
             ]
         );
+    }
+
+    #[test]
+    fn custom_completed_includes_done_in_range_grouped_by_closed_date() {
+        let mut conn = open_test_db();
+        // Two DONE items in range (one shares no scheduled/deadline stamp).
+        let in_range_a = done_headline("Shipped v0.1", 0, "2026-09-10");
+        let in_range_b = done_headline("Wrote the docs", 1, "2026-09-12");
+        // A DONE item completed BEFORE the window — excluded.
+        let too_old = done_headline("Ancient task", 2, "2026-08-01");
+        // An OPEN scheduled item in the window — excluded (no CLOSED date).
+        let mut open = headline("Still to do", 3);
+        open.scheduled_date = Some("2026-09-11".to_string());
+        crate::upsert_file(
+            &mut conn,
+            &file("a.org", vec![in_range_a, in_range_b, too_old, open]),
+        )
+        .expect("upsert");
+
+        let items = custom(&conn, &completed_range("2026-09-05", "2026-09-30")).expect("query");
+
+        let rows: Vec<_> = items
+            .iter()
+            .map(|i| (i.agenda_date.as_str(), i.title.as_str(), i.overdue))
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                ("2026-09-10", "Shipped v0.1", false),
+                ("2026-09-12", "Wrote the docs", false),
+            ],
+            "only DONE items closed in-window, grouped/ordered by CLOSED date, never overdue"
+        );
+    }
+
+    #[test]
+    fn custom_completed_respects_tag_and_file_path_filters() {
+        let mut conn = open_test_db();
+        let mut tagged = done_headline("Home chore", 0, "2026-09-10");
+        tagged.tags = vec!["home".to_string()];
+        let untagged = done_headline("Work task", 1, "2026-09-11");
+        crate::upsert_file(&mut conn, &file("home.org", vec![tagged])).expect("upsert home");
+        crate::upsert_file(&mut conn, &file("work.org", vec![untagged])).expect("upsert work");
+
+        // Tag filter narrows to the tagged item.
+        let by_tag = CustomAgendaQuery {
+            tag: Some("home".to_string()),
+            ..completed_range("2026-09-05", "2026-09-30")
+        };
+        let items = custom(&conn, &by_tag).expect("query");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Home chore");
+
+        // File-path glob narrows to the other file.
+        let by_glob = CustomAgendaQuery {
+            file_path_glob: Some("work.org".to_string()),
+            ..completed_range("2026-09-05", "2026-09-30")
+        };
+        let items = custom(&conn, &by_glob).expect("query");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Work task");
+    }
+
+    #[test]
+    fn custom_completed_inverted_range_returns_empty() {
+        let mut conn = open_test_db();
+        let done = done_headline("Shipped", 0, "2026-09-10");
+        crate::upsert_file(&mut conn, &file("a.org", vec![done])).expect("upsert");
+
+        let items = custom(&conn, &completed_range("2026-09-30", "2026-09-05")).expect("query");
+        assert!(items.is_empty());
     }
 }

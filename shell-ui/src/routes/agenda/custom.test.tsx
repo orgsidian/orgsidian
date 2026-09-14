@@ -17,6 +17,15 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/components/agenda/AgendaCustom", () => ({
   AgendaCustom: () => null,
+  // The route also imports this pure helper; stub it so the mock satisfies the
+  // named import (unused in these guard-only unit tests).
+  presetToRecall: () => ({ search: {}, completed: false, filePathGlob: "" }),
+}));
+vi.mock("@/components/agenda/AgendaPresetSidebar", () => ({
+  AgendaPresetSidebar: () => null,
+}));
+vi.mock("@/components/editor/schedule", () => ({
+  localTodayIso: () => "2026-09-14",
 }));
 
 // Imported AFTER the mocks are registered.

@@ -123,6 +123,19 @@ fn export_bindings() {
         "setTodayDashboardSectionCollapsed",
         "TodayDashboardPrefs",
         "DashboardSection",
+        // Story 7.5 (FR-7): the saved agenda filter preset commands + their DTO,
+        // and the new completion-mode field on the Custom Agenda query DTO. A
+        // regression dropping any fails loudly here.
+        "listAgendaPresets",
+        "saveAgendaPreset",
+        "deleteAgendaPreset",
+        "AgendaPresetDto",
+        "completedInRange",
+        // Per-field camelCase names must actually generate (a serde-rename
+        // regression on any of these would silently break the sidebar wiring).
+        "rollingDays",
+        "todoState",
+        "filePathGlob",
         "export const events",
         "indexProgress",
         "index-progress",
