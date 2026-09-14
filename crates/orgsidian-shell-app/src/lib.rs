@@ -1310,17 +1310,24 @@ async fn clock_discard(state: tauri::State<'_, AppState>) -> OrgResult<()> {
     orgsidian_core::clock_discard(&vault_root).await
 }
 
-/// Story 7.7 (FR-8 / UJ-1): parse the frontend's chosen "adjust end time" ISO
-/// datetime — `%Y-%m-%dT%H:%M:%S` (what `StaleClockPrompt` emits), falling back
-/// to the no-seconds `%Y-%m-%dT%H:%M` form — into a `NaiveDateTime`, mapping a
-/// malformed value to `OrgError::Vault`. Extracted so the parse is unit-testable
-/// without an `AppHandle`/`State`.
-fn parse_adjust_end(end_at: &str) -> OrgResult<chrono::NaiveDateTime> {
-    chrono::NaiveDateTime::parse_from_str(end_at, "%Y-%m-%dT%H:%M:%S")
-        .or_else(|_| chrono::NaiveDateTime::parse_from_str(end_at, "%Y-%m-%dT%H:%M"))
+/// Parse a frontend ISO datetime wire value — `%Y-%m-%dT%H:%M:%S` (the seconds
+/// form the pickers emit as `${date}T${time}:00`), falling back to the
+/// no-seconds `%Y-%m-%dT%H:%M` form. `label` names the field for the diagnostic
+/// on a malformed value (`OrgError::Vault`). Shared by the Story 7.7 adjust-end
+/// and Story 7.8 clock-editor commands so both accept the same two shapes.
+fn parse_wire_datetime(label: &str, value: &str) -> OrgResult<chrono::NaiveDateTime> {
+    chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S")
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M"))
         .map_err(|err| OrgError::Vault {
-            reason: format!("unparseable adjust end time {end_at:?}: {err}"),
+            reason: format!("unparseable {label} time {value:?}: {err}"),
         })
+}
+
+/// Story 7.7 (FR-8 / UJ-1): parse the frontend's chosen "adjust end time" ISO
+/// datetime into a `NaiveDateTime` (see [`parse_wire_datetime`]). Extracted so
+/// the parse is unit-testable without an `AppHandle`/`State`.
+fn parse_adjust_end(end_at: &str) -> OrgResult<chrono::NaiveDateTime> {
+    parse_wire_datetime("adjust end", end_at)
 }
 
 /// Story 7.7 (FR-8 / UJ-1): the "Adjust end time" action — close the active
@@ -1336,6 +1343,45 @@ async fn clock_adjust_end(end_at: String, state: tauri::State<'_, AppState>) -> 
     // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
     let _clocking = state.clocking.lock().await;
     orgsidian_core::clock_out(&vault_root, end).await
+}
+
+/// Story 7.8 (FR-8): edit an existing CLOSED `CLOCK:` entry — rewrite its
+/// start/end to the frontend's chosen ISO datetimes and recompute the
+/// `=> HH:MM` duration, writing the LOGBOOK line back byte-faithfully. The
+/// `entry_index` is the 0-based index into the Headline's clock entries in
+/// document order (the order a LOGBOOK view renders them). `expected_start` is
+/// the entry's original start (the ISO datetime the UI showed): the core
+/// verifies the entry at `entry_index` still starts there and rejects a mismatch
+/// so a stale index (LOGBOOK reordered by a re-clock, a stale list, or another
+/// window) never rewrites the wrong entry. Errors with `OrgError::Vault` when no
+/// Vault is active, any stamp is unparseable, the end is before the start, the
+/// index is out of range, the located entry's start does not match
+/// `expected_start`, or the target entry is still running.
+#[tauri::command]
+#[specta::specta]
+async fn update_clock_entry(
+    headline_id: u32,
+    entry_index: u32,
+    expected_start: String,
+    new_start: String,
+    new_end: String,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let expected = parse_wire_datetime("expected start", &expected_start)?;
+    let start = parse_wire_datetime("clock start", &new_start)?;
+    let end = parse_wire_datetime("clock end", &new_end)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
+    orgsidian_core::update_clock_entry(
+        &vault_root,
+        headline_id,
+        entry_index as usize,
+        expected,
+        start,
+        end,
+    )
+    .await
 }
 
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
@@ -1393,7 +1439,8 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             get_active_clock,
             get_stale_clock,
             clock_discard,
-            clock_adjust_end
+            clock_adjust_end,
+            update_clock_entry
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -1954,6 +2001,33 @@ mod tests {
         // A malformed string is a diagnostic `OrgError::Vault`, not a panic.
         let err = parse_adjust_end("not-a-datetime").expect_err("malformed must error");
         assert!(matches!(err, OrgError::Vault { .. }), "got {err:?}");
+    }
+
+    /// Story 7.8 (FR-8): `parse_wire_datetime` accepts both ISO shapes the
+    /// ClockEditor emits and names the offending field in a `OrgError::Vault`
+    /// diagnostic on a malformed value.
+    #[test]
+    fn parse_wire_datetime_accepts_both_forms_and_labels_errors() {
+        assert_eq!(
+            parse_wire_datetime("clock start", "2026-09-13T09:15:00")
+                .expect("seconds form")
+                .to_string(),
+            "2026-09-13 09:15:00"
+        );
+        assert_eq!(
+            parse_wire_datetime("clock end", "2026-09-13T09:15")
+                .expect("no-seconds form")
+                .to_string(),
+            "2026-09-13 09:15:00"
+        );
+        let err = parse_wire_datetime("clock start", "garbage").expect_err("malformed must error");
+        match err {
+            OrgError::Vault { reason } => assert!(
+                reason.contains("clock start"),
+                "diagnostic names the field: {reason}"
+            ),
+            other => panic!("expected Vault, got {other:?}"),
+        }
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal

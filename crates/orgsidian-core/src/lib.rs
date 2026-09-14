@@ -105,8 +105,8 @@ pub use settings::schema::AgendaPreset;
 pub mod clock;
 pub use clock::{
     active_clock, active_clock_path, clock_discard, clock_in, clock_out, clock_resume,
-    refresh_active_clock, stale_clock_summary, totals, ActiveClock as ActiveClockState, ClockScope,
-    DateRange, StaleClock, StaleClockSummary,
+    refresh_active_clock, stale_clock_summary, totals, update_clock_entry,
+    ActiveClock as ActiveClockState, ClockScope, DateRange, StaleClock, StaleClockSummary,
 };
 
 // Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal

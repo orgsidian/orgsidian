@@ -1616,8 +1616,9 @@ So that mistakes (forgot-to-clock-out, wrong day) can be corrected in-app (FR-8 
 **When** the user clicks a clock entry in the LOGBOOK drawer (or via Agenda),
 **Then** `shell-ui/src/components/org/ClockEditor.tsx` opens with start / end / duration fields
 **And** editing any field recomputes the others (duration = end - start)
-**And** confirming writes the updated `CLOCK:` line via `commands.updateClockEntry(headlineId, entryIndex, newStart, newEnd)`
-**And** the LOGBOOK drawer is re-rendered.
+**And** confirming writes the updated `CLOCK:` line via `commands.updateClockEntry(headlineId, entryIndex, expectedStart, newStart, newEnd)` (`expectedStart` guards against stale-index edits after LOGBOOK reordering).
+
+**Scope split (amended 2026-09-14).** Story 7.8 delivers the editing *plumbing*: the core `update_clock_entry` transition (byte-faithful, minute-precision, rejects running/malformed/stale-index entries), the `updateClockEntry` command, and the self-contained props-driven `ClockEditor.tsx` dialog. The user-reachable surface — rendering the `:LOGBOOK:` drawer with its entries, the entry-listing query, and the click-to-edit wiring that opens the dialog and re-renders the drawer — is deferred to a dedicated follow-up story (GitHub #206), which depends on this one.
 
 ---
 
