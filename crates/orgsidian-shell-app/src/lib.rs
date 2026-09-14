@@ -52,6 +52,12 @@ pub struct IndexProgress {
 #[derive(Default)]
 pub struct AppState {
     designating: tauri::async_runtime::Mutex<()>,
+    /// Story 7.6 (FR-8): serializes clock mutations so rapid/spam clicking can
+    /// never race two commands into each observing "no active clock" and each
+    /// inserting an open line (the epic's atomicity-under-spam invariant). An
+    /// ASYNC mutex held across the whole core mutation, mirroring `designating`;
+    /// the UI's per-button disable is not a backend serialization guarantee.
+    clocking: tauri::async_runtime::Mutex<()>,
     index: Mutex<Option<IndexHandle>>,
     cancel: Mutex<Option<Arc<AtomicBool>>>,
     /// Story 5.5 (LD-7 / FR-16): which open files hold unsaved edits. The
@@ -1163,6 +1169,10 @@ async fn clock_in(
     state: tauri::State<'_, AppState>,
 ) -> OrgResult<ActiveClockStateDto> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant): held for
+    // the whole core mutation so two near-simultaneous clock commands cannot
+    // both observe "no active clock" and each insert an open line.
+    let _clocking = state.clocking.lock().await;
     let clock = orgsidian_core::clock_in(&vault_root, headline_id, now_naive()).await?;
     Ok(ActiveClockStateDto::from(clock))
 }
@@ -1175,6 +1185,8 @@ async fn clock_in(
 #[specta::specta]
 async fn clock_out(state: tauri::State<'_, AppState>) -> OrgResult<()> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
     orgsidian_core::clock_out(&vault_root, now_naive()).await
 }
 
@@ -1189,6 +1201,8 @@ async fn clock_resume(
     state: tauri::State<'_, AppState>,
 ) -> OrgResult<ActiveClockStateDto> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
     let clock = orgsidian_core::clock_resume(&vault_root, headline_id, now_naive()).await?;
     Ok(ActiveClockStateDto::from(clock))
 }
