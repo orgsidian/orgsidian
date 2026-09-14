@@ -189,6 +189,18 @@ function sectionTrigger(title: string): HTMLButtonElement | undefined {
   ) as HTMLButtonElement | undefined;
 }
 
+/**
+ * The collapsible BODY element for the section whose header is `title` — the
+ * `CollapsibleContent` sibling of the section's trigger (its parent is the
+ * `Collapsible` root). Scoping to one section's body lets an empty-state
+ * assertion catch a message wired to the WRONG section, which a page-wide
+ * `container.textContent` match cannot.
+ */
+function sectionBody(title: string): HTMLElement | undefined {
+  const root = sectionTrigger(title)?.parentElement;
+  return root?.querySelector<HTMLElement>(".pl-6") ?? undefined;
+}
+
 describe("TodayDashboard (Story 7.1, FR-6)", () => {
   it("shows a loading placeholder before the query resolves", () => {
     mocks.todayDashboard.mockReturnValue(new Promise(() => {})); // never resolves
@@ -286,18 +298,30 @@ describe("TodayDashboard (Story 7.1, FR-6)", () => {
     expect(clockLink?.getAttribute("href")).toBe("/editor/work.org/5?byteStart=12");
   });
 
-  it("renders minimal empty-state bodies for empty sections (rich copy is Story 7.3)", async () => {
+  it("renders each section's copy-blessed empty-state message (Story 7.3)", async () => {
     mocks.todayDashboard.mockResolvedValue(dashboard({}));
     await act(async () => {
       renderDashboard();
       await Promise.resolve();
     });
 
-    // Header still renders; body is a minimal blank line, not rich coaching.
-    expect(sectionTrigger("Scheduled")).not.toBeUndefined();
-    expect(container.textContent).toContain("Nothing scheduled for today.");
-    expect(container.textContent).toContain("No active clock.");
-    expect(container.textContent).toContain("Inbox is empty.");
+    // Each empty body shows its OWN contextual, copy-blessed line. Assert the
+    // exact text of each section's own body (not a page-wide substring match) so
+    // a message wired to the wrong section — the one realistic regression among
+    // three near-identical `AgendaList` call sites — is caught.
+    expect(sectionBody("Scheduled")?.textContent).toBe(
+      "No tasks scheduled for today — nice.",
+    );
+    expect(sectionBody("Deadline")?.textContent).toBe(
+      "No deadlines due or overdue — you're clear.",
+    );
+    expect(sectionBody("Today-Tag")?.textContent).toBe(
+      "Nothing tagged for today.",
+    );
+    expect(sectionBody("Inbox Preview")?.textContent).toBe("Inbox empty.");
+    expect(sectionBody("Active Clock")?.textContent).toBe(
+      "No active clock — pick a task and start tracking.",
+    );
   });
 
   it("collapses a section body when its chevron toggle is clicked", async () => {
