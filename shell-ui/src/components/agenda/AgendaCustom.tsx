@@ -39,6 +39,32 @@ export interface AgendaCustomSearch {
   todo?: string;
 }
 
+/**
+ * The full set of applied filters (Story 7.5) — the four URL-driven ones plus
+ * the two component-local ones (`filePathGlob`, `completed`). The preset
+ * sidebar reads this snapshot to "save the current filters" as a preset.
+ */
+export interface AppliedAgendaFilters {
+  start: string;
+  end: string;
+  tag: string;
+  todo: string;
+  filePathGlob: string;
+  completed: boolean;
+}
+
+/**
+ * A one-shot preset-application signal (Story 7.5). `nonce` is a monotonically
+ * increasing token so that re-applying the *same* preset still produces a new
+ * object identity and re-syncs the two local-only filters (`completed`,
+ * `filePathGlob`) that do not live in the URL.
+ */
+export interface AgendaPresetApply {
+  nonce: number;
+  completed: boolean;
+  filePathGlob: string;
+}
+
 export interface AgendaCustomProps {
   /** The current route search params (typed). */
   search: AgendaCustomSearch;
@@ -48,6 +74,18 @@ export interface AgendaCustomProps {
    * this onto a typed `navigate({ search })`.
    */
   onSearchChange: (next: AgendaCustomSearch) => void;
+  /**
+   * Story 7.5 (optional): report the currently-applied filters upward whenever
+   * they change, so the route's preset sidebar can snapshot them on "Save
+   * preset". Omitted in the Story 7.4 tests → identical behavior.
+   */
+  onAppliedChange?: (applied: AppliedAgendaFilters) => void;
+  /**
+   * Story 7.5 (optional): a preset the route wants applied. The URL-driven
+   * filters (start/end/tag/todo) are applied by the route via `navigate`; this
+   * carries only the two local-only filters. Omitted in the Story 7.4 tests.
+   */
+  presetApply?: AgendaPresetApply | null;
 }
 
 /** One calendar day's Agenda items, in the document order the backend sorted. */
@@ -70,11 +108,28 @@ type FlatRow =
  * local time (never through a UTC-parsed `Date`, which would drift near a DST
  * boundary) — mirrors `AgendaWeek`'s own `addDaysIso`.
  */
-function addDaysIso(dateIso: string, days: number): string {
+export function addDaysIso(dateIso: string, days: number): string {
   const [year, month, day] = dateIso.split("-").map(Number);
   const shifted = new Date(year, month - 1, day);
   shifted.setDate(shifted.getDate() + days);
   return localTodayIso(shifted);
+}
+
+/**
+ * Resolve a preset's stored window to a concrete `[start, end]` at recall time
+ * (Story 7.5). A rolling preset (`rollingDays = N`) becomes the last N days
+ * ending `today` (`[today-(N-1), today]`, so N=7 spans today plus the previous
+ * six); an absolute preset restores its stored `start`/`end` (`undefined` when
+ * unset, so the view falls back to its own default window).
+ */
+export function resolvePresetWindow(
+  preset: { rollingDays: number | null; start: string | null; end: string | null },
+  today: string,
+): { start?: string; end?: string } {
+  if (preset.rollingDays != null) {
+    return { start: addDaysIso(today, -(preset.rollingDays - 1)), end: today };
+  }
+  return { start: preset.start ?? undefined, end: preset.end ?? undefined };
 }
 
 /** A short, human display label for a `YYYY-MM-DD` date, e.g. "Sat, Sep 5, 2026". */
@@ -127,7 +182,12 @@ function flattenRows(groups: AgendaDay[]): FlatRow[] {
  * of: a loading placeholder, an error (query failed — most commonly "no
  * active Vault"), an empty-state line, or the virtualized date-grouped list.
  */
-export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
+export function AgendaCustom({
+  search,
+  onSearchChange,
+  onAppliedChange,
+  presetApply,
+}: AgendaCustomProps) {
   // Resolve the effective range: default to a 30-day window starting today
   // when the route carries no explicit start/end (a first visit to
   // `/agenda/custom` with no params).
@@ -151,6 +211,11 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
   // The file-path filter actually applied to the query (local-only, not a
   // search param — see the module docs).
   const [appliedFilePath, setAppliedFilePath] = useState("");
+  // Story 7.5 completion mode: filter the window on the CLOSED date and include
+  // DONE headlines (the "Done This …" preset semantics). Local-only, like the
+  // file-path filter — the Story 7.4 URL contract stays the four typed params.
+  const [completedDraft, setCompletedDraft] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
     setStartDraft(resolvedStart);
@@ -174,6 +239,7 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
         tag: tag === "" ? null : tag,
         todoState: todo === "" ? null : todo,
         filePathGlob: appliedFilePath === "" ? null : appliedFilePath,
+        completedInRange: completed,
       })
       .then((result) => {
         if (!disposed) setItems(result);
@@ -185,7 +251,33 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
     return () => {
       disposed = true;
     };
-  }, [resolvedStart, resolvedEnd, tag, todo, appliedFilePath]);
+  }, [resolvedStart, resolvedEnd, tag, todo, appliedFilePath, completed]);
+
+  // Story 7.5: apply a preset's two local-only filters. Keyed on the whole
+  // `presetApply` object, which is route state that only changes when a preset
+  // is actually applied (a fresh `nonce` each time), so this never fights the
+  // user's own edits between applies.
+  useEffect(() => {
+    if (presetApply == null) return;
+    setCompletedDraft(presetApply.completed);
+    setCompleted(presetApply.completed);
+    setFilePathDraft(presetApply.filePathGlob);
+    setAppliedFilePath(presetApply.filePathGlob);
+  }, [presetApply]);
+
+  // Story 7.5: report the applied filter snapshot upward for the preset
+  // sidebar's "Save current" action. `onAppliedChange` is memoized by the route
+  // so this fires only when the applied filters actually change.
+  useEffect(() => {
+    onAppliedChange?.({
+      start: resolvedStart,
+      end: resolvedEnd,
+      tag,
+      todo,
+      filePathGlob: appliedFilePath,
+      completed,
+    });
+  }, [resolvedStart, resolvedEnd, tag, todo, appliedFilePath, completed, onAppliedChange]);
 
   const rows = useMemo(
     () => (items !== null ? flattenRows(groupByDate(items)) : []),
@@ -201,6 +293,7 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
       todo: todoDraft.trim() === "" ? undefined : todoDraft.trim(),
     });
     setAppliedFilePath(filePathDraft.trim());
+    setCompleted(completedDraft);
   }
 
   return (
@@ -275,6 +368,15 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
             className="rounded border border-[var(--org-border-default)] bg-[var(--org-bg-surface)] px-2 py-1 text-[var(--org-fg-default)]"
           />
         </label>
+        <label className="flex items-center gap-2 text-sm text-[var(--org-fg-muted)]">
+          <input
+            type="checkbox"
+            checked={completedDraft}
+            onChange={(event) => setCompletedDraft(event.target.checked)}
+            className="h-4 w-4 rounded border-[var(--org-border-default)]"
+          />
+          Completed (by close date)
+        </label>
         <button
           type="submit"
           className="rounded bg-[var(--org-border-focus)] px-3 py-1.5 text-sm font-medium text-[var(--org-bg-canvas)] hover:opacity-90"
@@ -295,7 +397,9 @@ export function AgendaCustom({ search, onSearchChange }: AgendaCustomProps) {
 
       {error === null && items !== null && items.length === 0 && (
         <p className="mt-3 text-sm text-[var(--org-fg-muted)]">
-          Nothing scheduled or due in this range.
+          {completed
+            ? "Nothing completed in this range."
+            : "Nothing scheduled or due in this range."}
         </p>
       )}
 
