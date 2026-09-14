@@ -134,7 +134,17 @@ jobs:
         run: cargo build --workspace --locked
 
       # Step 9 — Rust test.
+      # ORGSIDIAN_PERF_ADVISORY: the Story 1.12 perf-snapshot gate
+      # (assert_no_perf_regression!) runs here via feature unification, but this
+      # is a SHARED GitHub-hosted runner whose wall-clock medians drift with the
+      # fleet — the macos-aarch64 baseline flapped +45..55% on a no-op
+      # sprint-status commit that touched zero query code (test-design.md TC-2 /
+      # R-027). Advisory mode downgrades a regression to a `::warning::` here so
+      # hosted-runner drift cannot block merges; local dev and any future
+      # dedicated soak runner (R-027) leave it unset and keep the gate hard.
       - name: cargo test
+        env:
+          ORGSIDIAN_PERF_ADVISORY: "1"
         run: cargo test --workspace --locked
 
       # Step 9.1 — tools/issues-sync test suite. Story 1.16 LD-55 binary +
