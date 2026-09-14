@@ -1086,7 +1086,10 @@ async fn list_agenda_presets(state: tauri::State<'_, AppState>) -> OrgResult<Vec
 
 /// Story 7.5 (FR-7): upsert a named agenda filter preset into the active
 /// Vault's settings store. Errors with `OrgError::Vault` when no Vault is
-/// active.
+/// active, and also with `OrgError::Vault` when `name` is one of the two
+/// reserved evergreen default preset names (`Done This Week` / `Done This
+/// Month`) — the sidebar surfaces that `reason` inline rather than silently
+/// clobbering the built-in default.
 #[tauri::command]
 #[specta::specta]
 async fn save_agenda_preset(

@@ -15,11 +15,19 @@
 // filters (start/end/tag/todo, via the route's `navigate`) and the two
 // component-local ones (file-path, completed-mode) in one gesture.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands, type AgendaPresetDto } from "@/lib/tauri";
 import { errorMessage } from "@/components/agenda/AgendaToday";
 import type { AppliedAgendaFilters } from "@/components/agenda/AgendaCustom";
+
+/**
+ * The two evergreen default preset names the backend reserves (mirror of
+ * `orgsidian_core::RESERVED_PRESET_NAMES`). Kept in sync by hand — the backend
+ * guard is the authoritative one; this only lets the sidebar reject an
+ * obviously-invalid save client-side before the round-trip.
+ */
+const RESERVED_PRESET_NAMES = ["Done This Week", "Done This Month"];
 
 export interface AgendaPresetSidebarProps {
   /**
@@ -56,13 +64,37 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
   const [nameDraft, setNameDraft] = useState("");
   // The preset whose context menu is currently open (by name), or null.
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // A "Save preset" mutation in flight (disables the Save control so a fast
+  // double-click cannot fire two saves).
+  const [saving, setSaving] = useState(false);
+  // The preset whose delete is in flight (disables that row's actions), or null.
+  const [deletingName, setDeletingName] = useState<string | null>(null);
+
+  // Unmount guard: async handlers below must not `setState` after the component
+  // has unmounted (matches the `disposed`-flag pattern the sibling
+  // `AgendaCustom` uses inside its fetch effect). A ref, not state, so the
+  // handlers read the live value without re-subscribing.
+  const disposed = useRef(false);
+  useEffect(() => {
+    disposed.current = false;
+    return () => {
+      disposed.current = true;
+    };
+  }, []);
+
+  // The DOM node of the row whose menu is currently open — used to scope the
+  // outside-pointer dismissal to THIS menu (see the effect below).
+  const openRowRef = useRef<HTMLLIElement | null>(null);
 
   const refresh = useCallback(() => {
     setError(null);
     commands
       .listAgendaPresets()
-      .then((result) => setPresets(result))
+      .then((result) => {
+        if (!disposed.current) setPresets(result);
+      })
       .catch((err: unknown) => {
+        if (disposed.current) return;
         setPresets([]);
         setError(errorMessage(err));
       });
@@ -73,16 +105,20 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
   }, [refresh]);
 
   // Dismiss the open context menu on Escape (keyboard a11y) or a pointer press
-  // outside any preset row. Selecting another row closes the current menu on its
-  // own, since `menuFor` holds at most one open menu.
+  // outside the OPEN row's menu. Scoping to `openRowRef` (not any
+  // `[data-preset-menu-root]`, which every row carries) is what lets a click on
+  // a different row dismiss the current menu — that row's own click then opens
+  // its menu, so the menu switches instead of getting stuck.
   useEffect(() => {
     if (menuFor === null) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setMenuFor(null);
     }
     function onPointerDown(event: Event) {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-preset-menu-root]") == null) setMenuFor(null);
+      const target = event.target as Node | null;
+      const openRow = openRowRef.current;
+      if (openRow !== null && target !== null && openRow.contains(target)) return;
+      setMenuFor(null);
     }
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown, true);
@@ -94,22 +130,45 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
 
   function saveCurrent() {
     const name = nameDraft.trim();
-    if (name === "" || current === null) return;
+    if (name === "" || current === null || saving) return;
+    // Client-side pre-check (the backend guard is authoritative): a reserved
+    // default name can never be overwritten, so reject before the round-trip.
+    if (RESERVED_PRESET_NAMES.includes(name)) {
+      setError(`"${name}" is a reserved default preset name; choose a different name.`);
+      return;
+    }
+    setError(null);
+    setSaving(true);
     commands
       .saveAgendaPreset(presetFromCurrent(name, current))
       .then(() => {
+        if (disposed.current) return;
         setNameDraft("");
         refresh();
       })
-      .catch((err: unknown) => setError(errorMessage(err)));
+      .catch((err: unknown) => {
+        if (!disposed.current) setError(errorMessage(err));
+      })
+      .finally(() => {
+        if (!disposed.current) setSaving(false);
+      });
   }
 
   function deletePreset(name: string) {
+    if (deletingName !== null) return; // a delete is already in flight
     setMenuFor(null);
+    setDeletingName(name);
     commands
       .deleteAgendaPreset(name)
-      .then(() => refresh())
-      .catch((err: unknown) => setError(errorMessage(err)));
+      .then(() => {
+        if (!disposed.current) refresh();
+      })
+      .catch((err: unknown) => {
+        if (!disposed.current) setError(errorMessage(err));
+      })
+      .finally(() => {
+        if (!disposed.current) setDeletingName(null);
+      });
   }
 
   return (
@@ -130,52 +189,62 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
       )}
 
       <ul role="list" className="mt-2 flex flex-col gap-1">
-        {(presets ?? []).map((preset) => (
-          <li key={preset.name} data-preset-menu-root className="relative">
-            <div
-              className="flex items-center gap-1"
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setMenuFor((open) => (open === preset.name ? null : preset.name));
-              }}
+        {(presets ?? []).map((preset) => {
+          const deleting = deletingName === preset.name;
+          return (
+            <li
+              key={preset.name}
+              ref={menuFor === preset.name ? openRowRef : undefined}
+              data-preset-menu-root
+              className="relative"
             >
-              <button
-                type="button"
-                onClick={() => onApply(preset)}
-                className="flex-1 truncate rounded px-2 py-1 text-left text-sm text-[var(--org-fg-default)] hover:bg-[var(--org-bg-surface)]"
-              >
-                {preset.name}
-              </button>
-              <button
-                type="button"
-                aria-label={`Options for ${preset.name}`}
-                aria-haspopup="menu"
-                aria-expanded={menuFor === preset.name}
-                onClick={() =>
-                  setMenuFor((open) => (open === preset.name ? null : preset.name))
-                }
-                className="rounded px-1.5 py-1 text-sm text-[var(--org-fg-muted)] hover:bg-[var(--org-bg-surface)]"
-              >
-                ⋯
-              </button>
-            </div>
-            {menuFor === preset.name && (
               <div
-                role="menu"
-                className="absolute right-0 z-10 mt-1 rounded border border-[var(--org-border-default)] bg-[var(--org-bg-surface)] shadow"
+                className="flex items-center gap-1"
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setMenuFor((open) => (open === preset.name ? null : preset.name));
+                }}
               >
                 <button
                   type="button"
-                  role="menuitem"
-                  onClick={() => deletePreset(preset.name)}
-                  className="block w-full px-3 py-1.5 text-left text-sm text-destructive hover:bg-[var(--org-bg-canvas)]"
+                  onClick={() => onApply(preset)}
+                  className="flex-1 truncate rounded px-2 py-1 text-left text-sm text-[var(--org-fg-default)] hover:bg-[var(--org-bg-surface)]"
                 >
-                  Delete
+                  {preset.name}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Options for ${preset.name}`}
+                  aria-haspopup="menu"
+                  aria-expanded={menuFor === preset.name}
+                  disabled={deleting}
+                  onClick={() =>
+                    setMenuFor((open) => (open === preset.name ? null : preset.name))
+                  }
+                  className="rounded px-1.5 py-1 text-sm text-[var(--org-fg-muted)] hover:bg-[var(--org-bg-surface)] disabled:opacity-50"
+                >
+                  ⋯
                 </button>
               </div>
-            )}
-          </li>
-        ))}
+              {menuFor === preset.name && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-10 mt-1 rounded border border-[var(--org-border-default)] bg-[var(--org-bg-surface)] shadow"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={deleting}
+                    onClick={() => deletePreset(preset.name)}
+                    className="block w-full px-3 py-1.5 text-left text-sm text-destructive hover:bg-[var(--org-bg-canvas)] disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <div className="mt-4 flex flex-col gap-1">
@@ -199,7 +268,7 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
         <button
           type="button"
           onClick={saveCurrent}
-          disabled={nameDraft.trim() === "" || current === null}
+          disabled={nameDraft.trim() === "" || current === null || saving}
           className="rounded bg-[var(--org-border-focus)] px-2 py-1 text-sm font-medium text-[var(--org-bg-canvas)] hover:opacity-90 disabled:opacity-50"
         >
           Save preset

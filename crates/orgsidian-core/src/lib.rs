@@ -87,7 +87,7 @@ pub use coaching::{
 pub mod agenda_presets;
 pub use agenda_presets::{
     default_agenda_presets, delete_agenda_preset, list_agenda_presets, save_agenda_preset,
-    DONE_THIS_MONTH, DONE_THIS_WEEK,
+    DONE_THIS_MONTH, DONE_THIS_WEEK, RESERVED_PRESET_NAMES,
 };
 pub use settings::schema::AgendaPreset;
 
