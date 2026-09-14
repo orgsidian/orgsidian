@@ -662,6 +662,102 @@ pub async fn clock_out(vault_root: &Path, now: NaiveDateTime) -> OrgResult<()> {
     Ok(())
 }
 
+/// Edit an existing CLOSED `CLOCK:` entry (FR-8, Story 7.8): rewrite the
+/// entry's start/end stamps to `new_start`/`new_end` and recompute its
+/// `=> HH:MM` duration, writing the result back byte-faithfully. The org file
+/// stays the source of truth — every other byte is left identical (FR-2
+/// round-trip).
+///
+/// The target is located by the Headline's STABLE document-order `ordinal`
+/// (never a stale index `byte_start`, per [`clock_in`]/[`clock_out`]), then by
+/// `entry_index` — the 0-based index into that Headline's `clocks` in document
+/// (source) order, the same order a LOGBOOK view renders them.
+///
+/// Both stamps are truncated to whole-minute resolution (org `CLOCK:` stamps
+/// are minute-precision) and the duration is recomputed authoritatively from
+/// `new_end - new_start` via [`format_duration`] — any duration the caller may
+/// have shown is ignored.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] when: `new_end` is before `new_start`; the Headline is
+/// not in the index or its ordinal no longer resolves; `entry_index` is out of
+/// range; or the target entry is still RUNNING (`end == None`) — a running
+/// clock is corrected via the Story 7.7 adjust-end flow, not here, so the
+/// `active-clock.json` pointer invariant is never disturbed.
+/// [`OrgError::Io`]/[`OrgError::Parse`] on file access.
+pub async fn update_clock_entry(
+    vault_root: &Path,
+    headline_id: u32,
+    entry_index: usize,
+    new_start: NaiveDateTime,
+    new_end: NaiveDateTime,
+) -> OrgResult<()> {
+    let new_start = truncate_to_minute(new_start);
+    let new_end = truncate_to_minute(new_end);
+
+    if new_end < new_start {
+        return Err(OrgError::Vault {
+            reason: format!(
+                "clock end {new_end} is before start {new_start}; end must be at or after start"
+            ),
+        });
+    }
+
+    let location = crate::index::locate_headline(vault_root, i64::from(headline_id))
+        .await?
+        .ok_or_else(|| OrgError::Vault {
+            reason: format!("headline {headline_id} is not in the index"),
+        })?;
+
+    let file_path = vault_root.join(&location.file_path);
+    let source = read_source(&file_path)?;
+    let doc = analyze_source(&source, &location.file_path)?;
+    let headline = find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal))
+        .ok_or_else(|| headline_not_found_err(headline_id, &location))?;
+
+    let entry = headline
+        .clocks
+        .get(entry_index)
+        .ok_or_else(|| OrgError::Vault {
+            reason: format!(
+                "clock entry index {entry_index} is out of range for headline {headline_id} \
+             (it has {} entr{})",
+                headline.clocks.len(),
+                if headline.clocks.len() == 1 {
+                    "y"
+                } else {
+                    "ies"
+                }
+            ),
+        })?;
+
+    // Editing a RUNNING line here would orphan the `active-clock.json` pointer
+    // (which still references its start) and silently drop the "one active
+    // clock" invariant. The running clock is corrected via the Story 7.7
+    // adjust-end flow instead.
+    if entry.end.is_none() {
+        return Err(OrgError::Vault {
+            reason: format!(
+                "clock entry index {entry_index} for headline {headline_id} is still running; \
+                 stop it before editing"
+            ),
+        });
+    }
+
+    let start_stamp = format_inactive_stamp(new_start);
+    let end_stamp = format_inactive_stamp(new_end);
+    let duration = format_duration(new_end - new_start);
+    // `entry.span` is the CLOCK line's content after the indent and before the
+    // trailing newline (see `clock_out`, which appends at `span.end`), so
+    // splicing over the whole span leaves the drawer indent and the line
+    // terminator untouched.
+    let new_line = format!("CLOCK: {start_stamp}--{end_stamp} => {duration}");
+    let new_source = splice(&source, entry.span.start, entry.span.end, &new_line);
+    atomic_write(&file_path, new_source.as_bytes()).map_err(clock_io)?;
+    Ok(())
+}
+
 /// Clock RESUME on `headline_id` (FR-8): re-activate the headline's
 /// most-recent unclosed `CLOCK:` line as the active clock WITHOUT mutating the
 /// source. If the headline has no unclosed line, this falls back to a fresh
@@ -1078,6 +1174,32 @@ mod tests {
         assert_eq!(
             format!("CLOCK: {stamp}--{end} => {dur}"),
             "CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30] => 1:30"
+        );
+    }
+
+    #[test]
+    fn update_clock_entry_composes_the_rewritten_closed_line() {
+        // The exact line `update_clock_entry` splices over an entry's span:
+        // both stamps rewritten, duration recomputed from `end - start`.
+        let compose = |s: NaiveDateTime, e: NaiveDateTime| {
+            format!(
+                "CLOCK: {}--{} => {}",
+                format_inactive_stamp(s),
+                format_inactive_stamp(e),
+                format_duration(e - s)
+            )
+        };
+        // Cross-day correction (forgot-to-clock-out overnight).
+        assert_eq!(
+            compose(dt(2026, 9, 13, 22, 0), dt(2026, 9, 14, 6, 30)),
+            "CLOCK: [2026-09-13 Sun 22:00]--[2026-09-14 Mon 06:30] => 8:30"
+        );
+        // Degenerate start == end clamps the duration to 0:00 (still a valid,
+        // closed line — the `new_end < new_start` guard rejects only strictly
+        // backwards ranges).
+        assert_eq!(
+            compose(dt(2026, 9, 13, 10, 0), dt(2026, 9, 13, 10, 0)),
+            "CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 10:00] => 0:00"
         );
     }
 
