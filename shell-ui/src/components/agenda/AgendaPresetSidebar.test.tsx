@@ -146,12 +146,18 @@ describe("AgendaPresetSidebar (Story 7.5, FR-7)", () => {
 
     expect(mocks.saveAgendaPreset).toHaveBeenCalledTimes(1);
     const saved = mocks.saveAgendaPreset.mock.calls[0][0];
-    expect(saved).toMatchObject({
+    // Assert the FULL normalized DTO shape — a regression that stopped
+    // normalizing empty-string filters to `null` (todoState/filePathGlob) or
+    // dropped rollingDays/view would fail here, not slip through a partial match.
+    expect(saved).toEqual({
       name: "Weekly review",
       view: "custom",
       start: "2026-09-05",
       end: "2026-10-04",
+      rollingDays: null,
       tag: "home",
+      todoState: null, // CURRENT.todo is "" → normalized to null
+      filePathGlob: null, // CURRENT.filePathGlob is "" → normalized to null
       completed: false,
     });
     // Refreshed: initial load + post-save reload.
@@ -186,5 +192,126 @@ describe("AgendaPresetSidebar (Story 7.5, FR-7)", () => {
 
     const alert = container.querySelector('[role="alert"]');
     expect(alert?.textContent).toBe("no active vault; designate a vault first");
+  });
+
+  it("rejects saving a reserved default name client-side without calling the backend", async () => {
+    mocks.listAgendaPresets.mockResolvedValue([]);
+    mocks.saveAgendaPreset.mockResolvedValue(null);
+    await render();
+
+    const nameInput = container.querySelector<HTMLInputElement>("#agenda-preset-name");
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(nameInput, "Done This Week");
+    nameInput!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const saveButton = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent === "Save preset",
+    );
+    await act(async () => {
+      saveButton!.click();
+      await Promise.resolve();
+    });
+
+    // The reserved-name guard short-circuits the round-trip entirely.
+    expect(mocks.saveAgendaPreset).not.toHaveBeenCalled();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("reserved default preset name");
+  });
+
+  it("surfaces a backend save rejection (e.g. reserved name) inline", async () => {
+    mocks.listAgendaPresets.mockResolvedValue([]);
+    mocks.saveAgendaPreset.mockRejectedValue({
+      reason: '"Weekly" is a reserved default preset name and cannot be overwritten',
+    });
+    await render();
+
+    const nameInput = container.querySelector<HTMLInputElement>("#agenda-preset-name");
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    // A non-reserved name (so the client guard passes) whose save the backend
+    // still rejects — proving the backend error surfaces inline.
+    setter?.call(nameInput, "Weekly");
+    nameInput!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const saveButton = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent === "Save preset",
+    );
+    await act(async () => {
+      saveButton!.click();
+      await Promise.resolve();
+    });
+
+    expect(mocks.saveAgendaPreset).toHaveBeenCalledTimes(1);
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("reserved default preset name");
+  });
+
+  it("dismisses an open context menu on Escape", async () => {
+    mocks.listAgendaPresets.mockResolvedValue([preset({ name: "@home this month" })]);
+    await render();
+
+    const optionsButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Options for @home this month"]',
+    );
+    act(() => optionsButton!.click());
+    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("dismisses an open context menu on an outside pointer press", async () => {
+    mocks.listAgendaPresets.mockResolvedValue([preset({ name: "@home this month" })]);
+    await render();
+
+    const optionsButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Options for @home this month"]',
+    );
+    act(() => optionsButton!.click());
+    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+
+    // A pointerdown outside any preset row closes the menu.
+    act(() => {
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    });
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("switches the open menu when a different row's options are clicked", async () => {
+    mocks.listAgendaPresets.mockResolvedValue([
+      preset({ name: "First" }),
+      preset({ name: "Second" }),
+    ]);
+    await render();
+
+    const first = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Options for First"]',
+    );
+    const second = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Options for Second"]',
+    );
+
+    // Open First's menu.
+    act(() => first!.click());
+    expect(first!.getAttribute("aria-expanded")).toBe("true");
+    expect(second!.getAttribute("aria-expanded")).toBe("false");
+
+    // Clicking Second's options must close First's menu and open Second's — the
+    // #8 fix: the outside-pointer dismissal is scoped to the OPEN row, so it no
+    // longer leaves First's menu stuck open behind Second's.
+    act(() => {
+      second!.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      second!.click();
+    });
+    expect(first!.getAttribute("aria-expanded")).toBe("false");
+    expect(second!.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelectorAll('[role="menu"]').length).toBe(1);
   });
 });
