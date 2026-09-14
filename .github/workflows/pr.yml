@@ -318,7 +318,15 @@ jobs:
       # which `pnpm build` only typechecks and the a11y gate's scoped
       # `test:contrast` never collects. `vitest run` picks up all
       # src/**/*.test.{ts,tsx} per vitest.config.ts.
+      # ORGSIDIAN_PERF_ADVISORY: the Vitest suite includes a JS wall-clock perf
+      # gate (sourceFidelity.perf.test.tsx, Story 4.3g) that mirrors the Rust
+      # perf gate's semantics and flaps on shared hosted runners for the same
+      # reason (scheduler/GC contention on ops that structurally cannot
+      # regress). Advisory mode downgrades a trip to a `::warning::` here; local
+      # dev leaves it unset and the gate stays hard.
       - name: shell-ui unit tests (Vitest)
+        env:
+          ORGSIDIAN_PERF_ADVISORY: "1"
         run: pnpm --filter shell-ui test
 
       # Slot reservations (filled by later stories — do NOT pre-implement

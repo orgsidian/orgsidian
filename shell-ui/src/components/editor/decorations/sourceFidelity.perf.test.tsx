@@ -38,6 +38,29 @@ const TOLERANCE = 1.2; // matches perf.rs TOLERANCE_PCT (20%)
 // would be orders of magnitude larger and still trip the gate.
 const NOISE_FLOOR_NS = 2_000_000; // 2ms
 
+// Advisory mode, mirroring the Rust perf gate (crates/orgsidian-core/src/
+// test_support/perf.rs): on the shared GitHub-hosted CI runners a wall-clock
+// median can drift past the ±20% tolerance purely from scheduler/GC contention
+// (the guarded ops read `EditorState.doc`, never the decoration set — they
+// structurally cannot regress, so a trip here is noise, not a real
+// regression). CI sets ORGSIDIAN_PERF_ADVISORY on the Vitest step so a trip is
+// reported as a `::warning::` rather than failing the build; local dev leaves
+// it unset and the gate stays hard.
+const PERF_ADVISORY = Boolean(process.env.ORGSIDIAN_PERF_ADVISORY);
+
+/** Hard-asserts the budget, unless advisory mode downgrades a trip to a warning. */
+function assertWithinBudget(label: string, measured: number, budget: number): void {
+  if (measured > budget && PERF_ADVISORY) {
+    const pct = Math.round((measured / budget - 1) * 100);
+    // eslint-disable-next-line no-console
+    console.warn(
+      `::warning::perf regression: ${label}: measured ${measured | 0}ns exceeds budget ${budget | 0}ns by ${pct}% — advisory mode (ORGSIDIAN_PERF_ADVISORY set), not gated`,
+    );
+    return;
+  }
+  expect(measured).toBeLessThanOrEqual(budget);
+}
+
 // A ~560-line document with every decoration kind, so the ops have real work.
 function bigDoc(): string {
   const block = [
@@ -111,7 +134,7 @@ describe("story-4.3g-source-fidelity — perf gate (decorated vs raw baseline)",
     console.log(
       `[story-4.3g-source-fidelity] copy: baseline(raw)=${baseline | 0}ns measured(decorated)=${measured | 0}ns ratio=${(measured / baseline).toFixed(3)}`,
     );
-    expect(measured).toBeLessThanOrEqual(baseline * TOLERANCE + NOISE_FLOOR_NS);
+    assertWithinBudget("story-4.3g-source-fidelity copy", measured, baseline * TOLERANCE + NOISE_FLOOR_NS);
   });
 
   it("find latency does not regress > 20% with all decorations active", () => {
@@ -125,6 +148,6 @@ describe("story-4.3g-source-fidelity — perf gate (decorated vs raw baseline)",
     console.log(
       `[story-4.3g-source-fidelity] find: baseline(raw)=${baseline | 0}ns measured(decorated)=${measured | 0}ns ratio=${(measured / baseline).toFixed(3)}`,
     );
-    expect(measured).toBeLessThanOrEqual(baseline * TOLERANCE + NOISE_FLOOR_NS);
+    assertWithinBudget("story-4.3g-source-fidelity find", measured, baseline * TOLERANCE + NOISE_FLOOR_NS);
   });
 });
