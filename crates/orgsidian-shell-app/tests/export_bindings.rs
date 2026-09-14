@@ -112,6 +112,13 @@ fn export_bindings() {
         // loudly here.
         "getDismissedCoaching",
         "dismissCoaching",
+        // Story 7.2 (FR-6): the Today Dashboard section-preference persistence
+        // command surface + its wire types. A regression dropping either command
+        // or the collapsed-state map/enum fails loudly here.
+        "getTodayDashboardPrefs",
+        "setTodayDashboardSectionCollapsed",
+        "TodayDashboardPrefs",
+        "DashboardSection",
         "export const events",
         "indexProgress",
         "index-progress",
