@@ -118,12 +118,21 @@ export function AgendaWeek() {
         >
           This Week
         </h1>
-        <Link
-          to="/today"
-          className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
-        >
-          Back to Today
-        </Link>
+        <div className="flex items-baseline gap-4">
+          {/* Story 7.4: the view-switch into the arbitrary-range Custom Agenda. */}
+          <Link
+            to="/agenda/custom"
+            className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
+          >
+            Custom range
+          </Link>
+          <Link
+            to="/today"
+            className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
+          >
+            Back to Today
+          </Link>
+        </div>
       </div>
 
       {error !== null && (

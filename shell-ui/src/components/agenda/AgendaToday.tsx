@@ -97,13 +97,22 @@ export function AgendaToday() {
         >
           Today
         </h1>
-        {/* Story 6.4: the view-switch into the rolling 7-day Week Agenda. */}
-        <Link
-          to="/agenda/week"
-          className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
-        >
-          View week
-        </Link>
+        <div className="flex items-baseline gap-4">
+          {/* Story 6.4: the view-switch into the rolling 7-day Week Agenda. */}
+          <Link
+            to="/agenda/week"
+            className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
+          >
+            View week
+          </Link>
+          {/* Story 7.4: the view-switch into the arbitrary-range Custom Agenda. */}
+          <Link
+            to="/agenda/custom"
+            className="text-sm text-[var(--org-fg-muted)] underline hover:text-[var(--org-fg-default)]"
+          >
+            Custom range
+          </Link>
+        </div>
       </div>
 
       {error !== null && (
