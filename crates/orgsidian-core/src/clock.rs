@@ -765,21 +765,46 @@ pub struct StaleClockSummary {
     pub adjust_duration: String,
 }
 
+/// The outcome of a launch-time stale-clock check (Story 7.7). A prior-session
+/// pointer resolves to one of these; `None` from [`stale_clock_summary`] means
+/// there is nothing to prompt at all.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StaleClock {
+    /// A fully-resolved prior-session clock — the normal three-action prompt.
+    Summary(StaleClockSummary),
+    /// The pointer is present but its `headline_id` is no longer in the index
+    /// (an index/source desync). The full summary cannot be built — there is no
+    /// title or duration to show — but the pointer is real and the open line is
+    /// still discardable, so the caller offers a DISCARD-ONLY recovery to clear
+    /// the stuck `active-clock.json` in-app rather than hiding the prompt (which
+    /// would strand the pointer with no in-app recovery). Carries the orphaned
+    /// `headline_id` for diagnostics.
+    Desynced {
+        /// The pointer's `headline_id` — no headline in the index carries it.
+        headline_id: u32,
+    },
+}
+
 /// Summarize a prior-session Active Clock for the launch prompt (Story 7.7).
 /// `None` when there is no active clock (nothing to prompt). Otherwise resolve
 /// the tracked Headline's title from the index and compute both candidate
-/// durations against the injected `now`.
+/// durations against the injected `now`, returning [`StaleClock::Summary`].
+///
+/// When the pointer's `headline_id` is no longer in the index (an index/source
+/// desync) the summary cannot be built, but the pointer is still present and
+/// discardable, so this returns [`StaleClock::Desynced`] (NOT an error) — the
+/// caller renders a discard-only recovery so [`clock_discard`] is reachable and
+/// the stuck pointer can be cleared in-app.
 ///
 /// # Errors
 ///
-/// [`OrgError::Vault`] on a pointer/index desync — an unparseable `started_at`,
-/// or a `headline_id` no longer in the index (the pointer is left in place; the
-/// caller can offer discard). [`OrgError::Index`]/[`OrgError::Io`] on
-/// index/file access.
+/// [`OrgError::Vault`] on an unparseable `started_at` (a hand-edited/legacy
+/// pointer; self-heals on the next clock mutation). [`OrgError::Index`]/
+/// [`OrgError::Io`] on index/file access.
 pub async fn stale_clock_summary(
     vault_root: &Path,
     now: NaiveDateTime,
-) -> OrgResult<Option<StaleClockSummary>> {
+) -> OrgResult<Option<StaleClock>> {
     let now = truncate_to_minute(now);
 
     let active = match active_clock(vault_root)? {
@@ -801,16 +826,21 @@ pub async fn stale_clock_summary(
         .map(truncate_to_minute)
         .unwrap_or(started);
 
-    let headline = crate::index::headline_title(vault_root, i64::from(active.headline_id))
-        .await?
-        .ok_or_else(|| OrgError::Vault {
-            reason: format!(
-                "active clock references headline {} which is no longer in the index",
-                active.headline_id
-            ),
-        })?;
+    // A `headline_id` no longer in the index is a caller-recoverable DESYNC, not
+    // an error: the pointer (and its open CLOCK line) still exist and can be
+    // discarded. Surface it as `Desynced` so the launch prompt can offer a
+    // discard-only recovery instead of silently stranding the pointer.
+    let headline =
+        match crate::index::headline_title(vault_root, i64::from(active.headline_id)).await? {
+            Some(title) => title,
+            None => {
+                return Ok(Some(StaleClock::Desynced {
+                    headline_id: active.headline_id,
+                }))
+            }
+        };
 
-    Ok(Some(StaleClockSummary {
+    Ok(Some(StaleClock::Summary(StaleClockSummary {
         headline_id: active.headline_id,
         headline,
         keep_duration: format_duration(now - started),
@@ -821,7 +851,7 @@ pub async fn stale_clock_summary(
         // always valid `%Y-%m-%dT%H:%M:%S`.
         started_at: format_ts(started),
         last_active_at: format_ts(last_active),
-    }))
+    })))
 }
 
 /// Clock DISCARD (Story 7.7): remove the active clock's OPEN `CLOCK:` line from

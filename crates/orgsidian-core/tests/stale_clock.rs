@@ -17,6 +17,7 @@ use orgsidian_core::parser::chrono::{NaiveDate, NaiveDateTime};
 use orgsidian_core::{
     active_clock, active_clock_path, clock_discard, clock_in, clock_out, clock_resume, open_index,
     refresh_active_clock, resolve_index_db_path, scan_vault, stale_clock_summary, OrgError,
+    StaleClock,
 };
 use tempfile::TempDir;
 
@@ -81,6 +82,17 @@ async fn scanned_vault(files: &[(&str, &str)]) -> Vault {
     }
 }
 
+/// Unwrap a [`StaleClock::Summary`], panicking on `Desynced` — for the tests
+/// that expect the normal (headline-resolved) prompt.
+fn expect_summary(stale: StaleClock) -> orgsidian_core::StaleClockSummary {
+    match stale {
+        StaleClock::Summary(summary) => summary,
+        StaleClock::Desynced { headline_id } => {
+            panic!("expected a resolved summary, got Desynced {{ headline_id: {headline_id} }}")
+        }
+    }
+}
+
 fn headline_id_by_title(db_path: &Path, title: &str) -> u32 {
     let conn = rusqlite::Connection::open(db_path).expect("open index for read");
     let id: i64 = conn
@@ -130,10 +142,12 @@ async fn stale_summary_reports_headline_and_both_durations() {
     seed_stale_clock(&v, id).await;
 
     // Launch next-day at 10:00 → keep = 30 h, adjust = 14 h.
-    let summary = stale_clock_summary(&v.root, next_day(10, 0))
-        .await
-        .expect("summary")
-        .expect("a stale clock exists");
+    let summary = expect_summary(
+        stale_clock_summary(&v.root, next_day(10, 0))
+            .await
+            .expect("summary")
+            .expect("a stale clock exists"),
+    );
     assert_eq!(summary.headline_id, id);
     assert_eq!(summary.headline, "Write the report");
     assert_eq!(summary.started_at, "2026-09-13T04:00:00");
@@ -331,10 +345,12 @@ async fn summary_normalizes_a_malformed_last_active_at_to_zero_adjust() {
     // A well-formed started_at but a garbage last_active_at.
     write_pointer_json(&v.root, id, "2026-09-13T04:00:00", "not-a-timestamp");
 
-    let summary = stale_clock_summary(&v.root, next_day(10, 0))
-        .await
-        .expect("summary")
-        .expect("a stale clock exists");
+    let summary = expect_summary(
+        stale_clock_summary(&v.root, next_day(10, 0))
+            .await
+            .expect("summary")
+            .expect("a stale clock exists"),
+    );
     assert_eq!(
         summary.adjust_duration, "0:00",
         "a malformed last_active_at falls back to started_at (adjust = 0:00)"
@@ -347,7 +363,13 @@ async fn summary_normalizes_a_malformed_last_active_at_to_zero_adjust() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn summary_errors_when_the_pointer_headline_is_not_in_the_index() {
+async fn summary_reports_desync_when_the_pointer_headline_is_not_in_the_index() {
+    // Story 7.7 post-review fix #2: a `headline_id` no headline carries is a
+    // caller-recoverable DESYNC, not an error — the pointer (and its open line)
+    // still exist and are discardable. The launch prompt must be able to offer a
+    // discard-only recovery, so this surfaces `StaleClock::Desynced` (NOT an
+    // error, which the frontend `.catch()` would treat as "nothing to show" and
+    // strand the pointer).
     let v = scanned_vault(&[("a.org", "* Task\n")]).await;
     // A valid pointer, but a headline_id no headline carries.
     write_pointer_json(
@@ -357,8 +379,67 @@ async fn summary_errors_when_the_pointer_headline_is_not_in_the_index() {
         "2026-09-13T18:00:00",
     );
 
+    let stale = stale_clock_summary(&v.root, next_day(10, 0))
+        .await
+        .expect("an unknown headline_id is a recoverable desync, not an error")
+        .expect("the pointer still exists");
+    assert_eq!(
+        stale,
+        StaleClock::Desynced {
+            headline_id: 999_999
+        },
+        "surfaces the discard-only recovery state carrying the orphaned id"
+    );
+    // The pointer is left in place so `clock_discard` remains reachable.
+    assert!(
+        active_clock(&v.root).expect("pointer").is_some(),
+        "the desync leaves the pointer in place for discard"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn summary_errors_on_an_unparseable_started_at() {
+    // An unparseable `started_at` (hand-edited/legacy pointer) stays an error —
+    // it is not the headline-not-found recovery case (fix #2 is scoped to that).
+    let v = scanned_vault(&[("a.org", "* Task\n")]).await;
+    let id = headline_id_by_title(&v.db, "Task");
+    write_pointer_json(&v.root, id, "not-a-timestamp", "2026-09-13T18:00:00");
+
     let err = stale_clock_summary(&v.root, next_day(10, 0))
         .await
-        .expect_err("an unknown headline_id must error");
+        .expect_err("an unparseable started_at must error");
     assert!(matches!(err, OrgError::Vault { .. }), "got {err:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn discard_when_headline_not_in_index_clears_pointer_and_errors() {
+    // Story 7.7 post-review fix #6: the `clock_discard` "headline no longer in
+    // the index" branch is now reachable from the UI (the desync recovery
+    // offers Discard). `locate_headline` returns None, so discard clears the
+    // dangling pointer and reports the desync — the next launch then finds no
+    // pointer (recovery completes across relaunch).
+    let v = scanned_vault(&[("a.org", "* Task\n")]).await;
+    // A valid, well-formed pointer, but a headline_id no headline carries.
+    write_pointer_json(
+        &v.root,
+        999_999,
+        "2026-09-13T04:00:00",
+        "2026-09-13T18:00:00",
+    );
+    assert!(
+        active_clock(&v.root).expect("pointer").is_some(),
+        "the desynced pointer is present before discard"
+    );
+
+    let err = clock_discard(&v.root)
+        .await
+        .expect_err("a headline-not-in-index discard clears the pointer and reports the desync");
+    assert!(matches!(err, OrgError::Vault { .. }), "got {err:?}");
+    assert_eq!(
+        active_clock(&v.root).expect("pointer"),
+        None,
+        "the dangling pointer is cleared so the next launch is clean"
+    );
+    // The source file was never touched (there was no line to remove).
+    assert_eq!(read(&v.root, "a.org"), "* Task\n", "source untouched");
 }
