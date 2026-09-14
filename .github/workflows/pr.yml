@@ -134,7 +134,17 @@ jobs:
         run: cargo build --workspace --locked
 
       # Step 9 — Rust test.
+      # ORGSIDIAN_PERF_ADVISORY: the Story 1.12 perf-snapshot gate
+      # (assert_no_perf_regression!) runs here via feature unification, but this
+      # is a SHARED GitHub-hosted runner whose wall-clock medians drift with the
+      # fleet — the macos-aarch64 baseline flapped +45..55% on a no-op
+      # sprint-status commit that touched zero query code (test-design.md TC-2 /
+      # R-027). Advisory mode downgrades a regression to a `::warning::` here so
+      # hosted-runner drift cannot block merges; local dev and any future
+      # dedicated soak runner (R-027) leave it unset and keep the gate hard.
       - name: cargo test
+        env:
+          ORGSIDIAN_PERF_ADVISORY: "1"
         run: cargo test --workspace --locked
 
       # Step 9.1 — tools/issues-sync test suite. Story 1.16 LD-55 binary +
@@ -308,7 +318,15 @@ jobs:
       # which `pnpm build` only typechecks and the a11y gate's scoped
       # `test:contrast` never collects. `vitest run` picks up all
       # src/**/*.test.{ts,tsx} per vitest.config.ts.
+      # ORGSIDIAN_PERF_ADVISORY: the Vitest suite includes a JS wall-clock perf
+      # gate (sourceFidelity.perf.test.tsx, Story 4.3g) that mirrors the Rust
+      # perf gate's semantics and flaps on shared hosted runners for the same
+      # reason (scheduler/GC contention on ops that structurally cannot
+      # regress). Advisory mode downgrades a trip to a `::warning::` here; local
+      # dev leaves it unset and the gate stays hard.
       - name: shell-ui unit tests (Vitest)
+        env:
+          ORGSIDIAN_PERF_ADVISORY: "1"
         run: pnpm --filter shell-ui test
 
       # Slot reservations (filled by later stories — do NOT pre-implement

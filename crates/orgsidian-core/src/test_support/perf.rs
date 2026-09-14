@@ -81,6 +81,39 @@ pub(crate) fn current_runner_class() -> String {
     format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
+/// Env var name that switches a `Regressed` outcome from a hard panic to a
+/// non-fatal advisory warning.
+pub const ADVISORY_ENV: &str = "ORGSIDIAN_PERF_ADVISORY";
+
+/// Whether the perf gate should downgrade a regression to a non-fatal warning
+/// instead of failing the test. Enabled by setting [`ADVISORY_ENV`] to any
+/// non-empty value.
+///
+/// Rationale (test-design.md TC-2 / R-027): the median-of-5 wall-clock gate
+/// runs on GitHub's *shared* hosted runners in the per-PR workflow, where
+/// run-to-run contention routinely swings a fixed op's median well past the
+/// ±20 % tolerance (observed 55 % on a no-op sprint-status chore that touched
+/// zero query code). The architecture parks real perf gating on nightly + a
+/// dedicated soak runner with retry/staleness logic (R-027); until that runner
+/// exists, the per-PR hosted path must not block merges on transient noise. So
+/// CI sets this var on the shared-runner `cargo test` step, while local dev and
+/// any dedicated/self-hosted perf runner leave it unset and keep the gate hard.
+///
+/// This does NOT touch the locked measurement semantics (median-of-5, ±20 %,
+/// `runner_class` scoping — architecture.md L331): a regression is still
+/// measured and surfaced, only its *consequence* on noise-prone runners
+/// changes.
+pub fn advisory_mode() -> bool {
+    advisory_from_raw(std::env::var_os(ADVISORY_ENV).as_deref())
+}
+
+/// Pure policy for [`advisory_mode`]: advisory iff the var is present and
+/// non-empty. Split out so it is testable without mutating process-global env
+/// (mirrors the impl/macro split above — Story 1.12 Dev Notes §3).
+fn advisory_from_raw(raw: Option<&std::ffi::OsStr>) -> bool {
+    raw.map(|v| !v.is_empty()).unwrap_or(false)
+}
+
 /// Walks up from `CARGO_MANIFEST_DIR` until it finds the first `Cargo.toml`
 /// containing a `[workspace]` table. Panics if none is found.
 ///
@@ -347,6 +380,13 @@ pub fn assert_no_perf_regression_impl(
 /// writes the baseline, emits a one-line `eprintln!` warning, and the test
 /// passes. Subsequent runs compare against the committed median.
 ///
+/// **Advisory mode**: when [`ADVISORY_ENV`] is set to a non-empty value a
+/// regression is reported (a GitHub Actions `::warning::` annotation + a log
+/// line) instead of panicking. CI sets it on the shared hosted-runner
+/// `cargo test` step where wall-clock medians drift with the runner fleet
+/// (test-design.md TC-2 / R-027); local dev and dedicated perf runners leave
+/// it unset and the gate stays hard. See [`advisory_mode`].
+///
 /// **The closure must be re-callable** (`Fn`/`FnMut`, not `FnOnce`): the
 /// macro invokes it exactly 5 times in the same process. A `move ||
 /// consume(owned_value)` closure fails to compile on the second iteration —
@@ -384,7 +424,7 @@ macro_rules! assert_no_perf_regression {
                 } else {
                     0
                 };
-                panic!(
+                let detail = format!(
                     "perf regression: {} on {}: measured median {} ns exceeds baseline {} ns by {}% (tolerance: 20%, samples: {})\nBaseline file: {}",
                     report.story_id,
                     report.runner_class,
@@ -394,6 +434,18 @@ macro_rules! assert_no_perf_regression {
                     report.samples,
                     baseline_path
                 );
+                // Advisory mode (ORGSIDIAN_PERF_ADVISORY set on shared hosted
+                // CI runners — test-design.md TC-2 / R-027): surface the
+                // regression loudly but do NOT fail. A GitHub Actions
+                // `::warning::` annotation makes it visible in the run summary;
+                // the plain line keeps it in the raw log. Unset locally and on
+                // any dedicated perf runner, where the gate stays hard.
+                if $crate::test_support::perf::advisory_mode() {
+                    eprintln!("::warning::{}", detail);
+                    eprintln!("perf: advisory mode ({} set) — regression reported, not gated:\n{}", $crate::test_support::perf::ADVISORY_ENV, detail);
+                } else {
+                    panic!("{}", detail);
+                }
             }
             $crate::test_support::perf::PerfOutcome::SchemaMismatch {
                 field,
@@ -417,3 +469,27 @@ macro_rules! assert_no_perf_regression {
 // See Dev Notes §4.
 #[doc(inline)]
 pub use crate::assert_no_perf_regression;
+
+#[cfg(test)]
+mod tests {
+    use super::advisory_from_raw;
+    use std::ffi::OsStr;
+
+    #[test]
+    fn advisory_off_when_unset() {
+        assert!(!advisory_from_raw(None));
+    }
+
+    #[test]
+    fn advisory_off_when_empty() {
+        // Present-but-empty is treated as unset so `VAR=` in a shell does not
+        // silently disable the gate.
+        assert!(!advisory_from_raw(Some(OsStr::new(""))));
+    }
+
+    #[test]
+    fn advisory_on_when_non_empty() {
+        assert!(advisory_from_raw(Some(OsStr::new("1"))));
+        assert!(advisory_from_raw(Some(OsStr::new("true"))));
+    }
+}
