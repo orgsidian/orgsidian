@@ -14,15 +14,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *  5. Esc invokes Adjust (reveals the pre-filled time picker), never a cancel.
  */
 
-// A local re-declaration of the generated DTO (the test mocks `@/lib/tauri`).
-interface StaleClockDto {
-  headlineId: number;
-  headline: string;
-  startedAt: string;
-  lastActiveAt: string;
-  keepDuration: string;
-  adjustDuration: string;
-}
+// A local re-declaration of the generated discriminated-union DTO (the test
+// mocks `@/lib/tauri`): `summary` is the normal prompt, `desynced` the
+// discard-only recovery state.
+type StaleClockDto =
+  | {
+      state: "summary";
+      headlineId: number;
+      headline: string;
+      startedAt: string;
+      lastActiveAt: string;
+      keepDuration: string;
+      adjustDuration: string;
+    }
+  | { state: "desynced"; headlineId: number };
 
 const mocks = vi.hoisted(() => ({
   getStaleClock: vi.fn<() => Promise<StaleClockDto | null>>(),
@@ -40,13 +45,16 @@ vi.mock("@/lib/tauri", () => ({
   },
 }));
 
-// Imported AFTER the mock is registered.
+// Imported AFTER the mock is registered. The session once-guard is the REAL
+// module (not mocked) — its reset hook is called in `beforeEach`.
 import { StaleClockPrompt } from "./StaleClockPrompt";
+import { __resetStaleClockSessionForTests } from "./staleClockSession";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
 
 const SUMMARY: StaleClockDto = {
+  state: "summary",
   headlineId: 42,
   headline: "Write the report",
   startedAt: "2026-09-13T04:00:00",
@@ -55,10 +63,16 @@ const SUMMARY: StaleClockDto = {
   adjustDuration: "14:00",
 };
 
+const DESYNCED: StaleClockDto = { state: "desynced", headlineId: 999999 };
+
 let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  // Reset the per-launch once-guard so each test starts from a fresh app-launch
+  // slate (otherwise the first test to run claims the guard and every later
+  // render short-circuits to "nothing to show").
+  __resetStaleClockSessionForTests();
   mocks.getStaleClock.mockReset();
   mocks.clockResume.mockReset().mockResolvedValue(undefined);
   mocks.clockDiscard.mockReset().mockResolvedValue(undefined);
@@ -220,5 +234,96 @@ describe("StaleClockPrompt (Story 7.7, FR-8 / UJ-1)", () => {
     expect(
       document.body.querySelector('[data-testid="stale-clock-adjust"]'),
     ).not.toBeNull();
+  });
+
+  it("renders the three actions in spec DOM order: Adjust, Keep, Discard", async () => {
+    // The frozen spec's on-screen (desktop left→right) order is
+    // [Adjust end time] [Keep tracking] [Discard this session]. `DialogFooter`
+    // is `sm:flex-row`, so desktop reading order = DOM order — assert DOM order.
+    mocks.getStaleClock.mockResolvedValue(SUMMARY);
+    await render();
+
+    const labels = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="stale-clock-prompt"] button',
+      ),
+    ).map((b) => b.textContent?.trim());
+    expect(labels).toEqual([
+      "Adjust end time",
+      "Keep tracking",
+      "Discard this session",
+    ]);
+  });
+
+  it("does NOT re-appear after a route unmount/remount within the same session", async () => {
+    // The bug: `<StaleClockPrompt/>` lives in the `/today` route, which TanStack
+    // Router unmounts/remounts on every navigation — the launch check re-ran on
+    // each remount, popping the modal (with a destructive Discard) on a LIVE
+    // clock. The once-per-launch guard must evaluate exactly once per session.
+    mocks.getStaleClock.mockResolvedValue(SUMMARY);
+
+    // First mount (launch): the modal opens and the check runs once.
+    await render();
+    expect(dialog()).not.toBeNull();
+    expect(mocks.getStaleClock).toHaveBeenCalledTimes(1);
+
+    // Navigate away: unmount the route.
+    act(() => root.unmount());
+    container.remove();
+    expect(dialog()).toBeNull();
+
+    // Navigate back: a fresh mount of the same component (same JS session).
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await render();
+
+    // The prompt must NOT re-appear and the backend check must NOT re-run.
+    expect(dialog()).toBeNull();
+    expect(mocks.getStaleClock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a discard-only recovery when the pointer's headline is gone (desync)", async () => {
+    // A `desynced` result (headline no longer in the index) must OPEN the modal
+    // in a discard-only recovery state — not be swallowed like "nothing to
+    // show" — so `clockDiscard` is reachable and the stuck pointer clearable.
+    mocks.getStaleClock.mockResolvedValue(DESYNCED);
+    await render();
+
+    const el = dialog();
+    expect(el).not.toBeNull();
+    const text = el?.textContent ?? "";
+    expect(text).toContain("no longer in your Vault");
+
+    // Only the Discard action is offered (no Keep / Adjust) and it is the
+    // default action.
+    const labels = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="stale-clock-prompt"] button',
+      ),
+    ).map((b) => b.textContent?.trim());
+    expect(labels).toEqual(["Discard this session"]);
+
+    const discardBtn = buttonByText("Discard this session");
+    expect(discardBtn.hasAttribute("data-default-action")).toBe(true);
+  });
+
+  it("Discard from the desync recovery clears the pointer and closes the modal", async () => {
+    // `clock_discard` clears the stuck pointer even in the headline-not-found
+    // branch (it returns after clearing the dangling pointer), so the recovery
+    // succeeds whether the call resolves or rejects — the modal closes on settle.
+    mocks.getStaleClock.mockResolvedValue(DESYNCED);
+    // Simulate the backend's headline-not-found branch: it clears the pointer
+    // then reports the desync as an error.
+    mocks.clockDiscard
+      .mockReset()
+      .mockRejectedValue({ reason: "headline 999999 is no longer in the index" });
+    await render();
+
+    await click(buttonByText("Discard this session"));
+
+    expect(mocks.clockDiscard).toHaveBeenCalledTimes(1);
+    // The modal closes even though the command rejected (the pointer is cleared).
+    expect(dialog()).toBeNull();
   });
 });
