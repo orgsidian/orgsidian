@@ -1220,6 +1220,95 @@ async fn get_active_clock(
     Ok(clock.map(ActiveClockStateDto::from))
 }
 
+/// Story 7.7 (FR-8 / UJ-1): wire projection of `orgsidian_core::clock`'s
+/// `StaleClockSummary` for `commands.getStaleClock` — the launch prompt naming
+/// the prior-session tracked Headline, its pointer timestamps, and both
+/// candidate durations. Multi-word fields carry the explicit camelCase rename
+/// (same reason as [`ActiveClockDto`]/[`AgendaItemDto`]). `headlineId` is
+/// already `u32` on the core type, so this is a straight field copy.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StaleClockDto {
+    /// `headlines.id` — the tracked Headline's app-wide identity.
+    pub headline_id: u32,
+    /// The tracked Headline's display title.
+    pub headline: String,
+    /// The pointer's `started_at` (`%Y-%m-%dT%H:%M:%S`).
+    pub started_at: String,
+    /// The pointer's `last_active_at` (`%Y-%m-%dT%H:%M:%S`) — the "adjust end
+    /// time" pre-fill.
+    pub last_active_at: String,
+    /// `now - started_at`, `H:MM` (the "Keep tracking" running total).
+    pub keep_duration: String,
+    /// `last_active_at - started_at`, `H:MM` (the "Adjust end time" total).
+    pub adjust_duration: String,
+}
+
+impl From<orgsidian_core::StaleClockSummary> for StaleClockDto {
+    fn from(summary: orgsidian_core::StaleClockSummary) -> Self {
+        StaleClockDto {
+            headline_id: summary.headline_id,
+            headline: summary.headline,
+            started_at: summary.started_at,
+            last_active_at: summary.last_active_at,
+            keep_duration: summary.keep_duration,
+            adjust_duration: summary.adjust_duration,
+        }
+    }
+}
+
+/// Story 7.7 (FR-8 / UJ-1): summarize a prior-session running clock for the
+/// launch prompt, or `None` when nothing is being tracked. Errors with
+/// `OrgError::Vault` when no Vault is active or on a pointer/index desync.
+#[tauri::command]
+#[specta::specta]
+async fn get_stale_clock(state: tauri::State<'_, AppState>) -> OrgResult<Option<StaleClockDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let summary = orgsidian_core::stale_clock_summary(&vault_root, now_naive()).await?;
+    Ok(summary.map(StaleClockDto::from))
+}
+
+/// Story 7.7 (FR-8 / UJ-1): the "Discard this session" action — remove the
+/// active clock's open `CLOCK:` line from its `:LOGBOOK:` and clear the pointer.
+/// Errors with `OrgError::Vault` when no Vault is active or there is no active
+/// clock.
+#[tauri::command]
+#[specta::specta]
+async fn clock_discard(state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
+    orgsidian_core::clock_discard(&vault_root).await
+}
+
+/// Story 7.7 (FR-8 / UJ-1): parse the frontend's chosen "adjust end time" ISO
+/// datetime — `%Y-%m-%dT%H:%M:%S` (what `StaleClockPrompt` emits), falling back
+/// to the no-seconds `%Y-%m-%dT%H:%M` form — into a `NaiveDateTime`, mapping a
+/// malformed value to `OrgError::Vault`. Extracted so the parse is unit-testable
+/// without an `AppHandle`/`State`.
+fn parse_adjust_end(end_at: &str) -> OrgResult<chrono::NaiveDateTime> {
+    chrono::NaiveDateTime::parse_from_str(end_at, "%Y-%m-%dT%H:%M:%S")
+        .or_else(|_| chrono::NaiveDateTime::parse_from_str(end_at, "%Y-%m-%dT%H:%M"))
+        .map_err(|err| OrgError::Vault {
+            reason: format!("unparseable adjust end time {end_at:?}: {err}"),
+        })
+}
+
+/// Story 7.7 (FR-8 / UJ-1): the "Adjust end time" action — close the active
+/// clock's open line at the user-chosen `end_at`. Accepts the frontend's ISO
+/// datetime via [`parse_adjust_end`], then reuses `clock_out` (which clamps a
+/// too-early end to `=> 0:00`). Errors with `OrgError::Vault` when no Vault is
+/// active, there is no active clock, or `end_at` is unparseable.
+#[tauri::command]
+#[specta::specta]
+async fn clock_adjust_end(end_at: String, state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let end = parse_adjust_end(&end_at)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
+    orgsidian_core::clock_out(&vault_root, end).await
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -1272,7 +1361,10 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             clock_in,
             clock_out,
             clock_resume,
-            get_active_clock
+            get_active_clock,
+            get_stale_clock,
+            clock_discard,
+            clock_adjust_end
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -1738,6 +1830,44 @@ mod tests {
         assert_eq!(dto.headline_id, core.headline_id);
         assert_eq!(dto.started_at, core.started_at);
         assert_eq!(dto.last_active_at, core.last_active_at);
+    }
+
+    /// Story 7.7 (FR-8 / UJ-1): `StaleClockDto::from` carries every field of the
+    /// launch summary across the IPC projection unchanged (no field dropped or
+    /// swapped, no narrowing — `headlineId` is already `u32` on the core type).
+    #[test]
+    fn stale_clock_dto_projects_every_field() {
+        let core = orgsidian_core::StaleClockSummary {
+            headline_id: 42,
+            headline: "Write the report".to_string(),
+            started_at: "2026-09-13T04:00:00".to_string(),
+            last_active_at: "2026-09-13T18:00:00".to_string(),
+            keep_duration: "30:00".to_string(),
+            adjust_duration: "14:00".to_string(),
+        };
+        let dto = StaleClockDto::from(core.clone());
+        assert_eq!(dto.headline_id, core.headline_id);
+        assert_eq!(dto.headline, core.headline);
+        assert_eq!(dto.started_at, core.started_at);
+        assert_eq!(dto.last_active_at, core.last_active_at);
+        assert_eq!(dto.keep_duration, core.keep_duration);
+        assert_eq!(dto.adjust_duration, core.adjust_duration);
+    }
+
+    /// Story 7.7 (FR-8 / UJ-1): `parse_adjust_end` accepts the exact string the
+    /// frontend emits (`${date}T${time}:00`) and the no-seconds fallback, and
+    /// maps a malformed value to `OrgError::Vault` (never a panic).
+    #[test]
+    fn parse_adjust_end_accepts_iso_forms_and_rejects_garbage() {
+        // The exact shape StaleClockPrompt sends: `${date}T${time}:00`.
+        let with_seconds = parse_adjust_end("2026-09-13T18:00:00").expect("seconds form parses");
+        assert_eq!(with_seconds.to_string(), "2026-09-13 18:00:00");
+        // The no-seconds fallback.
+        let no_seconds = parse_adjust_end("2026-09-13T18:00").expect("no-seconds form parses");
+        assert_eq!(no_seconds.to_string(), "2026-09-13 18:00:00");
+        // A malformed string is a diagnostic `OrgError::Vault`, not a panic.
+        let err = parse_adjust_end("not-a-datetime").expect_err("malformed must error");
+        assert!(matches!(err, OrgError::Vault { .. }), "got {err:?}");
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal

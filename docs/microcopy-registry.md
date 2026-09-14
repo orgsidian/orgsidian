@@ -8,6 +8,42 @@ hunting through component source. An entry graduates out of `[draft]` when a
 named reviewer signs off on the wording; until then, treat the copy as subject
 to change without notice.
 
+## Story 7.7 — Prior-session running-clock launch prompt (v0.1 Alpha)
+
+**Status:** `[draft]`
+
+The stale-clock recovery modal (UJ-1 edge case): shown on launch when a
+prior-session Active Clock exists (`active-clock.json` present). It names the
+tracked Headline, its last-active time, and both candidate durations, then
+offers three actions in safest-default order — **Adjust end time** (default /
+Enter / Esc), **Keep tracking**, **Discard this session**. See
+`shell-ui/src/components/clock/StaleClockPrompt.tsx` for the component and
+`crates/orgsidian-core/src/clock.rs` (`stale_clock_summary` / `clock_discard`)
+for the backing transitions.
+
+| Slot | Copy |
+| ---- | ---- |
+| Title | **A clock was still running** |
+| Body | You were tracking **{headline}**. It was last active {lastActive}. |
+| Durations line | So far, this session is **{keepDuration}** if you keep tracking, or **{adjustDuration}** if you adjust to the last active time. |
+| Adjust button (default) | Adjust end time |
+| Keep button | Keep tracking |
+| Discard button | Discard this session |
+| Adjust picker confirm | Save end time |
+| Error prefix | Couldn't update the clock: {reason} |
+
+### Keyboard & default behavior
+
+- **Adjust end time** is the default-focused button (`onOpenAutoFocus`); Enter
+  confirms it.
+- **Esc invokes Adjust** (opens its time picker), never a cancel/close — the
+  modal has no dismiss-without-choosing path (`showCloseButton={false}`,
+  `onEscapeKeyDown` prevented + routed to Adjust).
+- **Adjust** reveals native `<input type="date">` + `<input type="time">`
+  pre-filled from `lastActiveAt`; confirming sends `${date}T${time}:00` to
+  `commands.clockAdjustEnd`. A plain time edit stays on the last-active day; a
+  cross-midnight case is expressible via the date input.
+
 ## Story 6.6 — UJ-4 hardcoded coaching balloons (v0.1 Alpha)
 
 **Status:** `[draft]`

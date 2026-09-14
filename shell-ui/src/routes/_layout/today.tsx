@@ -8,6 +8,7 @@ import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { StarterVaultPicker } from "@/components/onboarding/StarterVaultPicker";
 import { CoachingBalloon } from "@/components/coaching/CoachingBalloon";
 import { UJ4_CAPTURE_INTRO } from "@/components/coaching/coachingIds";
+import { StaleClockPrompt } from "@/components/clock/StaleClockPrompt";
 
 export const Route = createFileRoute("/_layout/today")({
   component: TodayRoute,
@@ -65,6 +66,13 @@ function TodayRoute() {
 
   return (
     <main className="container mx-auto p-8">
+      {/* Story 7.7 (FR-8 / UJ-1): the prior-session running-clock launch prompt.
+          Renders nothing unless a stale Active Clock exists; mounted here (a
+          configured Vault) so the launch-time reconciliation is offered on the
+          first screen. Self-contained — it runs its own `getStaleClock` check
+          on mount. */}
+      <StaleClockPrompt />
+
       {/* Story 6.6 (UJ-4): the Quick Capture nudge balloon. v0.1 anchor
           decision (see the Story 6.6 story file's Design Notes): the AC's
           "Inbox preview section" is Epic 7 (Today Dashboard) scope and does

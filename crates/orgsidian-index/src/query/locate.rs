@@ -76,6 +76,27 @@ pub fn headline(conn: &Connection, id: i64) -> Result<Option<HeadlineLocation>, 
     }
 }
 
+/// Resolve the `title` of `headlines.id` = `id`, or `None` when no headline
+/// carries that rowid (a stale/desynced id — the caller decides how to
+/// recover). ADDITIVE free function alongside [`headline`] (Story 7.7 stale-
+/// clock prompt): the prompt names the tracked Headline, so the clock manager
+/// turns an app-wide headline rowid into its display title. Deliberately NOT a
+/// method on the `cargo-semver-checks`-frozen [`super::IndexQuery`] trait
+/// (Story 6.5 gate).
+///
+/// # Errors
+///
+/// [`IndexError::Sqlite`] if the query fails to prepare or run.
+pub fn title(conn: &Connection, id: i64) -> Result<Option<String>, IndexError> {
+    let mut stmt =
+        conn.prepare("SELECT title FROM headlines WHERE id = ?1 AND kind = 'headline'")?;
+    let mut rows = stmt.query_map([id], |row| row.get::<_, String>(0))?;
+    match rows.next() {
+        Some(row) => Ok(Some(row?)),
+        None => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,5 +206,35 @@ mod tests {
     fn returns_none_for_an_unknown_id() {
         let conn = open_test_db();
         assert_eq!(headline(&conn, 9999).expect("query"), None);
+    }
+
+    #[test]
+    fn title_resolves_by_id_and_is_none_for_unknown() {
+        let mut conn = open_test_db();
+        crate::upsert_file(
+            &mut conn,
+            &FileIndexInput {
+                rel_path: "notes/tasks.org".to_string(),
+                mtime_ns: 1,
+                size_bytes: 1,
+                preamble: None,
+                headlines: vec![headline_input("Track me", 40, 128)],
+            },
+        )
+        .expect("upsert");
+
+        let id: i64 = conn
+            .query_row(
+                "SELECT id FROM headlines WHERE kind = 'headline'",
+                (),
+                |row| row.get(0),
+            )
+            .expect("headline id");
+
+        assert_eq!(
+            title(&conn, id).expect("query"),
+            Some("Track me".to_string())
+        );
+        assert_eq!(title(&conn, 9999).expect("query"), None);
     }
 }
