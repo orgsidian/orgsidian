@@ -53,6 +53,7 @@ fn courses(today: NaiveDate) -> String {
     let scheduled_in_3 = active_timestamp(today + Duration::days(3));
     let deadline_in_4 = active_timestamp(today + Duration::days(4));
     let closed_3_ago = inactive_timestamp(today - Duration::days(3));
+    let closed_6_ago = inactive_timestamp(today - Duration::days(6));
 
     format!(
         "\
@@ -65,6 +66,8 @@ with — add your own courses alongside it as the term goes on.
 
 ** DONE Submit problem set 2
    CLOSED: {closed_3_ago}
+** DONE Read Chapter 3 — Descriptive Statistics
+   CLOSED: {closed_6_ago}
 ** TODO Read Chapter 4 — Probability Distributions
    SCHEDULED: {scheduled_today}
 ** NEXT Problem set 3
@@ -148,7 +151,7 @@ mod tests {
             .find(|h| h.title.trim() == "Introduction to Statistics")
             .expect("course headline present");
         let items = &course.children;
-        assert_eq!(items.len(), 4);
+        assert_eq!(items.len(), 5);
 
         let scheduled_today = items
             .iter()
@@ -171,16 +174,28 @@ mod tests {
             "one item is in the NEXT state"
         );
 
-        let done = items
+        // Story 7.5: the starter ships >=2 DONE items completed inside the
+        // rolling-7-day window, so the default `Done This Week` / `Done This
+        // Month` presets are non-empty on first launch.
+        let done: Vec<_> = items
             .iter()
-            .find(|h| h.todo_state.as_ref().map(|s| s.keyword.as_str()) == Some("DONE"))
-            .expect("one item already DONE");
-        // A completed item's CLOSED stamp must be inactive and in the past, and
-        // it must not still be SCHEDULED, or it would leak into the agenda.
-        let closed = done.closed.as_ref().expect("DONE item carries CLOSED");
-        assert!(closed.date < today(), "CLOSED must be in the past");
-        assert!(!closed.active, "CLOSED must be an inactive timestamp");
-        assert!(done.scheduled.is_none(), "DONE item must not be SCHEDULED");
+            .filter(|h| h.todo_state.as_ref().map(|s| s.keyword.as_str()) == Some("DONE"))
+            .collect();
+        assert!(done.len() >= 2, "at least two items already DONE");
+        for item in &done {
+            // A completed item's CLOSED stamp must be recent (inside the last 7
+            // days) and inactive, and it must not still be SCHEDULED, or it would
+            // leak into the scheduled/deadline agenda.
+            let closed = item.closed.as_ref().expect("DONE item carries CLOSED");
+            assert!(closed.date < today(), "CLOSED must be in the past");
+            assert!(
+                (today() - Duration::days(7)..today()).contains(&closed.date),
+                "CLOSED {} must be inside the rolling-7-day window",
+                closed.date
+            );
+            assert!(!closed.active, "CLOSED must be an inactive timestamp");
+            assert!(item.scheduled.is_none(), "DONE item must not be SCHEDULED");
+        }
 
         // The NEXT problem set carries both stamps with correct, distinct dates
         // (guards the same-line `DEADLINE: <..> SCHEDULED: <..>` planning-line

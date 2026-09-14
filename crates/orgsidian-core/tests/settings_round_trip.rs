@@ -55,15 +55,27 @@ fn populated_vault_settings_round_trip() {
     original.agenda_presets.insert(
         "Work today".into(),
         AgendaPreset {
-            view: "today".into(),
-            filters: vec!["@work".into(), "TODO".into()],
+            view: "custom".into(),
+            start: Some("2026-09-01".into()),
+            end: Some("2026-09-07".into()),
+            rolling_days: None,
+            tag: Some("work".into()),
+            todo_state: Some("TODO".into()),
+            file_path_glob: None,
+            completed: false,
         },
     );
     original.agenda_presets.insert(
-        "Personal week".into(),
+        "Done this week".into(),
         AgendaPreset {
-            view: "week".into(),
-            filters: vec!["@home".into()],
+            view: "custom".into(),
+            start: None,
+            end: None,
+            rolling_days: Some(7),
+            tag: Some("home".into()),
+            todo_state: Some("DONE".into()),
+            file_path_glob: Some("projects/*".into()),
+            completed: true,
         },
     );
     original
@@ -197,13 +209,32 @@ fn ui_mode_strategy() -> impl Strategy<Value = UiMode> {
 fn agenda_preset_strategy() -> impl Strategy<Value = AgendaPreset> {
     (
         prop_oneof![
+            Just("custom".to_string()),
             Just("today".to_string()),
             Just("week".to_string()),
-            Just("custom".to_string()),
         ],
-        collection::vec("[a-z]{2,6}", 0..4),
+        option::of("[a-z0-9-]{2,10}"),
+        option::of("[a-z0-9-]{2,10}"),
+        option::of(1u32..60u32),
+        option::of("[a-z]{2,6}"),
+        option::of("[a-z]{2,6}"),
+        option::of("[a-z]{2,6}"),
+        any::<bool>(),
     )
-        .prop_map(|(view, filters)| AgendaPreset { view, filters })
+        .prop_map(
+            |(view, start, end, rolling_days, tag, todo_state, file_path_glob, completed)| {
+                AgendaPreset {
+                    view,
+                    start,
+                    end,
+                    rolling_days,
+                    tag,
+                    todo_state,
+                    file_path_glob,
+                    completed,
+                }
+            },
+        )
 }
 
 fn today_dashboard_strategy() -> impl Strategy<Value = TodayDashboardSections> {
@@ -243,6 +274,7 @@ fn vault_settings_strategy() -> impl Strategy<Value = VaultSettings> {
         theme_choice_strategy(),
         option::of("[a-zA-Z+]{1,12}"),
         collection::btree_map("[a-zA-Z ]{3,10}", agenda_preset_strategy(), 0..3),
+        any::<bool>(),
         collection::btree_set("[a-z-]{4,12}", 0..4),
         ui_mode_strategy(),
         today_dashboard_strategy(),
@@ -253,6 +285,7 @@ fn vault_settings_strategy() -> impl Strategy<Value = VaultSettings> {
                 theme,
                 capture_hotkey,
                 agenda_presets,
+                agenda_presets_seeded,
                 dismissed_coaching,
                 ui_mode,
                 today_dashboard,
@@ -262,6 +295,7 @@ fn vault_settings_strategy() -> impl Strategy<Value = VaultSettings> {
                 theme,
                 capture_hotkey,
                 agenda_presets,
+                agenda_presets_seeded,
                 dismissed_coaching,
                 ui_mode,
                 today_dashboard,

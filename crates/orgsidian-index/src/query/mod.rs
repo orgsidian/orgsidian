@@ -348,6 +348,7 @@ mod tests {
                     tag: None,
                     todo_state: None,
                     file_path_glob: None,
+                    completed_in_range: false,
                 },
             )
             .expect("custom must not error");
