@@ -100,6 +100,18 @@ test.describe('@a11y Today Dashboard', () => {
         invoke: (cmd: string) => {
           if (cmd === 'has_configured_vault') return Promise.resolve(true);
           if (cmd === 'today_dashboard') return Promise.resolve(dashboard);
+          // Story 7.2 added the section-collapse prefs read on mount; the
+          // surface stays on "Loading…" (and no section triggers render) until
+          // it resolves to a real prefs object — a `null` resolve is NOT the
+          // fall-back path. Return all-expanded so every section is open.
+          if (cmd === 'get_today_dashboard_prefs')
+            return Promise.resolve({
+              scheduled: false,
+              deadline: false,
+              todayTag: false,
+              inboxPreview: false,
+              activeClock: false,
+            });
           // Any other command the co-hosted placeholder panels might issue:
           // resolve benignly so nothing throws during the scan.
           return Promise.resolve(null);
