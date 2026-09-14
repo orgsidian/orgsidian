@@ -20,11 +20,18 @@ use std::path::PathBuf;
 
 /// `(fr, module_path_relative_to_workspace_root, expected_first_doc_line_needle)`.
 /// The needle must appear on the module's FIRST line.
-const TRACE_TABLE: &[(&str, &str, &str)] = &[(
-    "FR-6",
-    "crates/orgsidian-index/src/query/dashboard.rs",
-    "//! Implements FR-6",
-)];
+const TRACE_TABLE: &[(&str, &str, &str)] = &[
+    (
+        "FR-6",
+        "crates/orgsidian-index/src/query/dashboard.rs",
+        "//! Implements FR-6",
+    ),
+    (
+        "FR-8",
+        "crates/orgsidian-core/src/clock.rs",
+        "//! Implements FR-8",
+    ),
+];
 
 /// The workspace root — two levels up from this test's host crate manifest
 /// (`crates/orgsidian-core`).

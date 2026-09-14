@@ -30,6 +30,7 @@ pub use orgsidian_index::query::agenda::{AgendaItem, CustomAgendaQuery};
 pub use orgsidian_index::query::dashboard::{
     ActiveClock, DashboardParams, InboxItem, TodayDashboard,
 };
+pub use orgsidian_index::query::locate::HeadlineLocation;
 pub use orgsidian_index::{IndexStats, IntegrityCheck, IntegrityReport};
 pub use resync::{resync_file, ResyncOutcome};
 pub use scan::{scan_vault, ScanOutcome, ScanProgress};
@@ -355,6 +356,35 @@ pub async fn agenda_custom(
     }
     let pool = IndexPool::new(&db_path).map_err(index_err)?;
     pool.interact(move |conn| orgsidian_index::query::agenda::custom(conn, &query))
+        .await
+        .map_err(index_err)
+}
+
+/// Implements FR-8 (Story 7.6 clock-manager support): resolve `headline_id`
+/// (the app-wide index rowid) to its source file + byte span, so the clock
+/// manager can analyze the right file and splice a `CLOCK:` line into the
+/// matching headline's `:LOGBOOK:`. Same read-only posture as
+/// [`agenda_today`]/[`index_stats`]: resolve the DB path, refuse if the index
+/// is absent, read through a FRESH [`IndexPool`] (the Tauri command boundary
+/// hands the clock commands a `vault_root`, not the live [`IndexHandle`]).
+///
+/// Returns `Ok(None)` when no headline carries that rowid (a stale id) — an
+/// absent row is a caller-recoverable desync, not an error.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault or the read fails.
+pub async fn locate_headline(
+    vault_root: &Path,
+    headline_id: i64,
+) -> Result<Option<HeadlineLocation>, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(move |conn| orgsidian_index::query::locate::headline(conn, headline_id))
         .await
         .map_err(index_err)
 }

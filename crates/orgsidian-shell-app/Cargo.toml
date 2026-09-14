@@ -31,6 +31,12 @@ tokio = { workspace = true, features = ["fs"] }
 # settings store wire is live. Facade only; subscriber wiring stays as Tauri
 # plugin-log's job (LD-35).
 tracing = { workspace = true }
+# Story 7.6 (FR-8): the clock command layer supplies the injected wall-clock
+# `now` (`chrono::Local::now().naive_local()`) that core's clock functions take
+# as a `NaiveDateTime`. chrono is already a workspace dependency (default-
+# features-off); the `clock` feature adds `Local` — its transitive
+# `iana-time-zone` is already in the lockfile, so no new crate is pulled.
+chrono = { workspace = true, features = ["clock"] }
 tauri-specta = { workspace = true }
 specta = { workspace = true }
 specta-typescript = { workspace = true }

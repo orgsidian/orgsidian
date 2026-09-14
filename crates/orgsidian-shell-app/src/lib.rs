@@ -8,6 +8,9 @@ use orgsidian_core::{
 };
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
+// Story 7.6 (FR-8): `Manager::state` on the window in the `on_window_event`
+// focus listener that refreshes the Active Clock's `last_active_at`.
+use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder, ErrorHandlingMode, Event};
 
 mod dashboard_prefs;
@@ -49,6 +52,12 @@ pub struct IndexProgress {
 #[derive(Default)]
 pub struct AppState {
     designating: tauri::async_runtime::Mutex<()>,
+    /// Story 7.6 (FR-8): serializes clock mutations so rapid/spam clicking can
+    /// never race two commands into each observing "no active clock" and each
+    /// inserting an open line (the epic's atomicity-under-spam invariant). An
+    /// ASYNC mutex held across the whole core mutation, mirroring `designating`;
+    /// the UI's per-button disable is not a backend serialization guarantee.
+    clocking: tauri::async_runtime::Mutex<()>,
     index: Mutex<Option<IndexHandle>>,
     cancel: Mutex<Option<Arc<AtomicBool>>>,
     /// Story 5.5 (LD-7 / FR-16): which open files hold unsaved edits. The
@@ -1113,6 +1122,104 @@ async fn delete_agenda_preset(name: String, state: tauri::State<'_, AppState>) -
     Ok(())
 }
 
+/// Implements FR-8 (functional): the injected wall-clock `now` for the clock
+/// commands — the local calendar datetime, as core's clock functions take it
+/// (`NaiveDateTime`; see `orgsidian_core::clock`'s "injected wall clock" note).
+/// The one place the shell reads the machine clock; core never does.
+fn now_naive() -> chrono::NaiveDateTime {
+    chrono::Local::now().naive_local()
+}
+
+/// Implements FR-8 (functional): wire projection of `orgsidian_core::clock`'s
+/// `ActiveClock` for `commands.clockIn/clockOut/clockResume/getActiveClock`.
+/// Multi-word fields carry the explicit camelCase rename — same reason as
+/// [`AgendaItemDto`]/[`ConflictSummary`] (the pinned `tauri-specta` has no
+/// project-wide rename). `headlineId` is already `u32` on the core type, so
+/// this is a straight field copy (no narrowing needed here).
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveClockStateDto {
+    /// `headlines.id` — the tracked headline's app-wide identity.
+    pub headline_id: u32,
+    /// Clock-in timestamp (`%Y-%m-%dT%H:%M:%S`); equals the `CLOCK:` line start.
+    pub started_at: String,
+    /// Last time the app was known alive with this clock — refreshed on
+    /// window-focus; Story 7.7 pre-fills its "adjust end time" from this.
+    pub last_active_at: String,
+}
+
+impl From<orgsidian_core::ActiveClockState> for ActiveClockStateDto {
+    fn from(clock: orgsidian_core::ActiveClockState) -> Self {
+        ActiveClockStateDto {
+            headline_id: clock.headline_id,
+            started_at: clock.started_at,
+            last_active_at: clock.last_active_at,
+        }
+    }
+}
+
+/// Story 7.6 (FR-8): clock IN on `headline_id` — insert an open `CLOCK:` line
+/// into the headline's `:LOGBOOK:` (drawer created if absent), auto-stopping
+/// any prior active clock, and set the Active-Clock pointer. Errors with
+/// `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn clock_in(
+    headline_id: u32,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<ActiveClockStateDto> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant): held for
+    // the whole core mutation so two near-simultaneous clock commands cannot
+    // both observe "no active clock" and each insert an open line.
+    let _clocking = state.clocking.lock().await;
+    let clock = orgsidian_core::clock_in(&vault_root, headline_id, now_naive()).await?;
+    Ok(ActiveClockStateDto::from(clock))
+}
+
+/// Story 7.6 (FR-8): clock OUT the active clock — close its matching open
+/// `CLOCK:` line to `[start]--[end] => HH:MM` and clear the Active-Clock
+/// pointer. Errors with `OrgError::Vault` when no Vault is active or when there
+/// is no active clock.
+#[tauri::command]
+#[specta::specta]
+async fn clock_out(state: tauri::State<'_, AppState>) -> OrgResult<()> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
+    orgsidian_core::clock_out(&vault_root, now_naive()).await
+}
+
+/// Story 7.6 (FR-8): clock RESUME on `headline_id` — re-activate its
+/// most-recent unclosed `CLOCK:` line without mutating the source (falling back
+/// to a fresh clock-in when there is none). Errors with `OrgError::Vault` when
+/// no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn clock_resume(
+    headline_id: u32,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<ActiveClockStateDto> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
+    let _clocking = state.clocking.lock().await;
+    let clock = orgsidian_core::clock_resume(&vault_root, headline_id, now_naive()).await?;
+    Ok(ActiveClockStateDto::from(clock))
+}
+
+/// Story 7.6 (FR-8): the current Active Clock, or `None` when nothing is being
+/// tracked (the Today Dashboard's Active-Clock section + Story 7.7's launch
+/// check read this). Errors with `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn get_active_clock(
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<Option<ActiveClockStateDto>> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let clock = orgsidian_core::active_clock(&vault_root)?;
+    Ok(clock.map(ActiveClockStateDto::from))
+}
+
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial
 /// retained). A no-op when no scan is running.
 #[tauri::command]
@@ -1161,7 +1268,11 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             set_today_dashboard_section_collapsed,
             list_agenda_presets,
             save_agenda_preset,
-            delete_agenda_preset
+            delete_agenda_preset,
+            clock_in,
+            clock_out,
+            clock_resume,
+            get_active_clock
         ])
         // Story 3.6: the app's first declared event lights up the `events`
         // object in the generated `tauri.ts`. Story 5.5 adds the second event —
@@ -1200,7 +1311,22 @@ pub fn run() -> tauri::Result<()> {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_window_state::Builder::new().build());
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        // Story 7.6 (FR-8): refresh the Active Clock's `last_active_at` on every
+        // window-focus/foreground event, so Stories 7.7 (stale-clock prompt) and
+        // 7.8 (ClockEditor) always have a fresh "last known alive" timestamp. A
+        // silent no-op when no clock is active or no Vault is designated.
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Focused(true)) {
+                // `try_state` (non-panicking): a focus event can fire during
+                // early startup before `AppState` is managed — no-op then.
+                if let Some(state) = window.try_state::<AppState>() {
+                    if let Some(vault_root) = state.current_vault_root() {
+                        let _ = orgsidian_core::refresh_active_clock(&vault_root, now_naive());
+                    }
+                }
+            }
+        });
 
     // Story 13.2 activates the updater runtime: generates the signing key,
     // populates `plugins.updater.{pubkey,endpoints}` in tauri.conf.json, and
@@ -1595,6 +1721,23 @@ mod tests {
         let (name, back) = dto.into_core();
         assert_eq!(name, "Done This Week");
         assert_eq!(back, core);
+    }
+
+    /// Story 7.6 (FR-8): `ActiveClockStateDto::from` carries every field across
+    /// the IPC projection unchanged (a straight field copy — `headlineId` is
+    /// already `u32` on the core type, so unlike `AgendaItemDto` there is no
+    /// narrowing to verify, only that no field is dropped or swapped).
+    #[test]
+    fn active_clock_dto_projects_every_field() {
+        let core = orgsidian_core::ActiveClockState {
+            headline_id: 42,
+            started_at: "2026-09-13T10:00:00".to_string(),
+            last_active_at: "2026-09-13T12:30:00".to_string(),
+        };
+        let dto = ActiveClockStateDto::from(core.clone());
+        assert_eq!(dto.headline_id, core.headline_id);
+        assert_eq!(dto.started_at, core.started_at);
+        assert_eq!(dto.last_active_at, core.last_active_at);
     }
 
     /// Story 6.2: `generate_starter_vault`'s `today` parse — a literal

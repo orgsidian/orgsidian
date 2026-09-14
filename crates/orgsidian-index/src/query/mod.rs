@@ -115,6 +115,11 @@ pub mod dashboard;
 pub mod graph;
 pub mod search;
 
+/// Story 7.6 (FR-8): headline-location lookup by rowid — an ADDITIVE free
+/// function, deliberately NOT part of the frozen [`IndexQuery`] trait (Story
+/// 6.5 semver gate). See [`locate::headline`].
+pub mod locate;
+
 /// A `headlines.id` row identity, typed so the Backlinks/Search/Graph
 /// surfaces this story freezes never pass a bare `i64` for "which headline".
 ///
