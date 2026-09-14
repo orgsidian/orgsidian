@@ -301,6 +301,26 @@ fn clock_start_dt(entry: &ClockEntry) -> NaiveDateTime {
         .and_time(entry.start.time.unwrap_or_else(midnight))
 }
 
+/// The byte offset of the end of the logical CLOCK line that begins at
+/// `span_end` (a position inside the line, typically `entry.span.end`): the next
+/// `\n` from `span_end`, or the source end if the file has no trailing newline.
+/// A CRLF terminator's `\r` is preserved (the returned offset points at the
+/// `\r`, not the `\n`). Used to splice over the entire line — including any
+/// trailing text past the parsed span, such as a malformed `=> …` suffix.
+fn clock_line_content_end(source: &str, span_end: usize) -> usize {
+    match source[span_end..].find('\n') {
+        Some(rel_nl) => {
+            let nl = span_end + rel_nl;
+            if nl > span_end && source.as_bytes()[nl - 1] == b'\r' {
+                nl - 1
+            } else {
+                nl
+            }
+        }
+        None => source.len(),
+    }
+}
+
 /// This headline's own OPEN (unclosed) CLOCK entry whose start matches
 /// `started` — the target [`clock_out`] closes, located by `started_at`
 /// (robust to byte-offset shifts) rather than a stale byte offset.
@@ -678,23 +698,34 @@ pub async fn clock_out(vault_root: &Path, now: NaiveDateTime) -> OrgResult<()> {
 /// `new_end - new_start` via [`format_duration`] — any duration the caller may
 /// have shown is ignored.
 ///
+/// `expected_start` is the start timestamp the caller believed it was editing;
+/// after the entry is located by `entry_index` its start is verified to match
+/// (minute precision) and the edit is rejected on mismatch — LOGBOOK prepends
+/// newest, so a stale `entry_index` (a re-clock, a stale list, another window)
+/// would otherwise silently rewrite the WRONG entry. This mirrors
+/// [`clock_out`], which addresses the open line by matching `started_at`, never
+/// by position.
+///
 /// # Errors
 ///
 /// [`OrgError::Vault`] when: `new_end` is before `new_start`; the Headline is
 /// not in the index or its ordinal no longer resolves; `entry_index` is out of
-/// range; or the target entry is still RUNNING (`end == None`) — a running
-/// clock is corrected via the Story 7.7 adjust-end flow, not here, so the
-/// `active-clock.json` pointer invariant is never disturbed.
+/// range; the located entry's start does not match `expected_start`; or the
+/// target entry is still RUNNING (`end == None`) — a running clock is corrected
+/// via the Story 7.7 adjust-end flow, not here, so the `active-clock.json`
+/// pointer invariant is never disturbed.
 /// [`OrgError::Io`]/[`OrgError::Parse`] on file access.
 pub async fn update_clock_entry(
     vault_root: &Path,
     headline_id: u32,
     entry_index: usize,
+    expected_start: NaiveDateTime,
     new_start: NaiveDateTime,
     new_end: NaiveDateTime,
 ) -> OrgResult<()> {
     let new_start = truncate_to_minute(new_start);
     let new_end = truncate_to_minute(new_end);
+    let expected_start = truncate_to_minute(expected_start);
 
     if new_end < new_start {
         return Err(OrgError::Vault {
@@ -732,6 +763,22 @@ pub async fn update_clock_entry(
             ),
         })?;
 
+    // Positional trust is unsafe: LOGBOOK prepends newest, so a re-clock or a
+    // stale list can shift `entry_index` off the entry the caller meant. Verify
+    // the located entry's start matches what the caller believed it was editing
+    // (minute precision) and reject a mismatch, writing nothing — mirroring
+    // `clock_out`, which matches the open line by `started_at`, never by offset.
+    let located_start = truncate_to_minute(clock_start_dt(entry));
+    if located_start != expected_start {
+        return Err(OrgError::Vault {
+            reason: format!(
+                "clock entry index {entry_index} for headline {headline_id} now starts at \
+                 {located_start} but the edit expected {expected_start}; the LOGBOOK changed \
+                 since it was opened — reopen the entry and try again"
+            ),
+        });
+    }
+
     // Editing a RUNNING line here would orphan the `active-clock.json` pointer
     // (which still references its start) and silently drop the "one active
     // clock" invariant. The running clock is corrected via the Story 7.7
@@ -748,12 +795,19 @@ pub async fn update_clock_entry(
     let start_stamp = format_inactive_stamp(new_start);
     let end_stamp = format_inactive_stamp(new_end);
     let duration = format_duration(new_end - new_start);
-    // `entry.span` is the CLOCK line's content after the indent and before the
-    // trailing newline (see `clock_out`, which appends at `span.end`), so
-    // splicing over the whole span leaves the drawer indent and the line
-    // terminator untouched.
+    // Splice over the ENTIRE logical CLOCK line — from its content start
+    // (`span.start`, after the drawer indent) to just before the line's `\n` —
+    // NOT merely over `entry.span`. For a closed entry whose `=> H:MM` duration
+    // suffix is malformed (e.g. `=> N/A`), `parse_clock_line` leaves `span.end`
+    // right after `[end]`, so splicing only `span` would strip nothing and leave
+    // the stale ` => N/A` tail appended after the freshly written ` => 1:00` — a
+    // corrupted double-suffix line. A CLOCK line's whole content IS the entry,
+    // so replacing to end-of-line can never eat legitimate content, and it keeps
+    // the FR-2 byte-faithful round-trip: the drawer indent and the line
+    // terminator (LF or CRLF) are preserved.
+    let line_content_end = clock_line_content_end(&source, entry.span.end);
     let new_line = format!("CLOCK: {start_stamp}--{end_stamp} => {duration}");
-    let new_source = splice(&source, entry.span.start, entry.span.end, &new_line);
+    let new_source = splice(&source, entry.span.start, line_content_end, &new_line);
     atomic_write(&file_path, new_source.as_bytes()).map_err(clock_io)?;
     Ok(())
 }
@@ -1201,6 +1255,26 @@ mod tests {
             compose(dt(2026, 9, 13, 10, 0), dt(2026, 9, 13, 10, 0)),
             "CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 10:00] => 0:00"
         );
+    }
+
+    #[test]
+    fn clock_line_content_end_stops_before_the_terminator() {
+        // LF: end at the '\n'.
+        let lf = "CLOCK: [x] => N/A\nnext\n";
+        let span_end = "CLOCK: [x]".len();
+        assert_eq!(
+            &lf[..clock_line_content_end(lf, span_end)],
+            "CLOCK: [x] => N/A"
+        );
+        // CRLF: end at the '\r', preserving the terminator.
+        let crlf = "CLOCK: [x] => N/A\r\nnext\r\n";
+        assert_eq!(
+            &crlf[..clock_line_content_end(crlf, span_end)],
+            "CLOCK: [x] => N/A"
+        );
+        // No trailing newline: end at source end.
+        let none = "CLOCK: [x] => N/A";
+        assert_eq!(clock_line_content_end(none, span_end), none.len());
     }
 
     #[test]

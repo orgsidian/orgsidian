@@ -1,7 +1,9 @@
 //! Story 7.8 (FR-8): editing an existing CLOSED `CLOCK:` entry end-to-end over
 //! a real scanned vault + derived index — the rewritten stamps, the recomputed
 //! `=> HH:MM` duration, the byte-faithful remainder, and the guard rejections
-//! (end-before-start, out-of-range index, still-running entry).
+//! (end-before-start, out-of-range index, still-running entry, a malformed
+//! duration rewritten cleanly, and a stale `entry_index` whose start no longer
+//! matches).
 //!
 //! Mirrors the `tests/clock.rs` harness: a single process-wide
 //! `ORGSIDIAN_DATA_DIR` override (set once via a `OnceLock`) with each test on
@@ -108,7 +110,7 @@ async fn edits_a_closed_entry_and_recomputes_duration_byte_faithfully() {
     );
 
     // Correct the entry: 10:00-11:00 (1:00) -> 09:30-12:15 (2:45).
-    update_clock_entry(&v.root, id, 0, at(9, 30), at(12, 15))
+    update_clock_entry(&v.root, id, 0, at(10, 0), at(9, 30), at(12, 15))
         .await
         .expect("edit closed entry");
 
@@ -144,7 +146,7 @@ async fn edits_across_midnight() {
     clock_in(&v.root, id, at(22, 0)).await.expect("clock in");
     clock_out(&v.root, at(23, 0)).await.expect("clock out");
 
-    update_clock_entry(&v.root, id, 0, at(22, 0), next_day(6, 30))
+    update_clock_entry(&v.root, id, 0, at(22, 0), at(22, 0), next_day(6, 30))
         .await
         .expect("cross-midnight edit");
 
@@ -163,7 +165,7 @@ async fn rejects_end_before_start_without_writing() {
     clock_out(&v.root, at(11, 0)).await.expect("clock out");
     let before = read(&v.root, "a.org");
 
-    let err = update_clock_entry(&v.root, id, 0, at(12, 0), at(11, 0))
+    let err = update_clock_entry(&v.root, id, 0, at(10, 0), at(12, 0), at(11, 0))
         .await
         .expect_err("end before start must error");
     assert!(
@@ -181,7 +183,7 @@ async fn rejects_out_of_range_index_without_writing() {
     clock_out(&v.root, at(11, 0)).await.expect("clock out");
     let before = read(&v.root, "a.org");
 
-    let err = update_clock_entry(&v.root, id, 5, at(9, 0), at(10, 0))
+    let err = update_clock_entry(&v.root, id, 5, at(10, 0), at(9, 0), at(10, 0))
         .await
         .expect_err("out-of-range index must error");
     assert!(
@@ -202,9 +204,85 @@ async fn rejects_editing_a_running_entry_without_writing() {
         "open line present: {before:?}"
     );
 
-    let err = update_clock_entry(&v.root, id, 0, at(9, 0), at(11, 0))
+    let err = update_clock_entry(&v.root, id, 0, at(10, 0), at(9, 0), at(11, 0))
         .await
         .expect_err("editing a running entry must error");
+    assert!(
+        matches!(err, orgsidian_core::OrgError::Vault { .. }),
+        "got {err:?}"
+    );
+    assert_eq!(read(&v.root, "a.org"), before, "source unchanged on reject");
+}
+
+/// Fix #1 (data-corruption regression): a CLOSED entry whose `=> …` duration
+/// suffix is MALFORMED (`=> N/A`) parses with `end == Some(..)` but a span that
+/// stops right after `[end]`, not covering the ` => N/A` tail. A span-only
+/// splice would leave that stale suffix after the freshly written ` => 2:45`,
+/// producing a corrupted double-suffix line. The full-line splice must instead
+/// rewrite the WHOLE line to a single clean byte-faithful entry.
+#[tokio::test(flavor = "multi_thread")]
+async fn edits_a_malformed_duration_entry_into_a_clean_line() {
+    let v = scanned_vault(&[(
+        "a.org",
+        "* Task A\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:00] => N/A\n:END:\nbody line stays put\n",
+    )])
+    .await;
+    let id = headline_id_by_title(&v.db, "Task A");
+
+    // Correct the malformed entry: expected start 10:00, new 09:30-12:15 (2:45).
+    update_clock_entry(&v.root, id, 0, at(10, 0), at(9, 30), at(12, 15))
+        .await
+        .expect("edit malformed-duration entry");
+
+    let after = read(&v.root, "a.org");
+    assert!(
+        after.contains("CLOCK: [2026-09-13 Sun 09:30]--[2026-09-13 Sun 12:15] => 2:45\n"),
+        "clean rewritten line: {after:?}"
+    );
+    // The corruption this guards against: the stale malformed suffix must be gone
+    // and there must be no double `=>` suffix on the line.
+    assert!(
+        !after.contains("N/A"),
+        "stale malformed suffix removed: {after:?}"
+    );
+    let clock_line = after
+        .lines()
+        .find(|l| l.contains("CLOCK:"))
+        .expect("a CLOCK line");
+    assert_eq!(
+        clock_line.matches("=>").count(),
+        1,
+        "exactly one duration suffix (no corruption): {clock_line:?}"
+    );
+    // Byte-faithful remainder: drawer + body untouched.
+    assert!(after.contains(":LOGBOOK:"), "drawer intact: {after:?}");
+    assert!(after.contains(":END:"), "drawer end intact: {after:?}");
+    assert!(
+        after.contains("body line stays put"),
+        "body intact: {after:?}"
+    );
+}
+
+/// Fix #2 (wrong-entry regression): LOGBOOK prepends newest, so an
+/// `entry_index` captured by the UI can point at a DIFFERENT entry by the time
+/// the edit confirms. When the entry at `entry_index` no longer has the start
+/// the caller expected, the edit must be rejected without writing — never a
+/// silent rewrite of the wrong entry.
+#[tokio::test(flavor = "multi_thread")]
+async fn rejects_a_stale_index_whose_entry_start_changed_without_writing() {
+    // Two closed entries in one LOGBOOK; index 0 starts at 10:00.
+    let v = scanned_vault(&[(
+        "a.org",
+        "* Task A\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:00] => 1:00\nCLOCK: [2026-09-13 Sun 08:00]--[2026-09-13 Sun 09:00] => 1:00\n:END:\n",
+    )])
+    .await;
+    let id = headline_id_by_title(&v.db, "Task A");
+    let before = read(&v.root, "a.org");
+
+    // Caller believed index 0 started at 08:00 (stale — it actually starts 10:00).
+    let err = update_clock_entry(&v.root, id, 0, at(8, 0), at(8, 30), at(9, 30))
+        .await
+        .expect_err("stale index (start mismatch) must error");
     assert!(
         matches!(err, orgsidian_core::OrgError::Vault { .. }),
         "got {err:?}"
@@ -230,7 +308,7 @@ async fn rejects_when_the_headline_ordinal_no_longer_resolves() {
     write(&v.root, "a.org", "* Task A\n");
     let before = read(&v.root, "a.org");
 
-    let err = update_clock_entry(&v.root, id_b, 0, at(9, 0), at(11, 0))
+    let err = update_clock_entry(&v.root, id_b, 0, at(10, 0), at(9, 0), at(11, 0))
         .await
         .expect_err("a vanished headline ordinal must error");
     assert!(

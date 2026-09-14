@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *  2. editing start or end recomputes the duration;
  *  3. editing the duration recomputes the end (start fixed);
  *  4. an end before the start blocks Save (validation);
- *  5. Save calls `updateClockEntry(headlineId, entryIndex, newStart, newEnd)`
- *     with the ISO stamps, fires `onSaved`, and closes;
+ *  5. Save calls `updateClockEntry(headlineId, entryIndex, expectedStart,
+ *     newStart, newEnd)` with the original start + the new ISO stamps, fires
+ *     `onSaved`, and closes;
  *  6. a command failure surfaces the reason and leaves the dialog open.
  */
 
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     (
       headlineId: number,
       entryIndex: number,
+      expectedStart: string,
       newStart: string,
       newEnd: string,
     ) => Promise<null>
@@ -155,10 +157,11 @@ describe("ClockEditor (Story 7.8, FR-8)", () => {
     expect(mocks.updateClockEntry).not.toHaveBeenCalled();
   });
 
-  it("saves via updateClockEntry with the ISO stamps, then fires onSaved and closes", async () => {
+  it("saves via updateClockEntry with the original start + new ISO stamps, then fires onSaved and closes", async () => {
     const { onOpenChange, onSaved } = await render({
       headlineId: 7,
       entryIndex: 2,
+      initialStart: "2026-09-13T10:00:00",
     });
     await setInput(input("Start time"), "09:30");
     await setInput(input("End time"), "12:15");
@@ -168,6 +171,9 @@ describe("ClockEditor (Story 7.8, FR-8)", () => {
     expect(mocks.updateClockEntry).toHaveBeenCalledWith(
       7,
       2,
+      // The ORIGINAL start (expected_start) — the core rejects a stale index
+      // whose entry no longer starts here (Fix #2).
+      "2026-09-13T10:00:00",
       "2026-09-13T09:30:00",
       "2026-09-13T12:15:00",
     );

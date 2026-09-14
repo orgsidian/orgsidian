@@ -1349,26 +1349,39 @@ async fn clock_adjust_end(end_at: String, state: tauri::State<'_, AppState>) -> 
 /// start/end to the frontend's chosen ISO datetimes and recompute the
 /// `=> HH:MM` duration, writing the LOGBOOK line back byte-faithfully. The
 /// `entry_index` is the 0-based index into the Headline's clock entries in
-/// document order (the order a LOGBOOK view renders them). Errors with
-/// `OrgError::Vault` when no Vault is active, either stamp is unparseable, the
-/// end is before the start, the index is out of range, or the target entry is
-/// still running.
+/// document order (the order a LOGBOOK view renders them). `expected_start` is
+/// the entry's original start (the ISO datetime the UI showed): the core
+/// verifies the entry at `entry_index` still starts there and rejects a mismatch
+/// so a stale index (LOGBOOK reordered by a re-clock, a stale list, or another
+/// window) never rewrites the wrong entry. Errors with `OrgError::Vault` when no
+/// Vault is active, any stamp is unparseable, the end is before the start, the
+/// index is out of range, the located entry's start does not match
+/// `expected_start`, or the target entry is still running.
 #[tauri::command]
 #[specta::specta]
 async fn update_clock_entry(
     headline_id: u32,
     entry_index: u32,
+    expected_start: String,
     new_start: String,
     new_end: String,
     state: tauri::State<'_, AppState>,
 ) -> OrgResult<()> {
     let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let expected = parse_wire_datetime("expected start", &expected_start)?;
     let start = parse_wire_datetime("clock start", &new_start)?;
     let end = parse_wire_datetime("clock end", &new_end)?;
     // Serialize clock mutations (FR-8 atomicity-under-spam invariant).
     let _clocking = state.clocking.lock().await;
-    orgsidian_core::update_clock_entry(&vault_root, headline_id, entry_index as usize, start, end)
-        .await
+    orgsidian_core::update_clock_entry(
+        &vault_root,
+        headline_id,
+        entry_index as usize,
+        expected,
+        start,
+        end,
+    )
+    .await
 }
 
 /// Request cancellation of the in-flight scan (LD-42 cancellable + partial

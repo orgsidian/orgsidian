@@ -196,6 +196,10 @@ export function ClockEditor({
       .updateClockEntry(
         headlineId,
         entryIndex,
+        // The entry's ORIGINAL start — the core verifies the entry still at
+        // `entryIndex` starts here (LOGBOOK reorders on re-clock), rejecting a
+        // stale index rather than rewriting the wrong entry.
+        initialStart,
         `${startDate}T${startTime}:00`,
         `${endDate}T${endTime}:00`,
       )
@@ -215,7 +219,7 @@ export function ClockEditor({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         data-testid="clock-editor"
-        aria-describedby={`clock-editor-desc${error ? " clock-editor-error" : ""}`}
+        aria-describedby={`clock-editor-desc${!valid ? " clock-editor-invalid" : ""}${error ? " clock-editor-error" : ""}`}
       >
         <DialogHeader>
           <DialogTitle>Edit time entry</DialogTitle>
