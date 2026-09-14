@@ -255,30 +255,50 @@ fn is_planning_line(line: &str) -> bool {
 // Headline / clock lookups
 // ---------------------------------------------------------------------------
 
-/// Convert a signed index byte offset to `usize`, clamping a (never-produced)
-/// negative to 0.
-fn byte_usize(v: i64) -> usize {
+/// Convert a signed index value (byte offset / ordinal) to `usize`, clamping a
+/// (never-produced) negative to 0.
+fn to_usize(v: i64) -> usize {
     usize::try_from(v).unwrap_or(0)
 }
 
-/// Find the headline whose section starts at byte offset `start` (the index's
-/// `byte_start` = `Headline::span.start`), searching nested children too.
-fn find_headline_by_start(headlines: &[Headline], start: usize) -> Option<&Headline> {
-    for h in headlines {
-        if h.span.start == start {
-            return Some(h);
+/// Find the headline at document-order `ordinal` (0-based) among `headlines`,
+/// counted in pre-order — a headline before its children, siblings in order —
+/// the same order the index counts for [`crate::index::HeadlineLocation`]'s
+/// `ordinal` (headlines sorted by `byte_start`).
+///
+/// This is the STABLE re-location identity the clock manager uses in place of
+/// the index's absolute `byte_start`: `CLOCK:` edits never add, remove, or
+/// reorder headlines, so a headline keeps its ordinal even as its byte offset
+/// shifts — whereas `byte_start` goes stale after any in-session clock write to
+/// the file (the in-process index is never resynced between commands, so it
+/// still reports the last-scan offsets).
+fn find_headline_by_ordinal(headlines: &[Headline], ordinal: usize) -> Option<&Headline> {
+    fn walk<'a>(
+        headlines: &'a [Headline],
+        target: usize,
+        seen: &mut usize,
+    ) -> Option<&'a Headline> {
+        for h in headlines {
+            if *seen == target {
+                return Some(h);
+            }
+            *seen += 1;
+            if let Some(found) = walk(&h.children, target, seen) {
+                return Some(found);
+            }
         }
-        if let Some(found) = find_headline_by_start(&h.children, start) {
-            return Some(found);
-        }
+        None
     }
-    None
+    walk(headlines, ordinal, &mut 0)
 }
 
 /// The clock-in start datetime of `entry` (combining its date with its time,
 /// defaulting a date-only stamp to midnight).
 fn clock_start_dt(entry: &ClockEntry) -> NaiveDateTime {
-    entry.start.date.and_time(entry.start.time.unwrap_or_else(midnight))
+    entry
+        .start
+        .date
+        .and_time(entry.start.time.unwrap_or_else(midnight))
 }
 
 /// This headline's own OPEN (unclosed) CLOCK entry whose start matches
@@ -348,8 +368,7 @@ fn compute_clock_in_edit(source: &str, headline: &Headline, now: NaiveDateTime) 
         (insert_at, text)
     } else {
         let (insert_at, indent) = logbook_insert_anchor(source, headline);
-        let text =
-            format!("{indent}:LOGBOOK:{nl}{indent}CLOCK: {stamp}{nl}{indent}:END:{nl}");
+        let text = format!("{indent}:LOGBOOK:{nl}{indent}CLOCK: {stamp}{nl}{indent}:END:{nl}");
         (insert_at, text)
     }
 }
@@ -386,6 +405,17 @@ fn logbook_insert_anchor(source: &str, headline: &Headline) -> (usize, String) {
 // Clock manager (index-backed)
 // ---------------------------------------------------------------------------
 
+/// The [`OrgError::Vault`] returned when a headline resolved in the index could
+/// not be found in its freshly-read source (an index/source desync).
+fn headline_not_found_err(headline_id: u32, location: &crate::index::HeadlineLocation) -> OrgError {
+    OrgError::Vault {
+        reason: format!(
+            "headline {headline_id} (document-order #{}) was not found in {}",
+            location.ordinal, location.file_path
+        ),
+    }
+}
+
 /// Read a file's source, mapping I/O failures to [`OrgError::Io`].
 fn read_source(path: &Path) -> OrgResult<String> {
     fs::read_to_string(path).map_err(|err| OrgError::Io {
@@ -418,31 +448,40 @@ pub async fn clock_in(
 ) -> OrgResult<ActiveClock> {
     let now = truncate_to_minute(now);
 
-    // At most one active clock: auto-stop the prior one first (the epic's
-    // "clocking into a new headline auto-stops the prior active clock").
-    // Best-effort: a corrupt/desynced prior pointer must not block clocking
-    // into a different headline — `clock_out` already clears the pointer on
-    // desync, so ignore its result and proceed.
-    if active_clock(vault_root)?.is_some() {
-        let _ = clock_out(vault_root, now).await;
-    }
-
     let location = crate::index::locate_headline(vault_root, i64::from(headline_id))
         .await?
         .ok_or_else(|| OrgError::Vault {
             reason: format!("headline {headline_id} is not in the index"),
         })?;
-
     let file_path = vault_root.join(&location.file_path);
+
+    // At most one active clock: auto-stop the prior one first (the epic's
+    // "clocking into a new headline auto-stops the prior active clock").
+    //
+    // Best-effort, but NOT error-swallowing: a benign desync (`OrgError::Vault`
+    // — the prior pointer was stale/already closed; `clock_out` clears it) is
+    // expected and we proceed with the switch, but a genuine I/O or parse
+    // failure while closing the prior line MUST abort the switch rather than
+    // silently lose the old open line.
+    if active_clock(vault_root)?.is_some() {
+        if let Err(err) = clock_out(vault_root, now).await {
+            if !matches!(err, OrgError::Vault { .. }) {
+                return Err(err);
+            }
+        }
+    }
+
+    // Re-read the file and locate the target by its STABLE document-order
+    // ordinal — never the index's absolute `byte_start`, which is stale after
+    // any in-session clock write to this file (the auto-stop just now, or an
+    // earlier clock-in on another headline in the same file): the in-process
+    // index is never resynced between commands, so it still reports last-scan
+    // offsets, while the ordinal survives every `CLOCK:` edit. This is what
+    // makes clocking B while A is active in the SAME file work.
     let source = read_source(&file_path)?;
     let doc = analyze_source(&source, &location.file_path)?;
-    let headline = find_headline_by_start(&doc.headlines, byte_usize(location.byte_start))
-        .ok_or_else(|| OrgError::Vault {
-            reason: format!(
-                "headline {headline_id} was not found at byte {} in {}",
-                location.byte_start, location.file_path
-            ),
-        })?;
+    let headline = find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal))
+        .ok_or_else(|| headline_not_found_err(headline_id, &location))?;
 
     let (insert_at, text) = compute_clock_in_edit(&source, headline, now);
     let new_source = splice(&source, insert_at, insert_at, &text);
@@ -499,28 +538,37 @@ pub async fn clock_out(vault_root: &Path, now: NaiveDateTime) -> OrgResult<()> {
         }
     };
 
-    let location = match crate::index::locate_headline(vault_root, i64::from(active.headline_id))
-        .await?
-    {
-        Some(loc) => loc,
-        None => {
-            remove_active_clock(vault_root)?;
-            return Err(OrgError::Vault {
-                reason: format!(
-                    "active clock references headline {} which is no longer in the index; \
+    let location =
+        match crate::index::locate_headline(vault_root, i64::from(active.headline_id)).await? {
+            Some(loc) => loc,
+            None => {
+                remove_active_clock(vault_root)?;
+                return Err(OrgError::Vault {
+                    reason: format!(
+                        "active clock references headline {} which is no longer in the index; \
                      cleared the dangling active-clock pointer",
-                    active.headline_id
-                ),
-            });
-        }
-    };
+                        active.headline_id
+                    ),
+                });
+            }
+        };
 
     let file_path = vault_root.join(&location.file_path);
     let source = read_source(&file_path)?;
     let doc = analyze_source(&source, &location.file_path)?;
-    // Search the whole file by `started_at` (never the possibly-stale index
-    // byte offset — our own clock-in may have shifted it since indexing).
-    let entry = find_open_clock_in_tree(&doc.headlines, started);
+    // Close ONLY the active headline's own open line: scope the `started_at`
+    // match to the headline the pointer references (resolved by its stable
+    // document-order ordinal, not the stale index `byte_start`), so a stray
+    // unclosed `CLOCK:` elsewhere in the same file at a coincidentally identical
+    // minute is never closed by mistake. A missing line under the resolved
+    // headline is a genuine desync, NOT an excuse to close another headline's
+    // line; only when the ordinal fails to resolve at all (headline count
+    // changed out from under the index) do we fall back to the whole-tree
+    // `started_at` search — still matched by `started_at`, never by an offset.
+    let entry = match find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal)) {
+        Some(headline) => find_open_clock(headline, started),
+        None => find_open_clock_in_tree(&doc.headlines, started),
+    };
 
     let entry = match entry {
         Some(e) => e,
@@ -570,7 +618,10 @@ pub async fn clock_resume(
     let file_path = vault_root.join(&location.file_path);
     let source = read_source(&file_path)?;
     let doc = analyze_source(&source, &location.file_path)?;
-    let resumed_start = find_headline_by_start(&doc.headlines, byte_usize(location.byte_start))
+    // Locate by the stable ordinal, not the stale index `byte_start` (see
+    // `clock_in`): a prior in-session clock write to this file leaves the index
+    // reporting last-scan offsets.
+    let resumed_start = find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal))
         .and_then(most_recent_open_clock)
         .map(clock_start_dt);
 
@@ -752,8 +803,10 @@ mod tests {
         // Closed shape assembled the way clock_out does.
         let end = format_inactive_stamp(dt(2026, 9, 13, 11, 30));
         let dur = format_duration(dt(2026, 9, 13, 11, 30) - dt(2026, 9, 13, 10, 0));
-        assert_eq!(format!("CLOCK: {stamp}--{end} => {dur}"),
-            "CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30] => 1:30");
+        assert_eq!(
+            format!("CLOCK: {stamp}--{end} => {dur}"),
+            "CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30] => 1:30"
+        );
     }
 
     #[test]
@@ -779,7 +832,12 @@ mod tests {
     // ---- LOGBOOK insertion (create-if-absent + prepend-if-present) ----
 
     fn only_headline(source: &str) -> Headline {
-        analyze(source).expect("analyze").headlines.into_iter().next().expect("one headline")
+        analyze(source)
+            .expect("analyze")
+            .headlines
+            .into_iter()
+            .next()
+            .expect("one headline")
     }
 
     #[test]
@@ -1029,7 +1087,10 @@ CLOCK: [2026-09-16 Wed 08:00]
         assert!(raw.contains("\"last_active_at\""), "{raw}");
         assert!(!raw.contains("headlineId"), "must not be camelCase: {raw}");
         assert!(!raw.contains("startedAt"), "must not be camelCase: {raw}");
-        assert!(!raw.contains("lastActiveAt"), "must not be camelCase: {raw}");
+        assert!(
+            !raw.contains("lastActiveAt"),
+            "must not be camelCase: {raw}"
+        );
     }
 
     // ---- fix #1: minute truncation ----
@@ -1041,7 +1102,10 @@ CLOCK: [2026-09-16 Wed 08:00]
             .and_hms_nano_opt(12, 34, 56, 789)
             .unwrap();
         assert_eq!(truncate_to_minute(with_secs), dt(2026, 9, 13, 12, 34));
-        assert_eq!(format_ts(truncate_to_minute(with_secs)), "2026-09-13T12:34:00");
+        assert_eq!(
+            format_ts(truncate_to_minute(with_secs)),
+            "2026-09-13T12:34:00"
+        );
     }
 
     // ---- #13: totals over a closed line WITHOUT a `=> H:MM` suffix ----
@@ -1051,7 +1115,8 @@ CLOCK: [2026-09-16 Wed 08:00]
         // A valid closed org CLOCK line can omit `=> H:MM`; the parser then
         // reports end=Some, duration=None, so `entry_duration` falls back to
         // end - start.
-        let source = "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30]\n:END:\n";
+        let source =
+            "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30]\n:END:\n";
         let headline = only_headline(source);
         assert_eq!(headline.clocks.len(), 1);
         assert!(headline.clocks[0].end.is_some());
@@ -1065,7 +1130,8 @@ CLOCK: [2026-09-16 Wed 08:00]
     #[test]
     fn entry_duration_clamps_a_backwards_closed_range_to_zero() {
         // end before start (hand-edited/degenerate) → non-negative clamp.
-        let source = "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 11:00]--[2026-09-13 Sun 10:00]\n:END:\n";
+        let source =
+            "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 11:00]--[2026-09-13 Sun 10:00]\n:END:\n";
         let headline = only_headline(source);
         assert_eq!(
             totals(ClockScope::Headline(&headline), None),

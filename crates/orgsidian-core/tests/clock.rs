@@ -129,18 +129,28 @@ async fn clock_in_out_resume_autostop_and_refresh() {
     );
 
     // ---- resume an existing unclosed line without mutating source ----
-    clock_in(&v.root, id_a, at(12, 0)).await.expect("clock in again");
+    clock_in(&v.root, id_a, at(12, 0))
+        .await
+        .expect("clock in again");
     fs::remove_file(active_clock_path(&v.root)).expect("simulate restart: drop pointer");
     let before_resume = read(&v.root, "a.org");
-    let resumed = clock_resume(&v.root, id_a, at(13, 0)).await.expect("resume");
+    let resumed = clock_resume(&v.root, id_a, at(13, 0))
+        .await
+        .expect("resume");
     assert_eq!(
         resumed.started_at, "2026-09-13T12:00:00",
         "resume re-activates the existing line's start, not `now`"
     );
-    assert_eq!(read(&v.root, "a.org"), before_resume, "resume must not mutate source");
+    assert_eq!(
+        read(&v.root, "a.org"),
+        before_resume,
+        "resume must not mutate source"
+    );
 
     // ---- auto-stop: clocking into B stops A first ----
-    let b_clock = clock_in(&v.root, id_b, at(14, 0)).await.expect("clock in B");
+    let b_clock = clock_in(&v.root, id_b, at(14, 0))
+        .await
+        .expect("clock in B");
     assert_eq!(active_clock(&v.root).expect("pointer"), Some(b_clock));
     let a_src = read(&v.root, "a.org");
     assert!(
@@ -152,8 +162,14 @@ async fn clock_in_out_resume_autostop_and_refresh() {
     // ---- last_active_at refresh ----
     refresh_active_clock(&v.root, at(15, 0)).expect("refresh");
     let after = active_clock(&v.root).expect("pointer").expect("some");
-    assert_eq!(after.started_at, "2026-09-13T14:00:00", "started_at unchanged");
-    assert_eq!(after.last_active_at, "2026-09-13T15:00:00", "last_active_at bumped");
+    assert_eq!(
+        after.started_at, "2026-09-13T14:00:00",
+        "started_at unchanged"
+    );
+    assert_eq!(
+        after.last_active_at, "2026-09-13T15:00:00",
+        "last_active_at bumped"
+    );
 
     // ---- clock out with nothing active errors, no writes ----
     clock_out(&v.root, at(16, 0)).await.expect("clock out B");
@@ -161,7 +177,10 @@ async fn clock_in_out_resume_autostop_and_refresh() {
     let err = clock_out(&v.root, at(16, 30))
         .await
         .expect_err("no active clock errors");
-    assert!(matches!(err, orgsidian_core::OrgError::Vault { .. }), "got {err:?}");
+    assert!(
+        matches!(err, orgsidian_core::OrgError::Vault { .. }),
+        "got {err:?}"
+    );
 }
 
 /// #7: a `now` carrying non-zero seconds still closes the open line — proves
@@ -174,12 +193,20 @@ async fn clock_out_matches_despite_sub_minute_now() {
     let id = headline_id_by_title(&v.db, "Task");
 
     // Clock in at 10:00:37 → stored started_at normalizes to the minute.
-    let clock = clock_in(&v.root, id, at_s(10, 0, 37)).await.expect("clock in");
+    let clock = clock_in(&v.root, id, at_s(10, 0, 37))
+        .await
+        .expect("clock in");
     assert_eq!(clock.started_at, "2026-09-13T10:00:00", "seconds truncated");
 
     // Clock out at 11:30:45 → normalizes to 11:30, matches, closes cleanly.
-    clock_out(&v.root, at_s(11, 30, 45)).await.expect("clock out");
-    assert_eq!(active_clock(&v.root).expect("pointer"), None, "not a desync");
+    clock_out(&v.root, at_s(11, 30, 45))
+        .await
+        .expect("clock out");
+    assert_eq!(
+        active_clock(&v.root).expect("pointer"),
+        None,
+        "not a desync"
+    );
     let src = read(&v.root, "a.org");
     assert!(
         src.contains("CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:30] => 1:30"),
@@ -195,7 +222,9 @@ async fn clock_out_locates_by_started_at_after_offsets_shift() {
     let v = scanned_vault(&[("a.org", "* First\n* Second\n")]).await;
     let id_first = headline_id_by_title(&v.db, "First");
 
-    clock_in(&v.root, id_first, at(10, 0)).await.expect("clock in first");
+    clock_in(&v.root, id_first, at(10, 0))
+        .await
+        .expect("clock in first");
     // The splice inserted a LOGBOOK after "* First", shifting "* Second" past
     // its indexed byte_start — the index is now stale for Second.
     clock_out(&v.root, at(11, 0)).await.expect("clock out");
@@ -205,7 +234,10 @@ async fn clock_out_locates_by_started_at_after_offsets_shift() {
         src.contains("CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:00] => 1:00"),
         "First's line closed via started_at match: {src:?}"
     );
-    assert!(src.contains("* Second\n"), "Second headline intact: {src:?}");
+    assert!(
+        src.contains("* Second\n"),
+        "Second headline intact: {src:?}"
+    );
     assert_eq!(active_clock(&v.root).expect("pointer"), None);
 }
 
@@ -217,7 +249,9 @@ async fn clock_flow_on_a_nested_child_headline() {
     let v = scanned_vault(&[("a.org", "* Parent\n** Child\nbody\n")]).await;
     let id_child = headline_id_by_title(&v.db, "Child");
 
-    clock_in(&v.root, id_child, at(10, 0)).await.expect("clock in child");
+    clock_in(&v.root, id_child, at(10, 0))
+        .await
+        .expect("clock in child");
     let src = read(&v.root, "a.org");
     // The LOGBOOK lands under the child, before its body, not under the parent.
     assert!(
@@ -225,7 +259,9 @@ async fn clock_flow_on_a_nested_child_headline() {
         "child's own LOGBOOK mutated: {src:?}"
     );
 
-    clock_out(&v.root, at(10, 30)).await.expect("clock out child");
+    clock_out(&v.root, at(10, 30))
+        .await
+        .expect("clock out child");
     let src = read(&v.root, "a.org");
     assert!(
         src.contains("CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 10:30] => 0:30"),
@@ -234,8 +270,13 @@ async fn clock_flow_on_a_nested_child_headline() {
 
     // Resume the child's (now only, closed) history → no unclosed line → fresh
     // clock-in on the child.
-    let resumed = clock_resume(&v.root, id_child, at(11, 0)).await.expect("resume child");
-    assert_eq!(resumed.started_at, "2026-09-13T11:00:00", "fresh clock-in fallback");
+    let resumed = clock_resume(&v.root, id_child, at(11, 0))
+        .await
+        .expect("resume child");
+    assert_eq!(
+        resumed.started_at, "2026-09-13T11:00:00",
+        "fresh clock-in fallback"
+    );
     assert!(read(&v.root, "a.org").contains("CLOCK: [2026-09-13 Sun 11:00]\n"));
 }
 
@@ -247,7 +288,10 @@ async fn resume_without_an_open_line_starts_a_fresh_clock() {
     let id = headline_id_by_title(&v.db, "Task");
 
     let clock = clock_resume(&v.root, id, at(9, 15)).await.expect("resume");
-    assert_eq!(clock.started_at, "2026-09-13T09:15:00", "started_at == now (fresh)");
+    assert_eq!(
+        clock.started_at, "2026-09-13T09:15:00",
+        "started_at == now (fresh)"
+    );
     assert_eq!(active_clock(&v.root).expect("pointer"), Some(clock));
     let src = read(&v.root, "a.org");
     assert!(src.contains(":LOGBOOK:") && src.contains("CLOCK: [2026-09-13 Sun 09:15]\n"));
@@ -266,10 +310,14 @@ async fn resume_stops_a_different_active_clock_but_not_its_own() {
     clock_in(&v.root, id_b, at(9, 0)).await.expect("clock in B");
     fs::remove_file(active_clock_path(&v.root)).expect("drop pointer");
     // Make A the active clock.
-    clock_in(&v.root, id_a, at(10, 0)).await.expect("clock in A");
+    clock_in(&v.root, id_a, at(10, 0))
+        .await
+        .expect("clock in A");
 
     // Resume B while A is active → A auto-closed, B sole active at its own 09:00.
-    let resumed = clock_resume(&v.root, id_b, at(11, 0)).await.expect("resume B");
+    let resumed = clock_resume(&v.root, id_b, at(11, 0))
+        .await
+        .expect("resume B");
     assert_eq!(resumed.headline_id, id_b);
     assert_eq!(resumed.started_at, "2026-09-13T09:00:00");
     assert_eq!(active_clock(&v.root).expect("pointer"), Some(resumed));
@@ -285,7 +333,9 @@ async fn resume_stops_a_different_active_clock_but_not_its_own() {
     );
 
     // Resume B again while B IS active → must NOT close B's own line.
-    let again = clock_resume(&v.root, id_b, at(12, 0)).await.expect("resume B again");
+    let again = clock_resume(&v.root, id_b, at(12, 0))
+        .await
+        .expect("resume B again");
     assert_eq!(again.started_at, "2026-09-13T09:00:00");
     assert_eq!(read(&v.root, "b.org"), b_before, "B's own line untouched");
 }
@@ -306,10 +356,124 @@ async fn clock_out_desync_clears_the_pointer_and_errors() {
     let err = clock_out(&v.root, at(11, 0))
         .await
         .expect_err("a desynced pointer must error");
-    assert!(matches!(err, orgsidian_core::OrgError::Vault { .. }), "got {err:?}");
+    assert!(
+        matches!(err, orgsidian_core::OrgError::Vault { .. }),
+        "got {err:?}"
+    );
     assert_eq!(
         active_clock(&v.root).expect("pointer"),
         None,
         "desync clears the dangling pointer"
     );
+}
+
+/// Reviewer BLOCKER regression: clocking into B while A is active in the SAME
+/// file must auto-stop A and open B, leaving EXACTLY B active — no error. The
+/// auto-stop write shifts B past its stale indexed `byte_start`, so a raw
+/// `byte_start` lookup for B fails; the fix re-resolves B by its structural
+/// tree position. Pre-fix this returned `Err(Vault { "headline .. was not found
+/// at byte .." })`, closing A but never opening B.
+#[tokio::test(flavor = "multi_thread")]
+async fn clock_in_switch_between_two_headlines_in_one_file() {
+    let v = scanned_vault(&[("ab.org", "* First\n* Second\n")]).await;
+    let id_first = headline_id_by_title(&v.db, "First");
+    let id_second = headline_id_by_title(&v.db, "Second");
+
+    clock_in(&v.root, id_first, at(10, 0))
+        .await
+        .expect("clock in First");
+    // Switch to Second while First is active (same file) — must NOT error.
+    let b = clock_in(&v.root, id_second, at(11, 0))
+        .await
+        .expect("switch to Second in the same file");
+
+    // Exactly B is active.
+    assert_eq!(b.headline_id, id_second);
+    assert_eq!(b.started_at, "2026-09-13T11:00:00");
+    assert_eq!(active_clock(&v.root).expect("pointer"), Some(b));
+
+    let src = read(&v.root, "ab.org");
+    // First auto-closed at the switch instant.
+    assert!(
+        src.contains("CLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:00] => 1:00"),
+        "First auto-closed when switching to Second: {src:?}"
+    );
+    // Second has a fresh OPEN line.
+    assert!(
+        src.contains("* Second\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 11:00]\n:END:\n"),
+        "Second opened with its own LOGBOOK: {src:?}"
+    );
+    // Exactly one open (no `--`) CLOCK line remains in the whole file — B's.
+    let open_lines = src
+        .lines()
+        .filter(|l| l.trim_start().starts_with("CLOCK: [") && !l.contains("--"))
+        .count();
+    assert_eq!(open_lines, 1, "exactly one open clock line (B's): {src:?}");
+
+    // Switch BACK to First (Second→First) while Second is active — the ordinal
+    // re-location must still resolve both headlines despite the accumulated
+    // same-file offset shifts from every prior CLOCK write.
+    let a2 = clock_in(&v.root, id_first, at(12, 0))
+        .await
+        .expect("switch back to First in the same file");
+    assert_eq!(a2.headline_id, id_first);
+    assert_eq!(a2.started_at, "2026-09-13T12:00:00");
+    assert_eq!(active_clock(&v.root).expect("pointer"), Some(a2));
+
+    let src = read(&v.root, "ab.org");
+    // Second auto-closed on the switch back.
+    assert!(
+        src.contains("CLOCK: [2026-09-13 Sun 11:00]--[2026-09-13 Sun 12:00] => 1:00"),
+        "Second auto-closed when switching back to First: {src:?}"
+    );
+    // First now has a fresh OPEN line (prepended above its earlier closed one).
+    assert!(
+        src.contains("CLOCK: [2026-09-13 Sun 12:00]\n"),
+        "First re-opened: {src:?}"
+    );
+    let open_lines = src
+        .lines()
+        .filter(|l| l.trim_start().starts_with("CLOCK: [") && !l.contains("--"))
+        .count();
+    assert_eq!(
+        open_lines, 1,
+        "exactly one open clock line (First's): {src:?}"
+    );
+}
+
+/// Fix #2 (MAJOR): `clock_out` must close only the ACTIVE headline's own open
+/// line. With a stray unclosed `CLOCK:` in another headline of the same file at
+/// a coincidentally identical minute, clocking out must close the active
+/// headline's line and leave the stray one untouched. Pre-fix the whole-tree
+/// `started_at` search closed the FIRST match (the stray line) instead.
+#[tokio::test(flavor = "multi_thread")]
+async fn clock_out_scopes_to_the_active_headline_not_a_stray_open_line() {
+    // Alpha carries a pre-existing stray open CLOCK at 10:00; Beta will get its
+    // own open CLOCK at the same minute via clock_in.
+    let v = scanned_vault(&[(
+        "s.org",
+        "* Alpha\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\n:END:\n* Beta\n",
+    )])
+    .await;
+    let id_beta = headline_id_by_title(&v.db, "Beta");
+
+    clock_in(&v.root, id_beta, at(10, 0))
+        .await
+        .expect("clock in Beta");
+    // Two open lines at 10:00 now exist (Alpha's stray + Beta's). Clock out must
+    // close Beta's (the active one), not Alpha's coincidental line.
+    clock_out(&v.root, at(11, 0)).await.expect("clock out Beta");
+
+    let src = read(&v.root, "s.org");
+    assert!(
+        src.contains(
+            "* Beta\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 11:00] => 1:00"
+        ),
+        "Beta's own line was closed: {src:?}"
+    );
+    assert!(
+        src.contains("* Alpha\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\n:END:\n"),
+        "Alpha's stray open line was left untouched: {src:?}"
+    );
+    assert_eq!(active_clock(&v.root).expect("pointer"), None);
 }
