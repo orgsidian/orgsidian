@@ -19,7 +19,7 @@ vi.mock("@/components/agenda/AgendaCustom", () => ({
   AgendaCustom: () => null,
   // The route also imports this pure helper; stub it so the mock satisfies the
   // named import (unused in these guard-only unit tests).
-  resolvePresetWindow: () => ({}),
+  presetToRecall: () => ({ search: {}, completed: false, filePathGlob: "" }),
 }));
 vi.mock("@/components/agenda/AgendaPresetSidebar", () => ({
   AgendaPresetSidebar: () => null,

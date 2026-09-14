@@ -62,6 +62,7 @@ vi.mock("@tanstack/react-virtual", () => ({
 // Imported AFTER the mocks are registered.
 import {
   AgendaCustom,
+  presetToRecall,
   resolvePresetWindow,
   type AgendaCustomProps,
   type AgendaCustomSearch,
@@ -425,5 +426,56 @@ describe("resolvePresetWindow (Story 7.5)", () => {
     expect(
       resolvePresetWindow({ rollingDays: null, start: null, end: null }, "2026-09-14"),
     ).toEqual({ start: undefined, end: undefined });
+  });
+});
+
+describe("presetToRecall (Story 7.5)", () => {
+  it("maps every preset field to the correct recall slot", () => {
+    const recall = presetToRecall(
+      {
+        rollingDays: null,
+        start: "2026-09-01",
+        end: "2026-09-30",
+        tag: "home",
+        todoState: "NEXT",
+        filePathGlob: "projects/*",
+        completed: true,
+      },
+      "2026-09-14",
+    );
+    // tag/todo land in the URL search (never swapped), window is the absolute one.
+    expect(recall.search).toEqual({
+      start: "2026-09-01",
+      end: "2026-09-30",
+      tag: "home",
+      todo: "NEXT",
+    });
+    // completed + file-path are the local-only filters.
+    expect(recall.completed).toBe(true);
+    expect(recall.filePathGlob).toBe("projects/*");
+  });
+
+  it("resolves a rolling 'Done This Week' default and normalizes nulls", () => {
+    const recall = presetToRecall(
+      {
+        rollingDays: 7,
+        start: null,
+        end: null,
+        tag: null,
+        todoState: "DONE",
+        filePathGlob: null,
+        completed: true,
+      },
+      "2026-09-14",
+    );
+    expect(recall.search).toEqual({
+      start: "2026-09-08",
+      end: "2026-09-14",
+      tag: undefined,
+      todo: "DONE",
+    });
+    expect(recall.completed).toBe(true);
+    // A null glob becomes the empty string (no filter), never the string "null".
+    expect(recall.filePathGlob).toBe("");
   });
 });

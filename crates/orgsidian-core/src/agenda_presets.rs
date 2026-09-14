@@ -85,9 +85,13 @@ pub fn list_agenda_presets(vault_root: &Path) -> OrgResult<BTreeMap<String, Agen
 }
 
 /// Upsert a preset under `name` (replacing any existing preset of the same
-/// name) and persist. Also marks the defaults as seeded so a first-ever save
-/// does not later trigger a surprise re-seed of the built-ins on the next
-/// `list`.
+/// name) and persist.
+///
+/// Deliberately does NOT touch `agenda_presets_seeded`: seeding is owned by
+/// [`list_agenda_presets`]. That way saving a preset before the first `list`
+/// (an unusual order, but possible for a non-UI caller) still lets the built-in
+/// defaults seed on the next `list` alongside the user's preset, rather than
+/// suppressing them.
 ///
 /// # Errors
 ///
@@ -95,7 +99,6 @@ pub fn list_agenda_presets(vault_root: &Path) -> OrgResult<BTreeMap<String, Agen
 pub fn save_agenda_preset(vault_root: &Path, name: &str, preset: AgendaPreset) -> OrgResult<()> {
     let mut settings = read_vault_settings(vault_root).map_err(presets_io)?;
     settings.agenda_presets.insert(name.to_string(), preset);
-    settings.agenda_presets_seeded = true;
     write_vault_settings(vault_root, &settings).map_err(presets_io)?;
     Ok(())
 }
@@ -175,6 +178,20 @@ mod tests {
 
         let presets = list_agenda_presets(dir.path()).expect("list");
         assert_eq!(presets.get("@home this month"), Some(&preset));
+    }
+
+    #[test]
+    fn saving_before_the_first_list_still_seeds_the_defaults() {
+        let dir = tempdir().expect("tempdir");
+        // A user (or non-UI caller) saves a preset before ever listing.
+        save_agenda_preset(dir.path(), "My preset", AgendaPreset::default()).expect("save");
+
+        // The next list still seeds the built-in defaults alongside it, rather
+        // than suppressing them.
+        let presets = list_agenda_presets(dir.path()).expect("list");
+        assert!(presets.contains_key("My preset"));
+        assert!(presets.contains_key(DONE_THIS_WEEK));
+        assert!(presets.contains_key(DONE_THIS_MONTH));
     }
 
     #[test]

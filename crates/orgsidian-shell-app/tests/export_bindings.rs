@@ -131,6 +131,11 @@ fn export_bindings() {
         "deleteAgendaPreset",
         "AgendaPresetDto",
         "completedInRange",
+        // Per-field camelCase names must actually generate (a serde-rename
+        // regression on any of these would silently break the sidebar wiring).
+        "rollingDays",
+        "todoState",
+        "filePathGlob",
         "export const events",
         "indexProgress",
         "index-progress",

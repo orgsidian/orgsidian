@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import {
   AgendaCustom,
-  resolvePresetWindow,
+  presetToRecall,
   type AgendaCustomSearch,
   type AgendaPresetApply,
   type AppliedAgendaFilters,
@@ -68,24 +68,18 @@ function AgendaCustomRoute() {
 
   const applyPreset = useCallback(
     (preset: AgendaPresetDto) => {
-      // Resolve the recalled window (rolling → the last N days ending today;
-      // absolute → the stored start/end).
-      const { start, end } = resolvePresetWindow(preset, localTodayIso());
-
-      void navigate({
-        search: {
-          start,
-          end,
-          tag: preset.tag ?? undefined,
-          todo: preset.todoState ?? undefined,
-        },
-      });
-      // The two local-only filters (a fresh object each apply so re-applying
-      // the same preset still re-syncs).
+      // Map the preset to its concrete recall payload (resolved window +
+      // tag/todo → URL; completed + file-path → local filters).
+      const recall = presetToRecall(preset, localTodayIso());
+      void navigate({ search: recall.search });
+      // `setPresetApply` builds a fresh object each apply, so its identity
+      // already changes every time and the consuming effect re-syncs even when
+      // the same preset is re-applied; `nonce` is a human-readable trace token,
+      // not what drives the re-sync.
       setPresetApply({
         nonce: Date.now(),
-        completed: preset.completed,
-        filePathGlob: preset.filePathGlob ?? "",
+        completed: recall.completed,
+        filePathGlob: recall.filePathGlob,
       });
     },
     [navigate],

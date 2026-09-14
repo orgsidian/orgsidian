@@ -72,6 +72,26 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
     refresh();
   }, [refresh]);
 
+  // Dismiss the open context menu on Escape (keyboard a11y) or a pointer press
+  // outside any preset row. Selecting another row closes the current menu on its
+  // own, since `menuFor` holds at most one open menu.
+  useEffect(() => {
+    if (menuFor === null) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuFor(null);
+    }
+    function onPointerDown(event: Event) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-preset-menu-root]") == null) setMenuFor(null);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [menuFor]);
+
   function saveCurrent() {
     const name = nameDraft.trim();
     if (name === "" || current === null) return;
@@ -100,7 +120,7 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
       <h2 className="text-sm font-semibold text-[var(--org-fg-default)]">Presets</h2>
 
       {error !== null && (
-        <p role="alert" className="mt-2 text-xs text-[var(--org-fg-muted)]">
+        <p role="alert" className="mt-2 text-xs text-destructive">
           {error}
         </p>
       )}
@@ -111,7 +131,7 @@ export function AgendaPresetSidebar({ current, onApply }: AgendaPresetSidebarPro
 
       <ul role="list" className="mt-2 flex flex-col gap-1">
         {(presets ?? []).map((preset) => (
-          <li key={preset.name} className="relative">
+          <li key={preset.name} data-preset-menu-root className="relative">
             <div
               className="flex items-center gap-1"
               onContextMenu={(event) => {

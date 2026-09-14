@@ -54,10 +54,11 @@ export interface AppliedAgendaFilters {
 }
 
 /**
- * A one-shot preset-application signal (Story 7.5). `nonce` is a monotonically
- * increasing token so that re-applying the *same* preset still produces a new
- * object identity and re-syncs the two local-only filters (`completed`,
- * `filePathGlob`) that do not live in the URL.
+ * A one-shot preset-application signal (Story 7.5) carrying the two local-only
+ * filters that do not live in the URL (`completed`, `filePathGlob`). The route
+ * builds a fresh object on every apply, so its identity already changes each
+ * time and the consuming effect re-syncs even when the same preset is
+ * re-applied; `nonce` is just a human-readable trace token, not the mechanism.
  */
 export interface AgendaPresetApply {
   nonce: number;
@@ -130,6 +131,49 @@ export function resolvePresetWindow(
     return { start: addDaysIso(today, -(preset.rollingDays - 1)), end: today };
   }
   return { start: preset.start ?? undefined, end: preset.end ?? undefined };
+}
+
+/** The concrete recall payload a preset resolves to (Story 7.5). */
+export interface PresetRecall {
+  /** URL-owned filters: resolved window + tag/todo. */
+  search: AgendaCustomSearch;
+  /** Local-only completion-mode filter. */
+  completed: boolean;
+  /** Local-only file-path glob (empty string = no filter). */
+  filePathGlob: string;
+}
+
+/**
+ * Map a saved preset's filter fields to the concrete recall payload the
+ * `/agenda/custom` route applies: the URL search params (resolved window +
+ * tag/todo) and the two component-local filters (completion mode + file-path
+ * glob). Pure and exported so this field-by-field mapping — the exact place a
+ * swapped `tag`/`todo` or dropped `filePathGlob` would silently recall the
+ * wrong filters — is unit-testable in isolation.
+ */
+export function presetToRecall(
+  preset: {
+    rollingDays: number | null;
+    start: string | null;
+    end: string | null;
+    tag: string | null;
+    todoState: string | null;
+    filePathGlob: string | null;
+    completed: boolean;
+  },
+  today: string,
+): PresetRecall {
+  const { start, end } = resolvePresetWindow(preset, today);
+  return {
+    search: {
+      start,
+      end,
+      tag: preset.tag ?? undefined,
+      todo: preset.todoState ?? undefined,
+    },
+    completed: preset.completed,
+    filePathGlob: preset.filePathGlob ?? "",
+  };
 }
 
 /** A short, human display label for a `YYYY-MM-DD` date, e.g. "Sat, Sep 5, 2026". */

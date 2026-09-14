@@ -188,9 +188,12 @@ mod tests {
             // leak into the scheduled/deadline agenda.
             let closed = item.closed.as_ref().expect("DONE item carries CLOSED");
             assert!(closed.date < today(), "CLOSED must be in the past");
+            // The `Done This Week` default resolves to the inclusive window
+            // `[today-6, today]` (see `resolvePresetWindow`); pin the fixtures to
+            // that exact window so they are guaranteed non-empty in the preset.
             assert!(
-                (today() - Duration::days(7)..today()).contains(&closed.date),
-                "CLOSED {} must be inside the rolling-7-day window",
+                ((today() - Duration::days(6))..=today()).contains(&closed.date),
+                "CLOSED {} must be inside the rolling-7-day window [today-6, today]",
                 closed.date
             );
             assert!(!closed.active, "CLOSED must be an inactive timestamp");
