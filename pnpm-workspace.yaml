@@ -19,3 +19,8 @@ allowBuilds:
 # leaves any future major untouched.
 overrides:
   nanoid@<3.3.17: ^3.3.17
+  # browserslist <=4.28.6 is GHSA-c83g-rgw3-j3cx (unbounded memory growth) +
+  # GHSA-73wf-gq98-2v4g (crash / prototype write); patched in 4.28.7. Arrives
+  # transitively via @lingui/* > @babel/core > @babel/helper-compilation-
+  # targets > browserslist. Scoped selector patches only the vulnerable range.
+  browserslist@<4.28.7: ^4.28.7
