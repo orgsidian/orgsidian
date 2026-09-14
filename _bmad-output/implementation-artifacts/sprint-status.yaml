@@ -130,16 +130,19 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Today Dashboard & Time Tracking
-  epic-7: backlog
-  7-1-implement-today-dashboard-surface: backlog
-  7-2-persist-today-dashboard-section-preferences: backlog
-  7-3-add-empty-state-messages-per-section: backlog
-  7-4-implement-custom-agenda-view-with-date-range-picker: backlog
-  7-5-implement-saved-agenda-filter-presets: backlog
-  7-6-implement-clock-manager-logbook-persistence: backlog
-  7-7-implement-prior-session-running-clock-prompt-on-launch: backlog
-  7-8-implement-clockeditor-component-for-time-entry-editing: backlog
+  epic-7: done
+  7-1-implement-today-dashboard-surface: done
+  7-2-persist-today-dashboard-section-preferences: done
+  7-3-add-empty-state-messages-per-section: done
+  7-4-implement-custom-agenda-view-with-date-range-picker: done
+  7-5-implement-saved-agenda-filter-presets: done
+  7-6-implement-clock-manager-logbook-persistence: done
+  7-7-implement-prior-session-running-clock-prompt-on-launch: done
+  7-8-implement-clockeditor-component-for-time-entry-editing: done
   epic-7-retrospective: optional
+  # Follow-ups split out of Epic 7 during implementation (tracked on GitHub, not yet scheduled):
+  #   #199 — Settings UI for Today Dashboard knobs (today_tag, inbox_preview_count) [from 7.1]
+  #   #206 — LOGBOOK drawer surface + clock entry listing + click-to-edit wiring [from 7.8]
 
   # Epic 8: Capture, Search, Backlinks
   epic-8: backlog
