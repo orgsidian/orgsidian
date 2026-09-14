@@ -389,6 +389,33 @@ pub async fn locate_headline(
         .map_err(index_err)
 }
 
+/// Implements FR-8 (Story 7.7 stale-clock prompt support): resolve
+/// `headline_id` (the app-wide index rowid) to its display `title`, so the
+/// stale-clock modal can name the tracked Headline. Same read-only posture as
+/// [`locate_headline`]/[`agenda_today`]: resolve the DB path, refuse if the
+/// index is absent, read through a FRESH [`IndexPool`].
+///
+/// Returns `Ok(None)` when no headline carries that rowid (a stale id) — an
+/// absent row is a caller-recoverable desync, not an error.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] if the root cannot be resolved; [`OrgError::Index`] if
+/// no index exists for the vault or the read fails.
+pub async fn headline_title(
+    vault_root: &Path,
+    headline_id: i64,
+) -> Result<Option<String>, OrgError> {
+    let db_path = resolve_index_db_path(vault_root)?;
+    if !db_path.exists() {
+        return Err(index_absent_err(&db_path));
+    }
+    let pool = IndexPool::new(&db_path).map_err(index_err)?;
+    pool.interact(move |conn| orgsidian_index::query::locate::title(conn, headline_id))
+        .await
+        .map_err(index_err)
+}
+
 /// The [`OrgError::Index`] returned when `stats`/`integrity` find no index for
 /// the target vault — it names the missing path and points at `index init`,
 /// and (per the read-only contract) is raised *without* creating a DB.

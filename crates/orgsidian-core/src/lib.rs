@@ -33,11 +33,11 @@ pub use orgsidian_parser as parser;
 // `Document` → index-row mapping.
 pub mod index;
 pub use index::{
-    agenda_custom, agenda_today, agenda_week, designate_vault, index_integrity, index_stats,
-    locate_headline, open_index, rebuild_index, resolve_index_db_path, resync_file, scan_vault,
-    today_dashboard, ActiveClock, AgendaItem, CustomAgendaQuery, DashboardParams, HeadlineLocation,
-    InboxItem, IndexHandle, IndexStats, IntegrityCheck, IntegrityReport, ResyncOutcome,
-    ScanOutcome, ScanProgress, TodayDashboard,
+    agenda_custom, agenda_today, agenda_week, designate_vault, headline_title, index_integrity,
+    index_stats, locate_headline, open_index, rebuild_index, resolve_index_db_path, resync_file,
+    scan_vault, today_dashboard, ActiveClock, AgendaItem, CustomAgendaQuery, DashboardParams,
+    HeadlineLocation, InboxItem, IndexHandle, IndexStats, IntegrityCheck, IntegrityReport,
+    ResyncOutcome, ScanOutcome, ScanProgress, TodayDashboard,
 };
 
 // Story 5.4 (LD-7 / LD-9 / FR-16): the external-edits reconciler — the hub that
@@ -104,8 +104,9 @@ pub use settings::schema::AgendaPreset;
 // as `ActiveClockState`; consumers name `orgsidian_core::ActiveClockState`.
 pub mod clock;
 pub use clock::{
-    active_clock, active_clock_path, clock_in, clock_out, clock_resume, refresh_active_clock,
-    totals, ActiveClock as ActiveClockState, ClockScope, DateRange,
+    active_clock, active_clock_path, clock_discard, clock_in, clock_out, clock_resume,
+    refresh_active_clock, stale_clock_summary, totals, ActiveClock as ActiveClockState, ClockScope,
+    DateRange, StaleClock, StaleClockSummary,
 };
 
 // Story 6.1 (FR-18): the built-in Starter Vault content generator — Personal

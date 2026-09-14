@@ -62,6 +62,13 @@ vi.mock("@/components/settings/AppearanceSettings", () => ({
 vi.mock("@/components/onboarding/StarterVaultPicker", () => ({
   StarterVaultPicker: () => <div data-testid="starter-vault-picker-stub" />,
 }));
+// Story 7.7: the stale-clock launch prompt is a self-contained sibling that
+// runs its own backend check on mount — stub it here (covered by
+// `StaleClockPrompt.test.tsx`) so this route test stays scoped to the coaching
+// wiring.
+vi.mock("@/components/clock/StaleClockPrompt", () => ({
+  StaleClockPrompt: () => <div data-testid="stale-clock-prompt-stub" />,
+}));
 
 // Imported AFTER the mocks are registered.
 import { Route } from "./today";

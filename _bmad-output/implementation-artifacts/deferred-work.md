@@ -377,3 +377,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/7-6-implement-clock-manager-logbook-persistence.md`
   summary: `clock_in` can insert a second open `CLOCK:` line when the target headline already has an unclosed line but `active-clock.json` was lost (e.g. crash before pointer write), orphaning the earlier line.
   evidence: `clock_in` does not check for a pre-existing open line on the target headline before inserting. This is exactly the prior-session/stale-clock recovery scenario Story 7.7 is built to handle (its launch prompt reconciles a still-open CLOCK line); coordinate the guard with 7.7 rather than duplicating recovery logic here.
+
+- source_spec: `_bmad-output/implementation-artifacts/7-7-implement-prior-session-running-clock-prompt-on-launch.md`
+  summary: `clock_discard`/`clock_out` match the pointer's open line by `started_at` (first match); two open lines on one headline sharing the SAME start minute leave an orphan after discard, a silent double-count risk.
+  evidence: Story 7.7 review (edge-case-hunter). `find_open_clock` returns the first `started_at` match; the `clock_in` guard neutralizes duplicates by byte-offset so the clock_in path is safe, but the discard/clock_out path is not. Reachable only via hand-authored identical-minute duplicate open lines; edge, not covered by the story ACs.
+- source_spec: `_bmad-output/implementation-artifacts/7-7-implement-prior-session-running-clock-prompt-on-launch.md`
+  summary: If the source file desyncs (open line deleted/edited) WHILE the stale-clock modal is open, every action then errors (pointer already cleared) and the modal has no dismiss-without-choosing path — a possible user trap.
+  evidence: Story 7.7 review (blind-hunter). TOCTOU between modal open and action click; `run()` keeps the modal open on error and Keep-tracking would fall back to a fresh clock-in. Low probability (requires concurrent external edit during the open window).
+- source_spec: `_bmad-output/implementation-artifacts/7-7-implement-prior-session-running-clock-prompt-on-launch.md`
+  summary: Clock durations use naive-local subtraction (`now - started`); a session spanning a DST transition is off by an hour.
+  evidence: Story 7.7 review (blind-hunter). Pre-existing architectural property of the whole `orgsidian-core::clock` subsystem (Story 7.6: dependency-injected `NaiveDateTime`, chrono without a timezone), not introduced by 7.7; surfaced here because the stale-clock premise is a long cross-session gap. Belongs to a focused timezone-correctness pass.

@@ -401,6 +401,37 @@ fn logbook_insert_anchor(source: &str, headline: &Headline) -> (usize, String) {
     (headline_line_end, String::new())
 }
 
+/// Neutralize `headline`'s DUPLICATE open `CLOCK:` lines — every open line
+/// EXCEPT the one starting at byte `keep_span_start` (the adopted, most-recent
+/// open line) — by closing each to its OWN start `=> 0:00`, a zero-duration
+/// splice appended at the line's `span.end` (matching [`clock_out`]'s close
+/// shape). Splices are applied in DESCENDING `span.end` order so each edit's
+/// offset stays valid against the not-yet-spliced tail — the same reverse-order
+/// discipline a multi-edit byte splice needs. Returns the new source; the
+/// adopted line and every other byte are left untouched.
+fn close_extra_open_lines(source: &str, headline: &Headline, keep_span_start: usize) -> String {
+    let mut extras: Vec<&ClockEntry> = headline
+        .clocks
+        .iter()
+        .filter(|c| c.end.is_none() && c.span.start != keep_span_start)
+        .collect();
+    // Descending by end offset: splice the latest line first so earlier offsets
+    // do not shift under us.
+    extras.sort_by_key(|c| std::cmp::Reverse(c.span.end));
+
+    let mut out = source.to_string();
+    for entry in extras {
+        let start = clock_start_dt(entry);
+        let insert = format!(
+            "--{} => {}",
+            format_inactive_stamp(start),
+            format_duration(TimeDelta::zero())
+        );
+        out = splice(&out, entry.span.end, entry.span.end, &insert);
+    }
+    out
+}
+
 // ---------------------------------------------------------------------------
 // Clock manager (index-backed)
 // ---------------------------------------------------------------------------
@@ -436,6 +467,16 @@ fn analyze_source(source: &str, file: &str) -> OrgResult<crate::parser::semantic
 /// insert an open `CLOCK: [now]` line into the headline's `:LOGBOOK:` (drawer
 /// created if absent) and write the Active-Clock pointer. At most one clock is
 /// ever active.
+///
+/// # Story 7.7 adopt-guard
+///
+/// If the target headline ALREADY owns an open `CLOCK:` line (its pointer was
+/// lost — e.g. a prior-session clock this headline still carries), this does
+/// NOT insert a second open line. Instead it ADOPTS the most-recent open line —
+/// writing the pointer to that line's start and leaving the source untouched —
+/// and NEUTRALIZES any older duplicate open lines by closing each to its own
+/// start `=> 0:00`, so exactly one open line (the adopted one) remains. The
+/// fresh-insert path above runs only when the headline has no open line.
 ///
 /// # Errors
 ///
@@ -482,6 +523,34 @@ pub async fn clock_in(
     let doc = analyze_source(&source, &location.file_path)?;
     let headline = find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal))
         .ok_or_else(|| headline_not_found_err(headline_id, &location))?;
+
+    // Story 7.7 deferred guard: the target may ALREADY own an open `CLOCK:` line
+    // (its pointer was lost — e.g. a prior-session clock this Headline still
+    // carries, or a hand-authored open line). Inserting a fresh one would orphan
+    // the existing open line (a silently double-counted session). Instead ADOPT
+    // the most-recent open line (write the pointer to its start, no new line),
+    // and neutralize any OLDER duplicate open lines by closing each to its own
+    // start `=> 0:00` — so exactly one open line remains, the adopted one.
+    if let Some(adopt) = most_recent_open_clock(headline) {
+        let adopt_start = clock_start_dt(adopt);
+        let adopt_span_start = adopt.span.start;
+        let has_extras = headline
+            .clocks
+            .iter()
+            .any(|c| c.end.is_none() && c.span.start != adopt_span_start);
+        if has_extras {
+            let new_source = close_extra_open_lines(&source, headline, adopt_span_start);
+            atomic_write(&file_path, new_source.as_bytes()).map_err(clock_io)?;
+        }
+        let started = format_ts(adopt_start);
+        let clock = ActiveClock {
+            headline_id,
+            started_at: started.clone(),
+            last_active_at: started,
+        };
+        write_active_clock(vault_root, &clock)?;
+        return Ok(clock);
+    }
 
     let (insert_at, text) = compute_clock_in_edit(&source, headline, now);
     let new_source = splice(&source, insert_at, insert_at, &text);
@@ -665,6 +734,209 @@ pub fn refresh_active_clock(vault_root: &Path, now: NaiveDateTime) -> OrgResult<
         clock.last_active_at = format_ts(now);
         write_active_clock(vault_root, &clock)?;
     }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Stale-clock prompt (Story 7.7) — launch summary + discard transition
+// ---------------------------------------------------------------------------
+
+/// A prior-session running clock surfaced at launch (Story 7.7 / UJ-1 edge
+/// case): the tracked Headline, its pointer timestamps, and the two candidate
+/// durations the modal offers. `keep_duration` is `now - started_at` (what
+/// "Keep tracking" would have accrued); `adjust_duration` is
+/// `last_active_at - started_at` (what "Adjust end time" pre-fills). Both are
+/// org `H:MM` strings (negative clamps `0:00`), formatted by [`format_duration`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaleClockSummary {
+    /// `headlines.id` — the tracked Headline's app-wide identity.
+    pub headline_id: u32,
+    /// The tracked Headline's display title.
+    pub headline: String,
+    /// The normalized clock-in timestamp (`%Y-%m-%dT%H:%M:%S`, minute-truncated).
+    pub started_at: String,
+    /// The normalized last-active timestamp (`%Y-%m-%dT%H:%M:%S`,
+    /// minute-truncated; a malformed pointer value falls back to `started_at`)
+    /// — the "adjust end time" pre-fill, always valid for frontend slicing.
+    pub last_active_at: String,
+    /// `now - started_at`, `H:MM` (the "Keep tracking" running total).
+    pub keep_duration: String,
+    /// `last_active_at - started_at`, `H:MM` (the "Adjust end time" total).
+    pub adjust_duration: String,
+}
+
+/// The outcome of a launch-time stale-clock check (Story 7.7). A prior-session
+/// pointer resolves to one of these; `None` from [`stale_clock_summary`] means
+/// there is nothing to prompt at all.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StaleClock {
+    /// A fully-resolved prior-session clock — the normal three-action prompt.
+    Summary(StaleClockSummary),
+    /// The pointer is present but its `headline_id` is no longer in the index
+    /// (an index/source desync). The full summary cannot be built — there is no
+    /// title or duration to show — but the pointer is real and the open line is
+    /// still discardable, so the caller offers a DISCARD-ONLY recovery to clear
+    /// the stuck `active-clock.json` in-app rather than hiding the prompt (which
+    /// would strand the pointer with no in-app recovery). Carries the orphaned
+    /// `headline_id` for diagnostics.
+    Desynced {
+        /// The pointer's `headline_id` — no headline in the index carries it.
+        headline_id: u32,
+    },
+}
+
+/// Summarize a prior-session Active Clock for the launch prompt (Story 7.7).
+/// `None` when there is no active clock (nothing to prompt). Otherwise resolve
+/// the tracked Headline's title from the index and compute both candidate
+/// durations against the injected `now`, returning [`StaleClock::Summary`].
+///
+/// When the pointer's `headline_id` is no longer in the index (an index/source
+/// desync) the summary cannot be built, but the pointer is still present and
+/// discardable, so this returns [`StaleClock::Desynced`] (NOT an error) — the
+/// caller renders a discard-only recovery so [`clock_discard`] is reachable and
+/// the stuck pointer can be cleared in-app.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] on an unparseable `started_at` (a hand-edited/legacy
+/// pointer; self-heals on the next clock mutation). [`OrgError::Index`]/
+/// [`OrgError::Io`] on index/file access.
+pub async fn stale_clock_summary(
+    vault_root: &Path,
+    now: NaiveDateTime,
+) -> OrgResult<Option<StaleClock>> {
+    let now = truncate_to_minute(now);
+
+    let active = match active_clock(vault_root)? {
+        Some(a) => a,
+        None => return Ok(None),
+    };
+
+    let started = parse_ts(&active.started_at)
+        .map(truncate_to_minute)
+        .ok_or_else(|| OrgError::Vault {
+            reason: format!(
+                "active clock has an unparseable started_at {:?}",
+                active.started_at
+            ),
+        })?;
+    // A malformed `last_active_at` falls back to `started_at` (adjust = 0:00)
+    // rather than trapping the whole prompt behind a parse error.
+    let last_active = parse_ts(&active.last_active_at)
+        .map(truncate_to_minute)
+        .unwrap_or(started);
+
+    // A `headline_id` no longer in the index is a caller-recoverable DESYNC, not
+    // an error: the pointer (and its open CLOCK line) still exist and can be
+    // discarded. Surface it as `Desynced` so the launch prompt can offer a
+    // discard-only recovery instead of silently stranding the pointer.
+    let headline =
+        match crate::index::headline_title(vault_root, i64::from(active.headline_id)).await? {
+            Some(title) => title,
+            None => {
+                return Ok(Some(StaleClock::Desynced {
+                    headline_id: active.headline_id,
+                }))
+            }
+        };
+
+    Ok(Some(StaleClock::Summary(StaleClockSummary {
+        headline_id: active.headline_id,
+        headline,
+        keep_duration: format_duration(now - started),
+        adjust_duration: format_duration(last_active - started),
+        // Return NORMALIZED (parsed-or-fallback) timestamps, never the raw
+        // pointer strings: a malformed `last_active_at` would otherwise slice
+        // garbage into the Adjust picker's date/time prefill. Both are now
+        // always valid `%Y-%m-%dT%H:%M:%S`.
+        started_at: format_ts(started),
+        last_active_at: format_ts(last_active),
+    })))
+}
+
+/// Clock DISCARD (Story 7.7): remove the active clock's OPEN `CLOCK:` line from
+/// its `:LOGBOOK:` entirely — the "Discard this session" action, for a clock
+/// left running across sessions that the user wants to drop rather than record.
+/// Locates the open line exactly like [`clock_out`] (scoped to the pointer's
+/// Headline by its stable document-order ordinal, matched by `started_at`,
+/// never a stale byte offset), then splice-deletes the whole line
+/// (`line_start..next_line_start`, taking its trailing newline) — leaving a
+/// valid, possibly empty `:LOGBOOK:` drawer — and clears the pointer.
+///
+/// # Errors
+///
+/// [`OrgError::Vault`] when there is no active clock, or on a source/pointer
+/// desync (pointer cleared); [`OrgError::Index`]/[`OrgError::Io`]/
+/// [`OrgError::Parse`] on index/file access.
+pub async fn clock_discard(vault_root: &Path) -> OrgResult<()> {
+    let active = match active_clock(vault_root)? {
+        Some(a) => a,
+        None => {
+            return Err(OrgError::Vault {
+                reason: "no active clock to discard".to_string(),
+            })
+        }
+    };
+    let started = match parse_ts(&active.started_at) {
+        Some(dt) => truncate_to_minute(dt),
+        None => {
+            remove_active_clock(vault_root)?;
+            return Err(OrgError::Vault {
+                reason: format!(
+                    "active clock has an unparseable started_at {:?}; cleared the pointer",
+                    active.started_at
+                ),
+            });
+        }
+    };
+
+    let location =
+        match crate::index::locate_headline(vault_root, i64::from(active.headline_id)).await? {
+            Some(loc) => loc,
+            None => {
+                remove_active_clock(vault_root)?;
+                return Err(OrgError::Vault {
+                    reason: format!(
+                        "active clock references headline {} which is no longer in the index; \
+                         cleared the dangling active-clock pointer",
+                        active.headline_id
+                    ),
+                });
+            }
+        };
+
+    let file_path = vault_root.join(&location.file_path);
+    let source = read_source(&file_path)?;
+    let doc = analyze_source(&source, &location.file_path)?;
+    // Scope the `started_at` match to the pointer's Headline (see `clock_out`);
+    // only when the ordinal fails to resolve at all do we fall back to the
+    // whole-tree search — still matched by `started_at`, never by an offset.
+    let entry = match find_headline_by_ordinal(&doc.headlines, to_usize(location.ordinal)) {
+        Some(headline) => find_open_clock(headline, started),
+        None => find_open_clock_in_tree(&doc.headlines, started),
+    };
+
+    let entry = match entry {
+        Some(e) => e,
+        None => {
+            remove_active_clock(vault_root)?;
+            return Err(OrgError::Vault {
+                reason: format!(
+                    "no open CLOCK line starting at {} found in {}; cleared the dangling \
+                     active-clock pointer",
+                    active.started_at, location.file_path
+                ),
+            });
+        }
+    };
+
+    // Delete the WHOLE open line (with its trailing newline): from the start of
+    // the line the entry sits on to the start of the next line.
+    let ls = line_start(&source, entry.span.start);
+    let le = next_line_start(&source, entry.span.start);
+    let new_source = splice(&source, ls, le, "");
+    atomic_write(&file_path, new_source.as_bytes()).map_err(clock_io)?;
+    remove_active_clock(vault_root)?;
     Ok(())
 }
 
@@ -1154,6 +1426,102 @@ CLOCK: [2026-09-16 Wed 08:00]
     }
 
     // ---- #15: indented LOGBOOK prepend preserves indentation ----
+
+    // ---- Story 7.7: discard line-delete splice ----
+
+    #[test]
+    fn discard_deletes_the_whole_open_line_leaving_an_empty_drawer() {
+        let source = "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\n:END:\n";
+        let headline = only_headline(source);
+        let entry = find_open_clock(&headline, dt(2026, 9, 13, 10, 0)).expect("open entry");
+        // The clock_discard splice: line_start..next_line_start of the entry.
+        let ls = line_start(source, entry.span.start);
+        let le = next_line_start(source, entry.span.start);
+        let out = splice(source, ls, le, "");
+        assert_eq!(out, "* Task\n:LOGBOOK:\n:END:\n");
+        // Re-analyze: the drawer is still valid org and carries no clocks.
+        let re = only_headline(&out);
+        assert_eq!(re.clocks.len(), 0);
+        assert!(re.drawers.iter().any(|d| d.kind == DrawerKind::Logbook));
+    }
+
+    // ---- Story 7.7: duplicate open-line neutralization (clock_in guard) ----
+
+    #[test]
+    fn close_extra_open_lines_neutralizes_older_duplicates_to_zero() {
+        // Two open lines: the newer (10:00) is adopted; the older (08:00) must be
+        // closed to its own start `=> 0:00`. Newest is prepended (org order).
+        let source =
+            "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\nCLOCK: [2026-09-13 Sun 08:00]\n:END:\n";
+        let headline = only_headline(source);
+        let adopt = most_recent_open_clock(&headline).expect("an open line");
+        assert_eq!(clock_start_dt(adopt), dt(2026, 9, 13, 10, 0));
+        let out = close_extra_open_lines(source, &headline, adopt.span.start);
+        assert_eq!(
+            out,
+            "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\nCLOCK: [2026-09-13 Sun 08:00]--[2026-09-13 Sun 08:00] => 0:00\n:END:\n"
+        );
+        // Re-analyze: exactly one open line remains — the adopted 10:00 one.
+        let re = only_headline(&out);
+        let open: Vec<_> = re.clocks.iter().filter(|c| c.end.is_none()).collect();
+        assert_eq!(open.len(), 1);
+        assert_eq!(clock_start_dt(open[0]), dt(2026, 9, 13, 10, 0));
+    }
+
+    #[test]
+    fn close_extra_open_lines_leaves_a_single_open_line_untouched() {
+        let source = "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 10:00]\n:END:\n";
+        let headline = only_headline(source);
+        let adopt = most_recent_open_clock(&headline).expect("an open line");
+        // No extras → source unchanged.
+        assert_eq!(
+            close_extra_open_lines(source, &headline, adopt.span.start),
+            source
+        );
+    }
+
+    #[test]
+    fn close_extra_open_lines_neutralizes_two_older_duplicates_in_reverse_order() {
+        // THREE open lines (12:00 newest/adopted, 10:00 and 08:00 extras). The
+        // reverse-order (descending span.end) splice must close BOTH older lines
+        // to their own start `=> 0:00` and leave exactly the adopted one open.
+        let source = "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 12:00]\nCLOCK: [2026-09-13 Sun 10:00]\nCLOCK: [2026-09-13 Sun 08:00]\n:END:\n";
+        let headline = only_headline(source);
+        let adopt = most_recent_open_clock(&headline).expect("an open line");
+        assert_eq!(clock_start_dt(adopt), dt(2026, 9, 13, 12, 0));
+        let out = close_extra_open_lines(source, &headline, adopt.span.start);
+        assert_eq!(
+            out,
+            "* Task\n:LOGBOOK:\nCLOCK: [2026-09-13 Sun 12:00]\nCLOCK: [2026-09-13 Sun 10:00]--[2026-09-13 Sun 10:00] => 0:00\nCLOCK: [2026-09-13 Sun 08:00]--[2026-09-13 Sun 08:00] => 0:00\n:END:\n"
+        );
+        // Re-analyze: exactly one open line remains — the adopted 12:00 one.
+        let re = only_headline(&out);
+        let open: Vec<_> = re.clocks.iter().filter(|c| c.end.is_none()).collect();
+        assert_eq!(open.len(), 1);
+        assert_eq!(clock_start_dt(open[0]), dt(2026, 9, 13, 12, 0));
+    }
+
+    // ---- Story 7.7: launch-summary duration math (14 h gap) ----
+
+    #[test]
+    fn stale_summary_durations_split_keep_vs_adjust() {
+        // Started 04:00, last-active 18:00 (14 h), now next-day 10:00 (30 h).
+        let started = dt(2026, 9, 13, 4, 0);
+        let last_active = dt(2026, 9, 13, 18, 0);
+        let now = dt(2026, 9, 14, 10, 0);
+        assert_eq!(
+            format_duration(now - started),
+            "30:00",
+            "keep = now - started"
+        );
+        assert_eq!(
+            format_duration(last_active - started),
+            "14:00",
+            "adjust = last_active - started"
+        );
+        // A last_active BEFORE started (degenerate) clamps to 0:00.
+        assert_eq!(format_duration(started - last_active), "0:00");
+    }
 
     #[test]
     fn clock_in_prepends_into_indented_logbook_preserving_indent() {
