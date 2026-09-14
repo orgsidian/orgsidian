@@ -15,11 +15,14 @@
 // chevron toggle fire-and-forget via
 // `commands.setTodayDashboardSectionCollapsed`.
 //
-// Out of scope here (see the Story 7.1 spec's Never list): copy-blessed
-// empty-state coaching via the coaching registry (Story 7.3) — the blank bodies
-// below are the minimal v0.1 stand-in; clock in/out/write + LOGBOOK persistence
-// (Story 7.6) — the Active Clock section only READS the running clock for
-// display.
+// Story 7.3 (FR-6 consequences + FR-21) adds copy-blessed, per-section
+// empty-state messages: each section's blank body now renders a contextual line
+// sourced from the centralized coaching registry
+// (`shell-ui/src/coaching/coachingRegistry.ts`) rather than an ad-hoc string.
+//
+// Out of scope here (see the Story 7.1 spec's Never list): clock in/out/write +
+// LOGBOOK persistence (Story 7.6) — the Active Clock section only READS the
+// running clock for display.
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -41,6 +44,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { dashboardEmptyState } from "@/coaching/coachingRegistry";
 
 /**
  * The `/today` route's Today Dashboard. Renders a loading placeholder, an error
@@ -131,7 +135,7 @@ export function TodayDashboard() {
             <AgendaList
               items={data.scheduled}
               todayIso={todayIso}
-              emptyLabel="Nothing scheduled for today."
+              emptyLabel={dashboardEmptyState.scheduled}
             />
           </DashboardSection>
 
@@ -144,7 +148,7 @@ export function TodayDashboard() {
             <AgendaList
               items={data.deadlines}
               todayIso={todayIso}
-              emptyLabel="No deadlines due or overdue."
+              emptyLabel={dashboardEmptyState.deadline}
             />
           </DashboardSection>
 
@@ -157,7 +161,7 @@ export function TodayDashboard() {
             <AgendaList
               items={data.todayTag}
               todayIso={todayIso}
-              emptyLabel="No items tagged for today."
+              emptyLabel={dashboardEmptyState.todayTag}
             />
           </DashboardSection>
 
@@ -246,8 +250,9 @@ function DashboardSection({
 }
 
 /**
- * A section's Agenda rows (Scheduled / Deadline / Today-Tag), or a minimal
- * empty-state line. Rows reuse the same click-to-open `Link` + `deadlineLabel`
+ * A section's Agenda rows (Scheduled / Deadline / Today-Tag), or the section's
+ * copy-blessed empty-state line (`emptyLabel`, from the coaching registry —
+ * Story 7.3). Rows reuse the same click-to-open `Link` + `deadlineLabel`
  * as `AgendaToday`; the list is rendered in the backend's order, never
  * re-sorted here.
  */
@@ -315,12 +320,17 @@ function AgendaRow({
 }
 
 /**
- * The Inbox-preview rows (the first N `inbox.org` headlines), or a minimal
- * empty-state line. Same click-to-open `Link` as the Agenda rows.
+ * The Inbox-preview rows (the first N `inbox.org` headlines), or the
+ * copy-blessed empty-state line (coaching registry — Story 7.3). Same
+ * click-to-open `Link` as the Agenda rows.
  */
 function InboxList({ items }: { items: InboxItemDto[] }) {
   if (items.length === 0) {
-    return <p className="text-sm text-[var(--org-fg-muted)]">Inbox is empty.</p>;
+    return (
+      <p className="text-sm text-[var(--org-fg-muted)]">
+        {dashboardEmptyState.inboxPreview}
+      </p>
+    );
   }
   return (
     <ul className="flex flex-col gap-1">
@@ -350,12 +360,17 @@ function InboxList({ items }: { items: InboxItemDto[] }) {
 
 /**
  * The Active Clock section body: the one running clock as a click-to-open row,
- * or a minimal empty-state line. READ-ONLY (Story 7.1) — clock in/out is Story
+ * or the copy-blessed empty-state line (coaching registry — Story 7.3).
+ * READ-ONLY (Story 7.1) — clock in/out is Story
  * 7.6.
  */
 function ActiveClockView({ clock }: { clock: ActiveClockDto | null }) {
   if (clock === null) {
-    return <p className="text-sm text-[var(--org-fg-muted)]">No active clock.</p>;
+    return (
+      <p className="text-sm text-[var(--org-fg-muted)]">
+        {dashboardEmptyState.activeClock}
+      </p>
+    );
   }
   return (
     <Link
