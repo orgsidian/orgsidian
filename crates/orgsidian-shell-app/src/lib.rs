@@ -3,8 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use orgsidian_core::{
-    ConflictNotice, IndexHandle, OrgError, Result as OrgResult, SharedDirtyBuffers,
-    SharedPendingConflicts,
+    ConflictNotice, DashboardParams, IndexHandle, OrgError, Result as OrgResult,
+    SharedDirtyBuffers, SharedPendingConflicts,
 };
 #[cfg(debug_assertions)]
 use specta_typescript::Typescript;
@@ -744,6 +744,152 @@ async fn agenda_week(
     Ok(items.into_iter().map(AgendaItemDto::from).collect())
 }
 
+/// Implements FR-6 (Story 7.1 Today Dashboard): wire projection of one
+/// `orgsidian_core::InboxItem` for the Inbox-preview section. `i64` → `u32`
+/// narrowing on the id/offset for the same reason as [`AgendaItemDto`].
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxItemDto {
+    /// `headlines.id` — the click-to-open target's identity (route
+    /// `$headlineId`).
+    pub headline_id: u32,
+    /// Source file path — always `inbox.org`; the other click-to-open target
+    /// (route `$filePath`).
+    pub file_path: String,
+    /// Headline title, stars/keyword/tags already stripped.
+    pub title: String,
+    /// The Headline's byte offset in its file's source (the `byteStart` search
+    /// param the editor route uses to place the cursor).
+    pub byte_start: u32,
+    /// TODO keyword text, when the headline carries one.
+    pub todo_keyword: Option<String>,
+}
+
+impl From<orgsidian_core::InboxItem> for InboxItemDto {
+    fn from(item: orgsidian_core::InboxItem) -> Self {
+        InboxItemDto {
+            headline_id: item.headline_id as u32,
+            file_path: item.file_path,
+            title: item.title,
+            byte_start: item.byte_start as u32,
+            todo_keyword: item.todo_keyword,
+        }
+    }
+}
+
+/// Implements FR-6 (Story 7.1): wire projection of the one running clock (the
+/// Active Clock section). READ-ONLY — clock in/out/write is Story 7.6.
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveClockDto {
+    /// The clocked-in headline's id (click-to-open target).
+    pub headline_id: u32,
+    /// The clocked-in headline's file path (click-to-open target).
+    pub file_path: String,
+    /// The clocked-in headline's title, stars/keyword/tags stripped.
+    pub title: String,
+    /// The clocked-in headline's byte offset (cursor placement).
+    pub byte_start: u32,
+    /// `clock_entries.start_at` (ISO-8601) — when the running clock started.
+    pub start_at: String,
+}
+
+impl From<orgsidian_core::ActiveClock> for ActiveClockDto {
+    fn from(clock: orgsidian_core::ActiveClock) -> Self {
+        ActiveClockDto {
+            headline_id: clock.headline_id as u32,
+            file_path: clock.file_path,
+            title: clock.title,
+            byte_start: clock.byte_start as u32,
+            start_at: clock.start_at,
+        }
+    }
+}
+
+/// Implements FR-6 (Story 7.1): wire projection of the full five-section Today
+/// Dashboard for `commands.todayDashboard`. Field order matches the render
+/// order (Scheduled | Deadline | Today-tag | Inbox preview | Active clock); the
+/// headline sections reuse [`AgendaItemDto`].
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TodayDashboardDto {
+    /// Headlines `SCHEDULED:` for the caller's `today`.
+    pub scheduled: Vec<AgendaItemDto>,
+    /// Headlines with a `DEADLINE:` on or before `today` (overdue-or-today).
+    pub deadlines: Vec<AgendaItemDto>,
+    /// Headlines carrying the configurable "today" tag.
+    pub today_tag: Vec<AgendaItemDto>,
+    /// The first N `inbox.org` headlines.
+    pub inbox: Vec<InboxItemDto>,
+    /// The one running clock, or `null` when nothing is clocked in.
+    pub active_clock: Option<ActiveClockDto>,
+}
+
+impl From<orgsidian_core::TodayDashboard> for TodayDashboardDto {
+    fn from(dash: orgsidian_core::TodayDashboard) -> Self {
+        TodayDashboardDto {
+            scheduled: dash
+                .scheduled
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
+            deadlines: dash
+                .deadlines
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
+            today_tag: dash
+                .today_tag
+                .into_iter()
+                .map(AgendaItemDto::from)
+                .collect(),
+            inbox: dash.inbox.into_iter().map(InboxItemDto::from).collect(),
+            active_clock: dash.active_clock.map(ActiveClockDto::from),
+        }
+    }
+}
+
+/// Implements FR-6 (Story 7.1): the `/today` route's Today Dashboard data
+/// source — `shell-ui/src/components/today/TodayDashboard.tsx` calls this once
+/// per mount. `today` is the frontend's local calendar day (`YYYY-MM-DD`), the
+/// same convention `agenda_today` uses (never a server-side clock read). The
+/// configurable today-tag and Inbox-preview count are read from the active
+/// Vault's `TodayDashboardSections` settings here at the boundary (defaults
+/// `today` / 5). Errors with `OrgError::Vault` when no Vault is active.
+#[tauri::command]
+#[specta::specta]
+async fn today_dashboard(
+    today: String,
+    state: tauri::State<'_, AppState>,
+) -> OrgResult<TodayDashboardDto> {
+    let vault_root = state.current_vault_root().ok_or_else(no_active_vault)?;
+    let settings =
+        orgsidian_core::settings::read_vault_settings(&vault_root).map_err(|source| {
+            OrgError::Io {
+                reason: format!("failed to read vault settings: {source}"),
+            }
+        })?;
+    let params = dashboard_params(today, &settings);
+    let dashboard = orgsidian_core::today_dashboard(&vault_root, params).await?;
+    Ok(TodayDashboardDto::from(dashboard))
+}
+
+/// Map the frontend's local `today` day plus the active Vault's settings into
+/// the index-layer [`DashboardParams`]. Split out of [`today_dashboard`] so the
+/// settings→params wiring is unit-testable without a live Tauri `State`: a
+/// swapped or dropped `today_tag` / `inbox_preview_count` fails
+/// `settings_flow_through_to_dashboard_params`.
+fn dashboard_params(
+    today: String,
+    settings: &orgsidian_core::settings::VaultSettings,
+) -> DashboardParams {
+    DashboardParams {
+        today,
+        today_tag: settings.today_dashboard.today_tag.clone(),
+        inbox_preview_count: settings.today_dashboard.inbox_preview_count,
+    }
+}
+
 /// Story 6.6 (FR-21 partial / FR-18 / UJ-4): the ids of the hardcoded coaching
 /// balloons dismissed in the active Vault, read from
 /// `<Vault>/.orgsidian/coaching-dismissed.json`. `CoachingBalloon` calls this
@@ -808,6 +954,7 @@ pub fn build_specta() -> Builder<tauri::Wry> {
             generate_starter_vault,
             has_configured_vault,
             agenda_week,
+            today_dashboard,
             get_dismissed_coaching,
             dismiss_coaching
         ])
@@ -1270,5 +1417,46 @@ mod tests {
 
         tauri::async_runtime::block_on(ensure_target_has_no_org_files(&missing.to_string_lossy()))
             .expect("a not-yet-created folder must be allowed");
+    }
+
+    /// The Today Dashboard command reads `today_tag` / `inbox_preview_count`
+    /// from the active Vault's settings into `DashboardParams`. This pins the
+    /// wiring: NON-DEFAULT settings must reach the query params 1:1, so a future
+    /// swap of the two fields (or dropping one for its default) fails here.
+    #[test]
+    fn settings_flow_through_to_dashboard_params() {
+        use orgsidian_core::settings::schema::TodayDashboardSections;
+        use orgsidian_core::settings::VaultSettings;
+
+        let settings = VaultSettings {
+            today_dashboard: TodayDashboardSections {
+                today_tag: "focus".to_string(),
+                inbox_preview_count: 12,
+                ..TodayDashboardSections::default()
+            },
+            ..VaultSettings::default()
+        };
+
+        let params = dashboard_params("2026-09-13".to_string(), &settings);
+
+        assert_eq!(params.today, "2026-09-13");
+        assert_eq!(
+            params.today_tag, "focus",
+            "the configured today-tag must reach the query params"
+        );
+        assert_eq!(
+            params.inbox_preview_count, 12,
+            "the configured inbox preview count must reach the query params"
+        );
+        // Guard against a silent field swap: neither param may hold the OTHER
+        // field's default.
+        assert_ne!(
+            params.today_tag, "today",
+            "must not fall back to the default tag"
+        );
+        assert_ne!(
+            params.inbox_preview_count, 5,
+            "must not fall back to the default preview count"
+        );
     }
 }

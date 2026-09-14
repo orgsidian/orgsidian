@@ -75,11 +75,44 @@ fn populated_vault_settings_round_trip() {
         show_deadlines: true,
         show_clock: false,
         show_inbox: true,
+        today_tag: "focus".into(),
+        inbox_preview_count: 8,
     };
 
     write_vault_settings(dir.path(), &original).expect("write");
     let read_back = read_vault_settings(dir.path()).expect("read");
     assert_eq!(read_back, original);
+}
+
+#[test]
+fn pre_story_7_1_today_dashboard_table_reads_back_new_field_defaults() {
+    // Upgrade-compat: a settings.toml written before Story 7.1 has a
+    // [today_dashboard] table with ONLY the four show_* keys. Reading it back
+    // through the same `read_vault_settings` path must fill the two new fields
+    // from their defaults rather than `""`/`0`.
+    let dir = tempdir().expect("tempdir");
+    let path = vault_settings_path(dir.path());
+    std::fs::create_dir_all(path.parent().expect("dotdir parent")).expect("mkdir .orgsidian");
+    std::fs::write(
+        &path,
+        "schema_version = 1\n\
+         \n\
+         [today_dashboard]\n\
+         show_scheduled = true\n\
+         show_deadlines = false\n\
+         show_clock = true\n\
+         show_inbox = false\n",
+    )
+    .expect("write pre-7.1 settings");
+
+    let read_back = read_vault_settings(dir.path()).expect("read");
+
+    // The four legacy keys survive as written…
+    assert!(read_back.today_dashboard.show_scheduled);
+    assert!(!read_back.today_dashboard.show_deadlines);
+    // …and the two Story 7.1 fields come back at their defaults.
+    assert_eq!(read_back.today_dashboard.today_tag, "today");
+    assert_eq!(read_back.today_dashboard.inbox_preview_count, 5);
 }
 
 #[test]
@@ -174,14 +207,33 @@ fn agenda_preset_strategy() -> impl Strategy<Value = AgendaPreset> {
 }
 
 fn today_dashboard_strategy() -> impl Strategy<Value = TodayDashboardSections> {
-    (any::<bool>(), any::<bool>(), any::<bool>(), any::<bool>()).prop_map(
-        |(show_scheduled, show_deadlines, show_clock, show_inbox)| TodayDashboardSections {
-            show_scheduled,
-            show_deadlines,
-            show_clock,
-            show_inbox,
-        },
+    (
+        any::<bool>(),
+        any::<bool>(),
+        any::<bool>(),
+        any::<bool>(),
+        "[a-z]{2,8}",
+        0usize..20,
     )
+        .prop_map(
+            |(
+                show_scheduled,
+                show_deadlines,
+                show_clock,
+                show_inbox,
+                today_tag,
+                inbox_preview_count,
+            )| {
+                TodayDashboardSections {
+                    show_scheduled,
+                    show_deadlines,
+                    show_clock,
+                    show_inbox,
+                    today_tag,
+                    inbox_preview_count,
+                }
+            },
+        )
 }
 
 fn vault_settings_strategy() -> impl Strategy<Value = VaultSettings> {

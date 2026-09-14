@@ -340,3 +340,10 @@
 ## Deferred from: story-6-1 implementation (2026-09-05)
 
 - Story 6.1 Freelancer starter + ≥1-backlink AC deferred until Story 8.7 (BacklinksPanel) lands.
+
+- source_spec: `_bmad-output/implementation-artifacts/7-1-implement-today-dashboard-surface.md`
+  summary: Add behavioral test for the core index-wrapper absent-index error path (today_dashboard and siblings agenda_today/agenda_week/index_stats/index_integrity).
+  evidence: The `index_absent_err` refusal branch in `crates/orgsidian-core/src/index/mod.rs` is untested for today_dashboard; this is a pre-existing pattern shared by all sibling wrappers, not novel to Story 7.1 — best fixed once a wrapper integration harness exists.
+- source_spec: `_bmad-output/implementation-artifacts/7-1-implement-today-dashboard-surface.md`
+  summary: Add command-level integration test proving the today_dashboard Tauri command wires today_tag/inbox_preview_count from vault settings into DashboardParams.
+  evidence: The shell-app has no command-execution test harness (export_bindings only checks the generated type surface; sibling agenda_week is likewise untested), so swapping/ignoring the two settings reads would ship undetected.

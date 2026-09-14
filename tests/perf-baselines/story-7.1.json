@@ -1,0 +1,11 @@
+{
+  "story_id": "story-7.1-today-dashboard",
+  "tolerance_pct": 20,
+  "samples": 5,
+  "baselines": {
+    "macos-aarch64": {
+      "median_ns": 5238167,
+      "created_at": "2026-09-13T14:03:05Z"
+    }
+  }
+}

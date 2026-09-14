@@ -106,6 +106,12 @@ use crate::error::IndexError;
 
 pub mod agenda;
 pub mod backlinks;
+// Story 7.1 (FR-6): the Today Dashboard's five-section read. NOT part of the
+// frozen [`IndexQuery`] trait surface (adding a trait method would risk the
+// `cargo-semver-checks` gate) — it is a plain sibling free-function module,
+// reached as `orgsidian_index::query::dashboard::today` exactly the way
+// `orgsidian-core` already reaches `agenda::today`/`agenda::week`.
+pub mod dashboard;
 pub mod graph;
 pub mod search;
 
